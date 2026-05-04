@@ -1,0 +1,87 @@
+﻿@model IEnumerable<Web_Stadium.End.SanBong>
+@{
+    ViewData["Title"] = "Duyệt sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- HEADER -->
+<div style="background:var(--bg2); padding:100px 0 40px; border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Admin</div>
+        <h1 style="font-style:italic; line-height:0.9">
+            DUYỆT SÂN<br>
+            <span class="text-green">CHỜ PHÊ DUYỆT</span>
+        </h1>
+    </div>
+</div>
+
+<!-- MENU ADMIN -->
+<div style="background:var(--bg3); border-bottom:1px solid var(--border); padding:12px 0">
+    <div class="container d-flex gap-3 flex-wrap">
+        <a href="/Admin" class="btn btn-sm btn-outline-light rounded-pill">📊 Tổng quan</a>
+        <a href="/Admin/DuyetSan" class="btn btn-sm btn-success rounded-pill">🏟️ Duyệt sân</a>
+        <a href="/Admin/QuanLyUser" class="btn btn-sm btn-outline-info rounded-pill">👥 Quản lý User</a>
+        <a href="/Admin/BaoCao" class="btn btn-sm btn-outline-light rounded-pill">📈 Báo cáo</a>
+    </div>
+</div>
+
+<div class="container py-5">
+
+    @if (!Model.Any())
+    {
+        <div style="text-align:center; padding:80px 0">
+            <div style="font-size:4rem; margin-bottom:16px">✅</div>
+            <h3 style="font-family:var(--ff-h); color:var(--green)">Không có sân nào chờ duyệt!</h3>
+            <p style="color:var(--muted)">Tất cả sân đã được xử lý.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var san in Model)
+            {
+                <div class="col-md-6" data-aos="fade-up">
+                    <div class="section-card p-4">
+                        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:16px">
+                            <div>
+                                <h4 style="font-family:var(--ff-h); margin-bottom:4px">@san.TenSan</h4>
+                                <div style="font-size:12px; color:var(--muted)">📍 @san.DiaChi — @san.Quan</div>
+                            </div>
+                            <span class="badge" style="background:var(--yellow); color:#000; font-size:11px">Chờ duyệt</span>
+                        </div>
+
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px">
+                            <span class="badge b-green">Sân @san.LoaiSan người</span>
+                            <span class="badge b-blue">@san.LoaiCo</span>
+                            <span style="font-size:12px; color:var(--muted2)">Chủ: @san.Owner?.HoTen (@san.Owner?.Email)</span>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(san.MoTa))
+                        {
+                            <p style="font-size:13px; color:var(--muted); margin-bottom:16px">@san.MoTa</p>
+                        }
+
+                        <div style="display:flex; gap:8px">
+                            <form method="post" action="/Admin/PheDuyet" style="flex:1">
+                                <input type="hidden" name="id" value="@san.Id" />
+                                <input type="hidden" name="trangThai" value="DaDuyet" />
+                                <button type="submit" class="btn btn-success w-100 rounded-pill fw-bold"
+                                        onclick="return confirm('Xác nhận PHÊ DUYỆT sân @san.TenSan?')">
+                                    ✅ Phê duyệt
+                                </button>
+                            </form>
+                            <form method="post" action="/Admin/PheDuyet" style="flex:1">
+                                <input type="hidden" name="id" value="@san.Id" />
+                                <input type="hidden" name="trangThai" value="TuChoi" />
+                                <button type="submit" class="btn btn-outline-danger w-100 rounded-pill"
+                                        onclick="return confirm('Xác nhận TỪ CHỐI sân @san.TenSan?')">
+                                    ❌ Từ chối
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

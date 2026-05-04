@@ -1,0 +1,191 @@
+﻿@model IEnumerable<Web_Stadium.End.DatSan>
+@{
+    ViewData["Title"] = "Lịch đặt sân của tôi";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/mybookings.css" />
+}
+
+<!-- HEADER -->
+<div class="my-header">
+    <div class="container">
+        <div class="section-label">Tài khoản</div>
+        <h1 style="font-style:italic; line-height:0.9">
+            LỊCH ĐẶT<br>
+            <span class="text-green">CỦA TÔI</span>
+        </h1>
+    </div>
+</div>
+
+<div class="container section" style="padding-top:32px">
+
+    <!-- TABS LỌC THEO TRẠNG THÁI -->
+    <div class="booking-tabs">
+        <a href="/Booking/MyBookings" class="b-tab active">
+            Tất cả (@Model.Count())
+        </a>
+        <a href="/Booking/MyBookings?trangThai=ChoDuyet"
+           class="b-tab">
+            Chờ duyệt
+            (@Model.Count(d => d.TrangThai == "ChoDuyet"))
+        </a>
+        <a href="/Booking/MyBookings?trangThai=DaXacNhan"
+           class="b-tab">
+            Đã xác nhận
+            (@Model.Count(d => d.TrangThai == "DaXacNhan"))
+        </a>
+        <a href="/Booking/MyBookings?trangThai=DaHuy"
+           class="b-tab">
+            Đã hủy
+            (@Model.Count(d => d.TrangThai == "DaHuy"))
+        </a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-booking">
+            <div class="empty-booking-icon">⚽</div>
+            <h3 style="font-family:var(--ff-h); margin-bottom:8px">
+                Chưa có lịch đặt sân nào
+            </h3>
+            <p style="color:var(--muted); margin-bottom:24px">
+                Hãy tìm sân và đặt lịch đầu tiên của bạn!
+            </p>
+            <a href="/Venues" class="btn-primary-glow">
+                Tìm sân ngay
+            </a>
+        </div>
+    }
+    else
+    {
+        foreach (var ds in Model)
+        {
+            var san = ds.KhungGio?.SanBong;
+            var kg = ds.KhungGio;
+
+            var stClass = ds.TrangThai switch
+            {
+                "ChoDuyet" => "st-cho",
+                "DaXacNhan" => "st-xn",
+                "DaHuy" => "st-huy",
+                _ => "st-ht"
+            };
+            var stText = ds.TrangThai switch
+            {
+                "ChoDuyet" => "Chờ duyệt",
+                "DaXacNhan" => "Đã xác nhận",
+                "DaHuy" => "Đã hủy",
+                "HoanThanh" => "Hoàn thành",
+                _ => ds.TrangThai
+            };
+
+            <div class="booking-card">
+
+                <!-- TOP -->
+                <div class="bc-top">
+                    <div class="bc-code">#@ds.MaXacNhan</div>
+                    <div class="bc-san">
+                        <div class="bc-san-name">
+                            @san?.TenSan
+                        </div>
+                        <div class="bc-san-addr">
+                            📍 @san?.DiaChi — @san?.Quan
+                        </div>
+                    </div>
+                    <div class="bc-status @stClass">@stText</div>
+                </div>
+
+                <!-- BODY -->
+                <div class="bc-body">
+                    <div>
+                        <div class="bc-info-label">Ngày thi đấu</div>
+                        <div class="bc-info-val">
+                            @ds.NgayThiDau.ToString("dd/MM/yyyy")
+                        </div>
+                    </div>
+                    <div>
+                        <div class="bc-info-label">Khung giờ</div>
+                        <div class="bc-info-val">
+                            @kg?.GioBatDau.ToString(@"hh\:mm")
+                            –
+                            @kg?.GioKetThuc.ToString(@"hh\:mm")
+                        </div>
+                    </div>
+                    <div>
+                        <div class="bc-info-label">Loại sân</div>
+                        <div class="bc-info-val">
+                            Sân @san?.LoaiSan người
+                        </div>
+                    </div>
+                    <div>
+                        <div class="bc-info-label">Tiền cọc</div>
+                        <div class="bc-info-val highlight">
+                            @ds.TienCoc.ToString("N0")đ
+                        </div>
+                    </div>
+                    <div>
+                        <div class="bc-info-label">Đặt lúc</div>
+                        <div class="bc-info-val">
+                            @ds.ThoiGianTao.ToString("HH:mm dd/MM")
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FOOTER -->
+                <div class="bc-footer">
+                    <div class="dv-chips">
+                        @if (ds.DichVuKemTheo != null
+                                        && ds.DichVuKemTheo.Any())
+                        {
+                            foreach (var dv in ds.DichVuKemTheo)
+                            {
+                                <span class="dv-chip">
+                                    @dv.DichVu?.TenDichVu ×@dv.SoLuong
+                                </span>
+                            }
+                        }
+                        else
+                        {
+                            <span style="font-size:12px;
+                                                     color:var(--muted2)">
+                                Không có dịch vụ kèm
+                            </span>
+                        }
+                    </div>
+
+                    <div class="bc-footer-actions">
+                        @if (ds.TrangThai == "ChoDuyet"
+                                        || ds.TrangThai == "DaXacNhan")
+                        {
+                            <a href="/Matchmaking/Create?datSanId=@ds.Id"
+                               class="btn-outline-green"
+                               style="padding:7px 14px; font-size:11px">
+                                Tìm đối thủ
+                            </a>
+                        }
+
+                        @if (ds.TrangThai == "ChoDuyet")
+                        {
+                            <form method="post" action="/Booking/Huy"
+                                  style="display:inline">
+                                <input type="hidden"
+                                       name="id" value="@ds.Id" />
+                                <button type="submit"
+                                        class="btn-danger"
+                                        style="padding:7px 14px;
+                                                           font-size:11px"
+                                        onclick="return confirm(
+                                                        'Bạn chắc chắn muốn hủy?')">
+                                    Hủy đặt
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+
+            </div>
+        }
+    }
+</div>

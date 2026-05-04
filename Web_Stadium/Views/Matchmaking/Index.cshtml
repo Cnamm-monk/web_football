@@ -1,0 +1,205 @@
+﻿@model IEnumerable<Web_Stadium.End.Matchmaking>
+@{
+    ViewData["Title"] = "Tìm đội đối thủ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/matchmaking.css" />
+}
+
+<!-- HEADER -->
+<div class="mm-header">
+    <div class="container">
+        <div class="section-label">Cộng đồng</div>
+        <h1 style="font-style:italic; line-height:0.9; margin-bottom:12px">
+            TÌM ĐỘI<br>
+            <span class="text-green">ĐỐI THỦ</span>
+        </h1>
+        <p style="color:var(--muted); font-size:15px; max-width:500px">
+            Đã đặt sân nhưng còn thiếu người?
+            Đăng tin tìm đội giao lưu ngay!
+        </p>
+    </div>
+</div>
+
+<div class="container section">
+
+    @{
+        var tongNguoi = Model.Sum(m => m.SoNguoiCanThem);
+        var tongQuan = Model
+        .Where(m => m.DatSan != null
+        && m.DatSan.KhungGio != null
+        && m.DatSan.KhungGio.SanBong != null
+        && m.DatSan.KhungGio.SanBong.Quan != null)
+        .Select(m => m.DatSan!.KhungGio!.SanBong!.Quan)
+        .Distinct()
+        .Count();
+    }
+
+    <!-- THỐNG KÊ NHANH -->
+    <div class="stat-row">
+        <div class="stat-mini">
+            <div class="num">@ViewBag.TongTin</div>
+            <div class="lbl">Tin đang tìm</div>
+        </div>
+        <div class="stat-mini">
+            <div class="num">@tongNguoi</div>
+            <div class="lbl">Người cần thêm</div>
+        </div>
+        <div class="stat-mini">
+            <div class="num">@tongQuan</div>
+            <div class="lbl">Quận có tin</div>
+        </div>
+    </div>
+   
+    <!-- BỘ LỌC + NÚT ĐĂNG TIN -->
+    <div style="display:flex; justify-content:space-between;
+                align-items:center; flex-wrap:wrap; gap:16px;
+                margin-bottom:8px">
+        <form method="get" action="/Matchmaking" class="filter-bar">
+            <select name="loaiSan" class="form-select"
+                    style="width:140px"
+                    onchange="this.form.submit()">
+                <option value="">Loại sân</option>
+                <option value="5"
+                    @@(ViewBag.LoaiSan == "5" ? "selected" : "")>
+                    Sân 5 người
+                </option>
+                <option value="7"
+                    @@(ViewBag.LoaiSan == "7" ? "selected" : "")>
+                    Sân 7 người
+                </option>
+                <option value="11"
+                    @@(ViewBag.LoaiSan == "11" ? "selected" : "")>
+                    Sân 11 người
+                </option>
+            </select>
+            <input class="form-input" type="text"
+                   name="quan"
+                   placeholder="Tìm theo quận..."
+                   value="@ViewBag.Quan"
+                   style="width:200px" />
+            <button type="submit" class="btn-primary-glow"
+                    style="padding:10px 20px; font-size:12px">
+                Lọc
+            </button>
+        </form>
+
+        @if (Context.Request.Cookies["jwt"] != null)
+        {
+            <a href="/Booking/MyBookings" class="btn-ghost-glow"
+               style="padding:10px 20px; font-size:12px">
+                + Đăng tin tìm đội
+            </a>
+        }
+        else
+        {
+            <a href="/Auth/Login" class="btn-ghost-glow"
+               style="padding:10px 20px; font-size:12px">
+                Đăng nhập để đăng tin
+            </a>
+        }
+    </div>
+
+    <!-- DANH SÁCH TIN -->
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon">⚽</div>
+            <h3 style="font-family:var(--ff-h); margin-bottom:8px">
+                Chưa có tin tìm đội nào
+            </h3>
+            <p style="color:var(--muted)">
+                Hãy là người đầu tiên đăng tin!
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="mm-grid">
+            @foreach (var mm in Model)
+            {
+                var san      = mm.DatSan?.KhungGio?.SanBong;
+                var kg       = mm.DatSan?.KhungGio;
+                var initials = mm.User?.HoTen?.Length > 0
+                    ? mm.User.HoTen.Substring(0, 1).ToUpper() : "?";
+                var elapsed  = DateTime.Now - mm.NgayDang;
+                var timeAgo  = elapsed.TotalHours < 1
+                    ? "Vừa đăng"
+                    : $"{(int)elapsed.TotalHours}h trước";
+
+                <div class="mm-card">
+                    <div class="mm-card-header">
+                        <div class="mm-title">@mm.TieuDe</div>
+                        <div class="need-badge">
+                            Cần @mm.SoNguoiCanThem người
+                        </div>
+                    </div>
+
+                    <div class="mm-info-row">
+                        @if (san != null)
+                        {
+                            <div class="mm-info-item">
+                                <span class="icon">🏟️</span>
+                                <strong>@san.TenSan</strong>
+                            </div>
+                            <div class="mm-info-item">
+                                <span class="icon">📍</span>
+                                @san.DiaChi — @san.Quan
+                            </div>
+                        }
+                        @if (kg != null && mm.DatSan != null)
+                        {
+                            <div class="mm-info-item">
+                                <span class="icon">🕐</span>
+                                @mm.DatSan.NgayThiDau.ToString("dd/MM/yyyy")
+                                &nbsp;|&nbsp;
+                                @kg.GioBatDau.ToString(@"hh\:mm")
+                                –
+                                @kg.GioKetThuc.ToString(@"hh\:mm")
+                            </div>
+                            <div class="mm-info-item">
+                                <span class="icon">⚽</span>
+                                Sân @san?.LoaiSan người
+                                &nbsp;·&nbsp;
+                                @san?.LoaiCo
+                            </div>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(mm.MoTa))
+                    {
+                        <div class="mm-desc">"@mm.MoTa"</div>
+                    }
+
+                    <div class="mm-footer">
+                        <div class="mm-author">
+                            <div class="mm-avatar">@initials</div>
+                            <div>
+                                <div class="mm-author-name">
+                                    @mm.User?.HoTen
+                                </div>
+                                <div class="mm-author-time">@timeAgo</div>
+                            </div>
+                        </div>
+
+                        @if (mm.User?.SoDienThoai != null)
+                        {
+                            <a href="tel:@mm.User.SoDienThoai"
+                               class="btn-lien-he">
+                                Liên hệ
+                            </a>
+                        }
+                        else
+                        {
+                            <span style="font-size:12px; color:var(--muted2)">
+                                @mm.User?.Email
+                            </span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

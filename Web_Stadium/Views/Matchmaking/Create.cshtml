@@ -1,0 +1,83 @@
+﻿@{
+    ViewData["Title"] = "Đăng tin tìm đội";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var datSan = ViewBag.DatSan as Web_Stadium.End.DatSan;
+    var san = datSan?.KhungGio?.SanBong;
+    var kg = datSan?.KhungGio;
+}
+
+<!-- HEADER -->
+<div style="background:var(--bg2); padding:100px 0 40px; border-bottom:1px solid var(--border)">
+    <div class="container">
+        <nav style="margin-bottom:12px">
+            <a href="/Matchmaking" style="font-size:11px; color:var(--muted); letter-spacing:1px; text-decoration:none">
+                ← DANH SÁCH TÌM ĐỘI
+            </a>
+        </nav>
+        <div class="section-label">Cộng đồng</div>
+        <h1 style="font-style:italic; line-height:0.9">
+            ĐĂNG TIN<br>
+            <span class="text-green">TÌM ĐỘI</span>
+        </h1>
+    </div>
+</div>
+
+<div class="container section" style="max-width:640px">
+
+    @if (datSan != null && san != null)
+    {
+        <!-- THÔNG TIN SÂN ĐÃ ĐẶT -->
+        <div class="section-card p-4 mb-4">
+            <div style="font-size:11px; color:var(--muted); letter-spacing:1px; margin-bottom:12px">SÂN ĐÃ ĐẶT</div>
+            <div style="font-family:var(--ff-h); font-size:1.2rem; margin-bottom:6px">@san.TenSan</div>
+            <div style="font-size:13px; color:var(--muted); display:flex; gap:16px; flex-wrap:wrap">
+                <span>📍 @san.DiaChi — @san.Quan</span>
+                <span>🕐 @kg?.GioBatDau.ToString(@"hh\:mm") – @kg?.GioKetThuc.ToString(@"hh\:mm")</span>
+                <span>📅 @datSan.NgayThiDau.ToString("dd/MM/yyyy")</span>
+            </div>
+        </div>
+
+        <!-- FORM ĐĂNG TIN -->
+        <div class="section-card p-4">
+            <div style="font-size:11px; color:var(--muted); letter-spacing:1px; margin-bottom:16px">THÔNG TIN TIN ĐĂNG</div>
+
+            <form method="post" action="/Matchmaking/Create">
+                <input type="hidden" name="datSanId" value="@datSan.Id" />
+
+                <div style="margin-bottom:16px">
+                    <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:6px">TIÊU ĐỀ *</label>
+                    <input type="text" name="tieuDe" required
+                           class="form-input" style="width:100%"
+                           placeholder="VD: Cần thêm 2 tiền đạo cho trận giao lưu..." />
+                </div>
+
+                <div style="margin-bottom:16px">
+                    <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:6px">MÔ TẢ</label>
+                    <textarea name="moTa" rows="4"
+                          class="form-input" style="width:100%; resize:vertical"
+                          placeholder="Trình độ yêu cầu, liên hệ..."></textarea>
+                </div>
+
+                <div style="margin-bottom:24px">
+                    <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:6px">SỐ NGƯỜI CẦN THÊM *</label>
+                    <input type="number" name="soNguoiCanThem" required
+                           class="form-input" style="width:100%"
+                           min="1" max="20" value="1" />
+                </div>
+
+                <button type="submit" class="btn-primary-glow" style="width:100%; padding:14px; font-size:13px">
+                    ĐĂNG TIN TÌM ĐỘI
+                </button>
+            </form>
+        </div>
+    }
+    else
+    {
+        <div style="text-align:center; padding:60px 0">
+            <p style="color:var(--muted)">Không tìm thấy đơn đặt sân.</p>
+            <a href="/Booking/MyBookings" class="btn-primary-glow" style="display:inline-block; margin-top:16px">
+                Xem lịch đặt sân
+            </a>
+        </div>
+    }
+</div>

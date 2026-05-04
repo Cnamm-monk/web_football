@@ -1,0 +1,160 @@
+﻿@{
+    ViewData["Title"] = "Xác nhận đặt sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var khungGio = ViewBag.KhungGio as Web_Stadium.End.KhungGio;
+    var san = khungGio?.SanBong;
+    var ngay = (DateTime)ViewBag.Ngay;
+    var tienCoc = (decimal)ViewBag.TienCoc;
+    var dichVus = ViewBag.DichVus as IEnumerable<Web_Stadium.End.DichVu>;
+}
+
+<!-- HEADER -->
+<div style="background:var(--bg2); padding:100px 0 40px; border-bottom:1px solid var(--border)">
+    <div class="container">
+        <nav style="margin-bottom:12px">
+            <a href="/Venues/Details/@san?.Id" style="font-size:11px; color:var(--muted); letter-spacing:1px; text-decoration:none">
+                ← QUAY LẠI SÂN
+            </a>
+        </nav>
+        <div class="section-label">Đặt sân</div>
+        <h1 style="font-style:italic; line-height:0.9">
+            XÁC NHẬN<br>
+            <span class="text-green">ĐẶT SÂN</span>
+        </h1>
+    </div>
+</div>
+
+<div class="container section" style="max-width:720px">
+
+    @if (khungGio == null || san == null)
+    {
+        <div style="text-align:center; padding:60px 0">
+            <p style="color:var(--muted)">Khung giờ không hợp lệ.</p>
+        </div>
+    }
+    else
+    {
+        <!-- THÔNG TIN ĐẶT SÂN -->
+        <div class="section-card p-4 mb-4">
+            <div style="font-size:11px; color:var(--muted); letter-spacing:1px; margin-bottom:16px">THÔNG TIN ĐẶT SÂN</div>
+            <div style="font-family:var(--ff-h); font-size:1.4rem; margin-bottom:12px">@san.TenSan</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:13px">
+                <div>
+                    <div style="color:var(--muted); font-size:11px; margin-bottom:4px">KHUNG GIỜ</div>
+                    <div>@khungGio.GioBatDau.ToString(@"hh\:mm") – @khungGio.GioKetThuc.ToString(@"hh\:mm")</div>
+                </div>
+                <div>
+                    <div style="color:var(--muted); font-size:11px; margin-bottom:4px">NGÀY THI ĐẤU</div>
+                    <div>@ngay.ToString("dd/MM/yyyy")</div>
+                </div>
+                <div>
+                    <div style="color:var(--muted); font-size:11px; margin-bottom:4px">GIÁ THUÊ SÂN</div>
+                    <div>@khungGio.Gia.ToString("N0")đ</div>
+                </div>
+                <div>
+                    <div style="color:var(--muted); font-size:11px; margin-bottom:4px">TIỀN CỌC (30%)</div>
+                    <div style="color:var(--green); font-weight:bold">@tienCoc.ToString("N0")đ</div>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" action="/Booking/Create" id="bookingForm">
+            <input type="hidden" name="khungGioId" value="@khungGio.Id" />
+            <input type="hidden" name="ngayThiDau" value="@ngay.ToString("yyyy-MM-dd")" />
+
+            <!-- DỊCH VỤ KÈM THEO -->
+            @if (dichVus != null && dichVus.Any())
+            {
+                <div class="section-card p-4 mb-4">
+                    <div style="font-size:11px; color:var(--muted); letter-spacing:1px; margin-bottom:16px">DỊCH VỤ KÈM THEO (TÙY CHỌN)</div>
+                    @{
+                        var icons = new Dictionary<string, string> {
+                        {"Nuoc uong","💧"},{"Thue bong","⚽"},
+                        {"Thue trong tai","🟡"},{"Thue ao","👕"}
+                        };
+                        int idx = 0;
+                    }
+                    @foreach (var dv in dichVus)
+                    {
+                        var icon = icons.ContainsKey(dv.TenDichVu ?? "") ? icons[dv.TenDichVu!] : "🎁";
+                        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border)">
+                            <div style="display:flex; align-items:center; gap:12px">
+                                <span style="font-size:1.5rem">@icon</span>
+                                <div>
+                                    <div style="font-size:13px; font-weight:600">@dv.TenDichVu</div>
+                                    <div style="font-size:12px; color:var(--muted)">@dv.Gia.ToString("N0")đ / đơn vị</div>
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px">
+                                <input type="hidden" name="dichVuIds" value="@dv.Id" />
+                                <button type="button" class="qty-btn" onclick="changeQty(@idx, -1)">−</button>
+                                <span id="qty-@idx" style="min-width:24px; text-align:center; font-family:var(--ff-h)">0</span>
+                                <button type="button" class="qty-btn" onclick="changeQty(@idx, 1)">+</button>
+                                <input type="hidden" name="soLuongs" id="sl-@idx" value="0" />
+                            </div>
+                        </div>
+                        idx++;
+                    }
+                </div>
+            }
+
+            <!-- TỔNG TIỀN -->
+            <div class="section-card p-4 mb-4">
+                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px">
+                    <span style="color:var(--muted)">Giá thuê sân</span>
+                    <span>@khungGio.Gia.ToString("N0")đ</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px">
+                    <span style="color:var(--muted)">Tiền cọc (30%)</span>
+                    <span>@tienCoc.ToString("N0")đ</span>
+                </div>
+                <div id="dvTotal" style="display:none; justify-content:space-between; font-size:13px; margin-bottom:8px">
+                    <span style="color:var(--muted)">Dịch vụ kèm</span>
+                    <span id="dvTotalAmt">0đ</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:15px; padding-top:12px; border-top:1px solid var(--border); color:var(--green)">
+                    <span>Thanh toán ngay</span>
+                    <span id="grandTotal">@tienCoc.ToString("N0")đ</span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary-glow" style="width:100%; padding:16px; font-size:14px">
+                ✅ XÁC NHẬN ĐẶT SÂN
+            </button>
+        </form>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        var dichVuGia = [@Html.Raw(string.Join(",", (dichVus ?? Enumerable.Empty<Web_Stadium.End.DichVu>()).Select(d => d.Gia)))];
+        var tienCoc = @tienCoc;
+
+        function changeQty(idx, delta) {
+            var el = document.getElementById('qty-' + idx);
+            var sl = document.getElementById('sl-' + idx);
+            var val = Math.max(0, parseInt(el.textContent) + delta);
+            el.textContent = val;
+            sl.value = val;
+            updateTotal();
+        }
+
+        function updateTotal() {
+            var dvSum = 0;
+            dichVuGia.forEach(function(gia, i) {
+                var q = parseInt(document.getElementById('sl-' + i)?.value || 0);
+                dvSum += gia * q;
+            });
+            var dvEl = document.getElementById('dvTotal');
+            var dvAmt = document.getElementById('dvTotalAmt');
+            var grand = document.getElementById('grandTotal');
+            if (dvSum > 0) {
+                dvEl.style.display = 'flex';
+                dvAmt.textContent = dvSum.toLocaleString('vi-VN') + 'đ';
+            } else {
+                dvEl.style.display = 'none';
+            }
+            grand.textContent = (tienCoc + dvSum).toLocaleString('vi-VN') + 'đ';
+        }
+    </script>
+}

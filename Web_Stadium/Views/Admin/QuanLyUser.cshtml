@@ -1,0 +1,87 @@
+﻿@model IEnumerable<Web_Stadium.End.User>
+@{
+    ViewData["Title"] = "Quản lý người dùng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- HEADER -->
+<div style="background:var(--bg2); padding:100px 0 40px; border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Admin</div>
+        <h1 style="font-style:italic; line-height:0.9">
+            QUẢN LÝ<br>
+            <span class="text-green">NGƯỜI DÙNG</span>
+        </h1>
+    </div>
+</div>
+
+<!-- MENU ADMIN -->
+<div style="background:var(--bg3); border-bottom:1px solid var(--border); padding:12px 0">
+    <div class="container d-flex gap-3 flex-wrap">
+        <a href="/Admin" class="btn btn-sm btn-outline-light rounded-pill">📊 Tổng quan</a>
+        <a href="/Admin/DuyetSan" class="btn btn-sm btn-outline-warning rounded-pill">🏟️ Duyệt sân</a>
+        <a href="/Admin/QuanLyUser" class="btn btn-sm btn-success rounded-pill">👥 Quản lý User</a>
+        <a href="/Admin/BaoCao" class="btn btn-sm btn-outline-light rounded-pill">📈 Báo cáo</a>
+    </div>
+</div>
+
+<div class="container py-4">
+
+    <!-- BỘ LỌC THEO VAI TRÒ -->
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px">
+        <a href="/Admin/QuanLyUser" class="btn btn-sm @(ViewBag.VaiTro == null ? "btn-success" : "btn-outline-light") rounded-pill">
+            Tất cả (@Model.Count())
+        </a>
+        @foreach (var vt in new[] { "User", "Owner", "Staff", "Admin" })
+        {
+            <a href="/Admin/QuanLyUser?vaiTro=@vt"
+               class="btn btn-sm @(ViewBag.VaiTro == vt ? "btn-success" : "btn-outline-light") rounded-pill">
+                @vt (@Model.Count(u => u.VaiTro == vt))
+            </a>
+        }
+    </div>
+
+    <!-- BẢNG DANH SÁCH -->
+    <div class="section-card" style="overflow:hidden">
+        <div style="overflow-x:auto">
+            <table style="width:100%; border-collapse:collapse; font-size:13px">
+                <thead>
+                    <tr style="border-bottom:1px solid var(--border); color:var(--muted); font-size:11px; letter-spacing:1px">
+                        <th style="padding:12px 16px; text-align:left">ID</th>
+                        <th style="padding:12px 16px; text-align:left">HỌ TÊN</th>
+                        <th style="padding:12px 16px; text-align:left">EMAIL</th>
+                        <th style="padding:12px 16px; text-align:left">SĐT</th>
+                        <th style="padding:12px 16px; text-align:left">VAI TRÒ</th>
+                        <th style="padding:12px 16px; text-align:left">NGÀY TẠO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model)
+                    {
+                        <tr style="border-bottom:1px solid var(--border)">
+                            <td style="padding:12px 16px; color:var(--muted2)">#@u.Id</td>
+                            <td style="padding:12px 16px; font-weight:600">@u.HoTen</td>
+                            <td style="padding:12px 16px; color:var(--muted)">@u.Email</td>
+                            <td style="padding:12px 16px; color:var(--muted)">@(u.SoDienThoai ?? "—")</td>
+                            <td style="padding:12px 16px">
+                                @{
+                                    var (bg, fg) = u.VaiTro switch
+                                    {
+                                        "Admin" => ("var(--green)", "#000"),
+                                        "Owner" => ("#6caee0", "#000"),
+                                        "Staff" => ("var(--yellow)", "#000"),
+                                        _ => ("var(--border)", "var(--text)")
+                                    };
+                                }
+                                <span class="badge" style="background:@bg;color:@fg">@u.VaiTro</span>
+                            </td>
+                            <td style="padding:12px 16px; color:var(--muted2)">
+                                @u.NgayTao.ToString("dd/MM/yyyy")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

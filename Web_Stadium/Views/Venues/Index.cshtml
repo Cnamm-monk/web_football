@@ -1,0 +1,131 @@
+﻿@model IEnumerable<Web_Stadium.End.SanBong>
+@{
+  ViewData["Title"] = "Tìm sân bóng";
+}
+
+<!-- HEADER TRANG -->
+<div style="background:var(--xanh-dam);
+  padding:100px 0 60px">
+  <div class="container text-center">
+    <h1 class="text-white fw-bold"
+      data-aos="fade-down">
+      Tìm sân bóng
+    </h1>
+    <p class="text-white-50"
+      data-aos="fade-up">
+      @Model.Count() sân đang hoạt động
+    </p>
+
+    <!-- FORM TÌM KIẾM -->
+    <form method="get" action="/Venues"
+      class="row g-2 justify-content-center
+      mt-4" data-aos="fade-up">
+      <div class="col-md-4">
+        <input type="text" name="tuKhoa"
+          class="form-control form-control-lg
+          rounded-pill"
+          placeholder="🔍 Tìm theo tên, quận..."
+          value="@ViewBag.TuKhoa" />
+      </div>
+      <div class="col-md-2">
+        <select name="loaiSan"
+          class="form-select form-select-lg
+          rounded-pill">
+          <option value="">Loại sân</option>
+          <option value="5">Sân 5 người</option>
+          <option value="7">Sân 7 người</option>
+          <option value="11">Sân 11 người</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name="loaiCo"
+          class="form-select form-select-lg
+          rounded-pill">
+          <option value="">Loại cỏ</option>
+          <option value="Nhan tao">
+            Cỏ nhân tạo</option>
+          <option value="Tu nhien">
+            Cỏ tự nhiên</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit"
+          class="btn btn-warning btn-lg
+          rounded-pill w-100 fw-bold">
+          Tìm ngay
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- DANH SÁCH SÂN -->
+<div class="container py-5">
+  @if (!Model.Any())
+  {
+    <div class="text-center py-5">
+      <dotlottie-player
+        src="https://lottie.host/
+        not-found-animation.json"
+        style="width:250px;height:250px"
+        loop autoplay>
+      </dotlottie-player>
+      <h4 class="text-muted mt-3">
+        Không tìm thấy sân nào
+      </h4>
+    </div>
+  }
+  <div class="row g-4">
+    @{int i = 0;}
+    @foreach (var san in Model)
+    {
+      <div class="col-md-4"
+        data-aos="fade-up"
+        data-aos-delay="@(i * 100)">
+        <div class="card san-card h-100">
+          @if (!string.IsNullOrEmpty(san.HinhAnh))
+          {
+            <div class="overflow-hidden">
+              <img src="@san.HinhAnh"
+                class="card-img-top"
+                alt="@san.TenSan" />
+            </div>
+          }
+          <div class="card-body">
+            <div class="d-flex justify-content-between
+              align-items-start mb-2">
+              <h5 class="card-title fw-bold mb-0">
+                @san.TenSan
+              </h5>
+              <span class="badge bg-warning
+                text-dark">
+                ★ @san.DanhGiaTrungBinh.ToString("F1")
+              </span>
+            </div>
+            <p class="text-muted small">
+              📍 @san.DiaChi - @san.Quan
+            </p>
+            <div class="d-flex gap-2 flex-wrap">
+              <span class="price-badge">
+                Sân @san.LoaiSan người
+              </span>
+              <span class="badge bg-light
+                text-dark">
+                🌱 @san.LoaiCo
+              </span>
+            </div>
+          </div>
+          <div class="card-footer bg-white border-0
+            pb-3">
+            <a href="/Venues/Details/@san.Id"
+              class="btn btn-success w-100
+              rounded-pill fw-bold">
+              Xem chi tiết & Đặt sân →
+            </a>
+          </div>
+        </div>
+      </div>
+      i++;
+    }
+  </div>
+</div>

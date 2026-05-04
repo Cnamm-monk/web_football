@@ -1,0 +1,301 @@
+﻿@{
+    ViewData["Title"] = "Trang chủ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- ════ HERO ════ -->
+<section class="hero-section">
+    <video class="hero-video" autoplay muted loop playsinline>
+        <source src="~/videos/san-bong-hero.mp4" type="video/mp4">
+    </video>
+    <div class="hero-overlay"></div>
+
+    <div class="hero-content container" data-aos="fade-up">
+        <span class="badge-sport mb-4">
+            Nền tảng đặt sân số 1 Việt Nam
+        </span>
+        <h1 class="mb-4">
+            ĐẶT SÂN BÓNG<br />
+            <span class="highlight">NHANH CHÓNG</span><br />
+            MỌI LÚC MỌI NƠI
+        </h1>
+        <p class="lead mb-5 mx-auto"
+           style="color:var(--muted); max-width:560px; font-size:16px">
+            Hơn 200 sân bóng chất lượng cao đang chờ bạn khám phá.
+            Trải nghiệm hệ thống đặt sân chuẩn chuyên nghiệp.
+        </p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+            <a href="/Venues" class="btn-primary-glow">
+                TÌM SÂN NGAY
+            </a>
+            <a href="/Matchmaking" class="btn-ghost-glow">
+                TÌM ĐỐI THỦ
+            </a>
+            @if (Context.Request.Cookies["jwt"] == null)
+            {
+                <a href="/Auth/Register" class="btn-ghost-glow">
+                    ĐĂNG KÝ MIỄN PHÍ
+                </a>
+            }
+            else
+            {
+                <a href="/Booking/MyBookings" class="btn-ghost-glow">
+                    LỊCH ĐẶT CỦA TÔI
+                </a>
+            }
+        </div>
+    </div>
+
+    <!-- Scroll indicator -->
+    <div class="position-absolute bottom-0 start-50
+                translate-middle-x mb-5"
+         style="z-index:3">
+        <div class="scroll-arrow"><span></span></div>
+    </div>
+</section>
+
+<!-- ════ GIỚI THIỆU ════ -->
+<section class="about-section section">
+    <div class="container">
+        <div class="row align-items-stretch g-5">
+
+            <!-- Ảnh / Carousel -->
+            <div class="col-lg-6" data-aos="fade-right">
+                <div class="featured-images-wrap h-100">
+                    <div id="pitchCarousel"
+                         class="carousel slide carousel-fade h-100"
+                         data-bs-ride="carousel">
+                        <div class="carousel-inner br-20 h-100">
+                            <div class="carousel-item active h-100">
+                                <div style="background:var(--bg3);
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            min-height:500px;
+                                            border-radius:var(--r-lg)">
+                                    <span style="color:var(--muted2);
+                                                 font-family:var(--ff-h);
+                                                 letter-spacing:2px;
+                                                 font-size:13px">
+                                        ẢNH SÂN BÓNG
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nội dung -->
+            <div class="col-lg-6 d-flex flex-column
+                        justify-content-center text-center"
+                 data-aos="fade-left">
+
+                <div class="section-label mx-auto mb-3">
+                    Về chúng tôi
+                </div>
+                <h2 class="section-title mb-4">
+                    <span>TRẢI NGHIỆM BÓNG ĐÁ</span><br />
+                    <span class="text-green">
+                        ĐẲNG CẤP CHUYÊN NGHIỆP
+                    </span>
+                </h2>
+                <p style="color:var(--muted); max-width:500px;
+                           margin:0 auto 2rem; line-height:1.8">
+                    Chúng tôi cung cấp giải pháp đặt sân nhanh chóng,
+                    minh bạch và hiện đại nhất. Nâng tầm trải nghiệm
+                    sân cỏ của bạn lên một đẳng cấp mới.
+                </p>
+
+                <!-- Thống kê -->
+                <div class="stats-grid-center mb-5">
+                    <div class="stat-card-premium">
+                        <div class="num">200+</div>
+                        <div class="lbl">Sân chất lượng</div>
+                    </div>
+                    <div class="stat-card-premium">
+                        <div class="num">50K+</div>
+                        <div class="lbl">Thành viên</div>
+                    </div>
+                    <div class="stat-card-premium">
+                        <div class="num">24/7</div>
+                        <div class="lbl">Hỗ trợ</div>
+                    </div>
+                    <div class="stat-card-premium">
+                        <div class="num">4.9★</div>
+                        <div class="lbl">Đánh giá</div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 justify-content-center">
+                    <a href="/Venues" class="btn-primary-glow">
+                        KHÁM PHÁ NGAY
+                    </a>
+                    <a href="/Matchmaking" class="btn-ghost-glow">
+                        TÌM ĐỐI THỦ
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ════ 3 TÍNH NĂNG CỐT LÕI ════ -->
+<section class="section bg-dark2"
+         style="border-top:1px solid var(--border);
+                border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+            <div class="section-label mx-auto mb-2">
+                Tính năng
+            </div>
+            <h2 class="section-title">
+                MỌI THỨ BẠN CẦN<br />
+                <span class="text-green">TRONG MỘT NỀN TẢNG</span>
+            </h2>
+        </div>
+
+        <div class="row g-4">
+
+            <!-- Tìm sân -->
+            <div class="col-md-4" data-aos="fade-up">
+                <div class="feature-card h-100"
+                     onclick="window.location='/Venues'"
+                     style="cursor:pointer">
+                    <div class="feature-icon">🏟️</div>
+                    <h3 class="feature-title">Tìm & Đặt Sân</h3>
+                    <p class="feature-desc">
+                        Lọc theo quận, loại sân, loại cỏ. Xem
+                        panorama 360° trước khi đặt. Giữ chỗ
+                        tức thì trong 10 phút.
+                    </p>
+                    <a href="/Venues" class="feature-link">
+                        Tìm sân ngay →
+                    </a>
+                </div>
+            </div>
+
+            <!-- Matchmaking -->
+            <div class="col-md-4" data-aos="fade-up"
+                 data-aos-delay="100">
+                <div class="feature-card h-100"
+                     onclick="window.location='/Matchmaking'"
+                     style="cursor:pointer">
+                    <div class="feature-icon">⚽</div>
+                    <h3 class="feature-title">Tìm Đối Thủ</h3>
+                    <p class="feature-desc">
+                        Đã đặt sân nhưng còn thiếu người? Đăng
+                        tin tìm đội giao lưu ngay. Kết nối cộng
+                        đồng bóng đá toàn quốc.
+                    </p>
+                    <a href="/Matchmaking" class="feature-link">
+                        Tìm đối thủ →
+                    </a>
+                </div>
+            </div>
+
+            <!-- Đặt sân của tôi -->
+            <div class="col-md-4" data-aos="fade-up"
+                 data-aos-delay="200">
+                <div class="feature-card h-100"
+                     onclick="window.location='/Booking/MyBookings'"
+                     style="cursor:pointer">
+                    <div class="feature-icon">📋</div>
+                    <h3 class="feature-title">Quản Lý Lịch</h3>
+                    <p class="feature-desc">
+                        Xem toàn bộ lịch đặt sân, theo dõi trạng
+                        thái đơn, hủy đặt linh hoạt và thêm dịch
+                        vụ kèm theo.
+                    </p>
+                    <a href="/Booking/MyBookings" class="feature-link">
+                        Xem lịch đặt →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ════ SPLINE 3D ════ -->
+<section class="section"
+         style="background:var(--bg2);
+                border-top:1px solid var(--border)">
+    <div class="container text-center">
+        <div class="section-label mx-auto mb-2" data-aos="fade-up">
+            Trải nghiệm tương tác
+        </div>
+        <h2 class="section-title mb-3" data-aos="fade-up">
+            MÔ PHỎNG SÂN
+            <span class="text-green">3D THẾ HỆ MỚI</span>
+        </h2>
+        <p style="color:var(--muted); margin-bottom:2rem"
+           data-aos="fade-up">
+            Kéo, xoay và khám phá chất lượng mặt cỏ trước khi đặt sân
+        </p>
+        <div class="panorama-wrap" data-aos="zoom-in">
+            <script type="module"
+                    src="https://unpkg.com/@@splinetool/viewer@1.9.82/build/spline-viewer.js">
+            </script>
+            <spline-viewer url="https://prod.spline.design/your-scene-id/scene.splinecode"
+                           style="width:100%; height:520px">
+            </spline-viewer>
+        </div>
+        <div style="margin-top:24px" data-aos="fade-up">
+            <a href="/Venues" class="btn-primary-glow">
+                ĐẶT SÂN NGAY
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ════ PARALLAX CTA ════ -->
+<section class="parallax-section" style="min-height:460px">
+    <div class="container text-center position-relative">
+        <h2 class="section-title mb-3" data-aos="zoom-in"
+            style="font-size:clamp(2rem,5vw,3.5rem)">
+            HÀNG NGÀN TRẬN ĐẤU<br />
+            <span class="text-green">DIỄN RA MỖI TUẦN</span>
+        </h2>
+        <p style="color:rgba(255,255,255,0.6); font-size:16px;
+                  margin-bottom:2rem"
+           data-aos="zoom-in" data-aos-delay="150">
+            Hãy để chúng tôi đồng hành cùng niềm đam mê của bạn.
+        </p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap"
+             data-aos="fade-up" data-aos-delay="300">
+            <a href="/Venues" class="btn-primary-glow">
+                BẮT ĐẦU NGAY
+            </a>
+            <a href="/Auth/Register" class="btn-ghost-glow">
+                ĐĂNG KÝ MIỄN PHÍ
+            </a>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        // Số đếm động
+        var counters = document.querySelectorAll('.counter');
+        var obs = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (!entry.isIntersecting) return;
+                var el     = entry.target;
+                var target = +el.dataset.target;
+                var count  = 0;
+                var inc    = target / 60;
+                var timer  = setInterval(function() {
+                    count += inc;
+                    if (count >= target) {
+                        el.textContent = target + '+';
+                        clearInterval(timer);
+                    } else {
+                        el.textContent = Math.ceil(count) + '+';
+                    }
+                }, 20);
+                obs.unobserve(el);
+            });
+        }, { threshold: 0.5 });
+        counters.forEach(function(c) { obs.observe(c); });
+    </script>
+}

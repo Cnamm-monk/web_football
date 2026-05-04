@@ -1,0 +1,157 @@
+﻿@{
+    ViewData["Title"] = "Dashboard Admin";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- HEADER -->
+<div style="background:var(--bg2); padding:100px 0 50px; border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Quản trị viên</div>
+        <h1 style="font-style:italic; line-height:0.9; margin-bottom:8px">
+            DASHBOARD<br>
+            <span class="text-green">QUẢN TRỊ</span>
+        </h1>
+        <p style="color:var(--muted)">Tổng quan hệ thống PitchHub</p>
+    </div>
+</div>
+
+<!-- MENU ADMIN -->
+<div style="background:var(--bg3); border-bottom:1px solid var(--border); padding:12px 0">
+    <div class="container d-flex gap-3 flex-wrap">
+        <a href="/Admin" class="btn btn-sm btn-success rounded-pill">📊 Tổng quan</a>
+        <a href="/Admin/DuyetSan" class="btn btn-sm btn-outline-warning rounded-pill">
+            🏟️ Duyệt sân
+            @if (ViewBag.ChoPheDuyet > 0)
+            {
+                <span class="badge bg-danger ms-1">@ViewBag.ChoPheDuyet</span>
+            }
+        </a>
+        <a href="/Admin/QuanLyUser" class="btn btn-sm btn-outline-info rounded-pill">👥 Quản lý User</a>
+        <a href="/Admin/BaoCao" class="btn btn-sm btn-outline-light rounded-pill">📈 Báo cáo</a>
+    </div>
+</div>
+
+<div class="container py-5">
+
+    <!-- THỐNG KÊ TỔNG QUAN -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3" data-aos="fade-up">
+            <div class="section-card text-center p-4">
+                <div style="font-size:2.5rem">🏟️</div>
+                <div style="font-family:var(--ff-h); font-size:2.5rem; color:var(--green)">
+                    @ViewBag.TongSan
+                </div>
+                <p style="color:var(--muted); font-size:13px; margin:0">Tổng số sân</p>
+            </div>
+        </div>
+        <div class="col-md-3" data-aos="fade-up" data-aos-delay="100">
+            <div class="section-card text-center p-4">
+                <div style="font-size:2.5rem">📋</div>
+                <div style="font-family:var(--ff-h); font-size:2.5rem; color:var(--green)">
+                    @ViewBag.TongDatSan
+                </div>
+                <p style="color:var(--muted); font-size:13px; margin:0">Lượt đặt sân</p>
+            </div>
+        </div>
+        <div class="col-md-3" data-aos="fade-up" data-aos-delay="200">
+            <div class="section-card text-center p-4">
+                <div style="font-size:2.5rem">👥</div>
+                <div style="font-family:var(--ff-h); font-size:2.5rem; color:var(--green)">
+                    @ViewBag.TongUser
+                </div>
+                <p style="color:var(--muted); font-size:13px; margin:0">Người dùng</p>
+            </div>
+        </div>
+        <div class="col-md-3" data-aos="fade-up" data-aos-delay="300">
+            <div class="section-card text-center p-4" style="border:1px solid var(--yellow)">
+                <div style="font-size:2.5rem">⏳</div>
+                <div style="font-family:var(--ff-h); font-size:2.5rem; color:var(--yellow)">
+                    @ViewBag.ChoPheDuyet
+                </div>
+                <p style="color:var(--muted); font-size:13px; margin:0 0 12px">Chờ phê duyệt</p>
+                <a href="/Admin/DuyetSan" class="btn btn-warning btn-sm rounded-pill">Xem ngay</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- DOANH THU THÁNG NÀY -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-6" data-aos="fade-up">
+            <div class="section-card p-4">
+                <div style="color:var(--muted); font-size:12px; letter-spacing:1px; margin-bottom:8px">DOANH THU THÁNG NÀY</div>
+                <div style="font-family:var(--ff-h); font-size:2rem; color:var(--green)">
+                    @(((decimal)ViewBag.DoanhThuThang / 1000000).ToString("F1"))M VND
+                </div>
+                <div style="color:var(--muted2); font-size:12px">Tiền cọc đã xác nhận</div>
+            </div>
+        </div>
+        <div class="col-md-6" data-aos="fade-up" data-aos-delay="100">
+            <div class="section-card p-4">
+                <div style="color:var(--muted); font-size:12px; letter-spacing:1px; margin-bottom:12px">TOP SÂN ĐẶT NHIỀU NHẤT</div>
+                @if (ViewBag.TopSan != null)
+                {
+                    int rank = 1;
+                    foreach (var s in ViewBag.TopSan)
+                    {
+                        <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px">
+                            <span style="color:var(--muted2)">@rank. @s.Ten</span>
+                            <span style="color:var(--green)">@s.SoLuot lượt</span>
+                        </div>
+                        rank++;
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- BIỂU ĐỒ 6 THÁNG -->
+    <div class="section-card p-4" data-aos="fade-up">
+        <div style="color:var(--muted); font-size:12px; letter-spacing:1px; margin-bottom:16px">DOANH THU 6 THÁNG GẦN NHẤT</div>
+        <div style="position:relative; height:240px">
+            <canvas id="chartMini"></canvas>
+        </div>
+        <div style="margin-top:16px; text-align:right">
+            <a href="/Admin/BaoCao" style="font-size:12px; color:var(--green)">Xem báo cáo đầy đủ →</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <script>
+        @if (ViewBag.DoanhThu6Thang != null)
+        {
+                var labels6 = Newtonsoft.Json.JsonConvert.SerializeObject(
+                        ((System.Collections.Generic.List<object>)ViewBag.DoanhThu6Thang)
+                                .Select(x => ((dynamic)x).thang));
+                var data6 = Newtonsoft.Json.JsonConvert.SerializeObject(
+                        ((System.Collections.Generic.List<object>)ViewBag.DoanhThu6Thang)
+                                .Select(x => Math.Round((double)((dynamic)x).dt / 1000000, 2)));
+                <text>
+                new Chart(document.getElementById('chartMini'), {
+                    type: 'bar',
+                    data: {
+                        labels: @Html.Raw(labels6),
+                        datasets: [{
+                            label: 'Doanh thu (triệu VND)',
+                            data: @Html.Raw(data6),
+                            backgroundColor: 'rgba(30,215,96,0.2)',
+                            borderColor: '#1ed760',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#ffffff80' } },
+                            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#ffffff80', callback: v => v + 'M' } }
+                        }
+                    }
+                });
+                </text>
+        }
+    </script>
+}

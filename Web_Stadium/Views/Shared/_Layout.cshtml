@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ⚽ PitchHub.vn</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="~/css/custom.css" asp-append-version="true" />
+
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+
+    <nav class="navbar-custom">
+        <div class="container nav-wrapper">
+            <div class="nav-left">
+                <div class="brand-wrapper">
+                    <a class="nav-logo" href="/">PITCH<span>HUB⚽</span></a>
+                </div>
+            </div>
+
+            <div class="nav-center">
+                <ul class="nav-links">
+                    <li><a href="/">Trang Chủ</a></li>
+                    <li><a href="/Venues">Tìm Sân</a></li>
+                    <li><a href="/Matchmaking">Tìm Đối Thủ</a></li>
+                    @using Web_Stadium.Controllers
+                    @using System.Security.Claims
+                    @inject IConfiguration Config
+                    @{
+                        var token = Context.Request.Cookies["jwt"];
+                        string? role = null;
+                        string? userName = null;
+
+                        if (!string.IsNullOrEmpty(token))
+                        {
+                            var principal = TokenHelper.DocToken(token, Config);
+                            if (principal != null)
+                            {
+                                role = principal.FindFirst(ClaimTypes.Role)?.Value;
+                                userName = principal.FindFirst(ClaimTypes.Name)?.Value;
+                            }
+                        }
+                    }
+                    @if (!string.IsNullOrEmpty(role))
+                    {
+                        <li><a href="/Booking/MyBookings">Lịch Đặt</a></li>
+                        @if (role == "Admin")
+                        {
+                            <li><a href="/Admin">Quản trị</a></li>
+                        }
+                    }
+                </ul>
+            </div>
+
+            <div class="nav-right">
+                @if (!string.IsNullOrEmpty(role))
+                {
+                    <div class="user-info-box">
+                        <div class="role-badge">
+                            @if (role == "Admin")
+                            {
+                                <span class="text-admin">⚡ @userName</span>
+                            }
+                            else if (role == "Owner")
+                            {
+                                <span class="text-owner">🏟️ @userName</span>
+                            }
+                            else if (role == "Staff")
+                            {
+                                <span class="text-staff">👷 @userName</span>
+                            }
+                            else
+                            {
+                                <span class="text-user">⚽ @userName</span>
+                            }
+                        </div>
+                        <a href="/Auth/Logout" class="btn-logout">Thoát</a>
+                    </div>
+                }
+                else
+                {
+                    <div class="user-info-box">
+                        <a href="/Auth/Login" class="btn-logout" style="background:var(--green);color:#000">Đăng nhập</a>
+                    </div>
+                }
+            </div>
+        </div>
+    </nav>
+
+    @* Toast thông báo Success *@
+    @if (TempData["Success"] != null)
+    {
+        <div class="position-fixed top-0 end-0 p-3" style="z-index:9999;margin-top:70px">
+            <div class="toast show align-items-center text-bg-success border-0">
+                <div class="d-flex">
+                    <div class="toast-body">✅ @TempData["Success"]</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* Toast thông báo Error *@
+    @if (TempData["Error"] != null)
+    {
+        <div class="position-fixed top-0 end-0 p-3" style="z-index:9999;margin-top:70px">
+            <div class="toast show align-items-center text-bg-danger border-0">
+                <div class="d-flex">
+                    <div class="toast-body">❌ @TempData["Error"]</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        </div>
+    }
+
+
+    @RenderBody()
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+    <script>AOS.init({ duration: 800, once: true });</script>
+
+    @* Tự động ẩn toast sau 4 giây *@
+    <script>
+        document.querySelectorAll('.toast').forEach(function(el) {
+            setTimeout(function() { el.style.display = 'none'; }, 4000);
+        });
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,289 @@
+﻿/* auth-login.css (Real Madrid Style) */
+body {
+    background-color: #111111; /* Màu nền xám đen đặc trưng của trang Login RM */
+    margin: 0;
+    font-family: var(--ff-b, 'Plus Jakarta Sans', sans-serif);
+}
+
+.rm-auth-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 80px 20px;
+    box-sizing: border-box;
+}
+
+.rm-auth-container {
+    display: flex;
+    width: 100%;
+    max-width: 1100px;
+    background: transparent;
+}
+
+/* KHỐI TRÁI VÀ PHẢI */
+.rm-auth-side {
+    flex: 1;
+    padding: 20px 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.rm-logo {
+    font-family: var(--ff-h, 'Oswald', sans-serif);
+    font-size: 69px;
+    font-weight: 800;
+    color: #fff;
+    text-decoration: none;
+    text-align: center;
+    margin-bottom: 20px;
+    display: block;
+}
+
+    .rm-logo span {
+        color: var(--green, #1ed760);
+    }
+
+.rm-title {
+    color: #ffffff;
+    font-size: 28px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+/* ĐƯỜNG KẺ GIỮA */
+.rm-vertical-divider {
+    width: 1px;
+    background-color: rgba(255, 255, 255, 0.15);
+    margin: 40px 0;
+}
+
+/* FORM VÀ INPUT */
+.rm-form {
+    width: 100%;
+}
+
+.rm-input-group {
+    margin-bottom: 20px;
+}
+
+.rm-input {
+    width: 100%;
+    padding: 16px 20px;
+    background-color: #1a1a1a; /* Nền input tối */
+    border: 1px solid #333333;
+    border-radius: 12px; /* Bo góc tròn như RM */
+    color: #ffffff;
+    font-size: 15px;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+    .rm-input:focus {
+        outline: none;
+        border-color: #5b5bff; /* Màu xanh tím khi focus */
+    }
+
+    .rm-input::placeholder {
+        color: #888888;
+    }
+
+/* NÚT BẤM */
+.rm-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    border: none;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box;
+}
+
+.rm-btn-primary {
+    /* Nút RM dùng màu xanh tím ánh dương. Bạn có thể đổi thành var(--green) nếu muốn giữ màu xanh cũ */
+    background-color: #5b5bff;
+    color: #ffffff;
+    margin-bottom: 15px;
+}
+
+    .rm-btn-primary:hover {
+        background-color: #4a4ae6;
+    }
+
+.rm-helper-links{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 25px
+}
+
+.rm-link-text{
+    display: flex !important;
+    color: 5#5bff;
+    font-size: 13.5px;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-weight: 500
+}
+
+.rm-link-text:hover{
+    color: #7a7aff;
+    text-decoration: underline;
+}
+
+.rm-dot-divider{
+    color: #444;
+    font-size: 10px
+}
+
+/* ĐƯỜNG KẺ "HOẶC" */
+.rm-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #888;
+    font-size: 12px;
+    margin-bottom: 30px;
+}
+
+    .rm-divider::before, .rm-divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .rm-divider span {
+        padding: 0 15px;
+    }
+
+/* NÚT SOCIAL */
+.rm-btn-outline {
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+    .rm-btn-outline:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+.google-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: conic-gradient(from -45deg, #ea4335 110deg, #4285f4 90deg 180deg, #34a853 180deg 270deg, #fbbc05 270deg) 73% 55%/150% 150% no-repeat;
+}
+
+/* LỖI */
+.auth-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* ------------------------------------------------ */
+/* BÊN PHẢI: CARDS ĐĂNG KÝ (MEMBERSHIP TIERS)       */
+/* ------------------------------------------------ */
+.rm-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.rm-tier-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background-color: #1a1a1a;
+    border-radius: 12px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    transition: all 0.3s;
+}
+
+    /* Thẻ Free (Nổi bật nhất - Giống Madridista xanh gradient) */
+    .rm-tier-card.active {
+        background: linear-gradient(90deg, #3636b5 0%, #1a1a1a 100%);
+        border-color: #5b5bff;
+    }
+
+    /* Thẻ Premium (Màu vàng gold) */
+    .rm-tier-card.premium {
+        background: linear-gradient(90deg, #3a3219 0%, #1a1a1a 100%);
+    }
+
+    /* Thẻ Platinum (Màu xám/bạc) */
+    .rm-tier-card.platinum {
+        background: linear-gradient(90deg, #2a2a2a 0%, #1a1a1a 100%);
+    }
+
+    .rm-tier-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .rm-tier-card.active:hover {
+        border-color: #7a7aff;
+    }
+
+.rm-tier-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.rm-tier-name {
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.rm-tier-price {
+    color: #aaaaaa;
+    font-size: 13px;
+}
+
+.rm-tier-arrow {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+}
+
+/* RESPONSIVE TRÊN ĐIỆN THOẠI */
+@media (max-width: 900px) {
+    .rm-auth-container {
+        flex-direction: column;
+    }
+
+    .rm-vertical-divider {
+        width: 100%;
+        height: 1px;
+        margin: 20px 0;
+    }
+
+    .rm-auth-side {
+        padding: 20px;
+    }
+}

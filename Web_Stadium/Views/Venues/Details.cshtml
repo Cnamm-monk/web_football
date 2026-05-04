@@ -1,0 +1,314 @@
+﻿@model Web_Stadium.End.SanBong
+@{
+    ViewData["Title"] = Model.TenSan;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet"
+          href="~/css/venues-details.css" />
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
+}
+
+<!-- HEADER -->
+<div class="details-header">
+    <div class="container">
+        <nav style="margin-bottom:12px">
+            <a href="/Venues"
+               style="font-size:11px; color:var(--muted);
+                      letter-spacing:1px; text-decoration:none">
+                ← DANH SÁCH SÂN
+            </a>
+        </nav>
+        <h1 style="font-style:italic; line-height:0.9; margin-bottom:14px">
+            @Model.TenSan.ToUpper()
+        </h1>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
+            <span class="badge b-green">Sân @Model.LoaiSan người</span>
+            <span class="badge b-blue">@Model.LoaiCo</span>
+            <span style="font-size:13px; color:var(--muted)">
+                📍 @Model.DiaChi — @Model.Quan
+            </span>
+            <span style="font-size:13px; color:var(--yellow)">
+                ★ @Model.DanhGiaTrungBinh.ToString("F1")
+            </span>
+        </div>
+    </div>
+</div>
+
+<div class="container" style="padding-top:32px; padding-bottom:60px">
+    <div class="details-grid">
+
+        <!-- ════ CỘT TRÁI ════ -->
+        <div>
+
+            <!-- PANORAMA 360° -->
+            <div class="section-card">
+                <div class="section-card-header">
+                    🌐 Panorama 360°
+                </div>
+                <div class="panorama-wrap">
+                    <div id="panorama" style="height:400px"></div>
+                </div>
+            </div>
+
+            <!-- BẢNG KHUNG GIỜ — REAL-TIME -->
+            <div class="section-card">
+                <div class="section-card-header">
+                    🕐 Chọn khung giờ
+                    <span class="realtime-dot" style="margin-left:auto"></span>
+                    <span style="font-size:10px; color:var(--green);
+                                 letter-spacing:1px">
+                        LIVE
+                    </span>
+                </div>
+                <div class="section-card-body">
+                    <div class="gio-grid" id="khungGioGrid">
+                        @foreach (var kg in Model.KhungGios
+                                                .OrderBy(k => k.GioBatDau))
+                        {
+                            <div class="gio-item"
+                                 id="kg-@kg.Id"
+                                 data-id="@kg.Id"
+                                 data-status="@kg.TrangThai"
+                                 data-gia="@kg.Gia"
+                                 data-batdau="@kg.GioBatDau.ToString(@"hh\:mm")"
+                                 data-ketthuc="@kg.GioKetThuc.ToString(@"hh\:mm")"
+                                 onclick="chonKhungGio(this)">
+                                <div class="gio-time">
+                                    @kg.GioBatDau.ToString(@"hh\:mm")
+                                    –
+                                    @kg.GioKetThuc.ToString(@"hh\:mm")
+                                </div>
+                                <div class="gio-price">
+                                    @kg.Gia.ToString("N0")đ
+                                </div>
+                                <div class="gio-status @(
+                                     kg.TrangThai == "Trong" ? "s-trong" :
+                                     kg.TrangThai == "DaDat" ? "s-dadat" :
+                                     "s-giucho")">
+                                @(kg.TrangThai == "Trong" ? "Còn trống" :
+                                kg.TrangThai == "DaDat" ? "Đã đặt" :
+                                "Đang giữ chỗ")
+                            </div>
+                            @if (kg.TrangThai == "DangGiu"
+                                                        && kg.ThoiGianHetGiuCho.HasValue)
+                                {
+                                    <div class="countdown-wrap">
+                                        ⏱
+                                        <span class="countdown"
+                                              data-end="@kg.ThoiGianHetGiuCho
+                                                        .Value.ToString("yyyy-MM-ddTHH:mm:ss")">
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- DỊCH VỤ KÈM THEO -->
+            <div class="section-card">
+                <div class="section-card-header">
+                    🛒 Dịch vụ kèm theo
+                </div>
+                <div class="section-card-body">
+                    @if (ViewBag.DichVus != null)
+                    {
+                        var icons = new Dictionary<string, string> {
+                                        {"Nuoc uong","💧"},{"Thue bong","⚽"},
+                                        {"Thue trong tai","🟡"},{"Thue ao","👕"}
+                                        };
+                        foreach (var dv in
+                        (IEnumerable<Web_Stadium.End.DichVu>)
+                        ViewBag.DichVus)
+                        {
+                            var icon = icons.ContainsKey(dv.TenDichVu ?? "")
+                            ? icons[dv.TenDichVu!] : "🎁";
+                            <div class="dv-item">
+                                <div class="dv-icon">@icon</div>
+                                <div>
+                                    <div class="dv-name">@dv.TenDichVu</div>
+                                    <div class="dv-price">
+                                        @dv.Gia.ToString("N0")đ / đơn vị
+                                    </div>
+                                </div>
+                                <div class="dv-qty">
+                                    <button type="button" class="qty-btn"
+                                            onclick="thayDoiSoLuong(@dv.Id,-1)">
+                                        −
+                                    </button>
+                                    <span class="qty-num"
+                                          id="qty-@dv.Id">0</span>
+                                    <button type="button" class="qty-btn"
+                                            onclick="thayDoiSoLuong(@dv.Id,1)">
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p style="color:var(--muted); font-size:13px">
+                            Chưa có dịch vụ.
+                        </p>
+                    }
+                </div>
+            </div>
+
+            <!-- ĐÁNH GIÁ -->
+            <div class="section-card">
+                <div class="section-card-header">
+                    ⭐ Đánh giá từ người dùng
+                </div>
+                <div class="section-card-body">
+                    @if (Model.DanhGias != null && Model.DanhGias.Any())
+                    {
+                        foreach (var dg in Model.DanhGias
+                        .OrderByDescending(d => d.NgayDanhGia)
+                        .Take(5))
+                        {
+                            <div class="review-item">
+                                <div class="review-header">
+                                    <strong style="font-size:13px">
+                                        @dg.User?.HoTen
+                                    </strong>
+                                    <span class="review-stars">
+                                        @string.Concat(Enumerable.Repeat("★", dg.SoSao))
+                                        @string.Concat(Enumerable.Repeat("☆", 5 - dg.SoSao))
+                                    </span>
+                                </div>
+                                <div class="review-text">@dg.NhanXet</div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p style="color:var(--muted); font-size:13px;
+                                      text-align:center; padding:20px 0">
+                            Chưa có đánh giá nào.
+                        </p>
+                    }
+                </div>
+            </div>
+
+            <!-- BẢN ĐỒ -->
+            <div class="section-card">
+                <div class="section-card-header">📍 Vị trí sân</div>
+                <div style="border-radius:0 0 var(--r-lg) var(--r-lg);
+                            overflow:hidden">
+                    <iframe src="https://maps.google.com/maps?q=@Model.Latitude,@Model.Longitude&z=16&output=embed"
+                            width="100%" height="280"
+                            style="border:0; display:block"
+                            loading="lazy">
+                    </iframe>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════ CỘT PHẢI: Booking Panel ════ -->
+        <div>
+            <div class="booking-panel">
+                <div class="booking-panel-title">Đặt sân</div>
+
+                <div class="selected-slot" id="selectedSlot">
+                    <div class="slot-time" id="slotTime">—</div>
+                    <div style="font-size:12px; color:var(--muted);
+                                margin-top:10px">
+                        Ngày thi đấu:
+                    </div>
+                    <input type="date" id="ngayThiDau"
+                           class="form-input" style="margin-top:8px"
+                           min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                           value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="price-breakdown" id="priceBreakdown">
+                    <div class="price-row">
+                        <span>Giá thuê sân</span>
+                        <span class="val" id="priceGia">—</span>
+                    </div>
+                    <div class="price-row">
+                        <span>Tiền cọc (30%)</span>
+                        <span class="val" id="priceCoc">—</span>
+                    </div>
+                    <div class="price-row" id="priceServiceRow"
+                         style="display:none">
+                        <span>Dịch vụ kèm</span>
+                        <span class="val" id="priceService">—</span>
+                    </div>
+                    <div class="price-row total">
+                        <span>Thanh toán ngay</span>
+                        <span class="val" id="priceTotal">—</span>
+                    </div>
+                </div>
+
+                <form method="post" action="/Booking/Create"
+                      id="bookingForm">
+                    <input type="hidden" id="khungGioInput"
+                           name="khungGioId" value="" />
+                    <input type="hidden" id="ngayInput"
+                           name="ngayThiDau" value="" />
+                    <div id="dichVuInputs"></div>
+
+                    <button type="submit" class="btn-primary-glow"
+                            id="btnDatSan"
+                            style="width:100%; padding:14px;
+                                   font-size:13px; display:none;
+                                   margin-top:8px">
+                        XÁC NHẬN ĐẶT SÂN
+                    </button>
+                </form>
+
+                <div id="noSlotMsg"
+                     style="text-align:center; padding:20px 0;
+                            color:var(--muted); font-size:13px">
+                    Chọn khung giờ bên trái để đặt sân
+                </div>
+
+                <!-- Thông tin sân tóm tắt -->
+                <div style="border-top:1px solid var(--border);
+                            margin-top:20px; padding-top:16px;
+                            display:flex; flex-direction:column; gap:8px">
+                    <div style="display:flex; gap:8px; font-size:12px">
+                        <span style="color:var(--muted); width:90px">
+                            Loại sân
+                        </span>
+                        <span>@Model.LoaiSan người</span>
+                    </div>
+                    <div style="display:flex; gap:8px; font-size:12px">
+                        <span style="color:var(--muted); width:90px">
+                            Loại cỏ
+                        </span>
+                        <span>@Model.LoaiCo</span>
+                    </div>
+                    <div style="display:flex; gap:8px; font-size:12px">
+                        <span style="color:var(--muted); width:90px">
+                            Địa chỉ
+                        </span>
+                        <span>@Model.DiaChi</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script src="~/js/venues-details.js"></script>
+    <script>
+        initVenuesDetails(@Model.Id, '@Model.TenSan');
+        @if (ViewBag.DichVus != null)
+        {
+                foreach (var dv in (IEnumerable<Web_Stadium.End.DichVu>)ViewBag.DichVus)
+                {
+                        <text>registerDichVu(@dv.Id, @dv.Gia);</text>
+                }
+        }
+    </script>
+}
