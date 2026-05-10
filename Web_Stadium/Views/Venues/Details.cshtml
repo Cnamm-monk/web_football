@@ -1,4 +1,4 @@
-﻿@model Web_Stadium.End.SanBong
+﻿@model Web_Stadium.EFCore.SanBong
 @{
     ViewData["Title"] = Model.TenSan;
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -122,7 +122,7 @@
                                         {"Thue trong tai","🟡"},{"Thue ao","👕"}
                                         };
                         foreach (var dv in
-                        (IEnumerable<Web_Stadium.End.DichVu>)
+                        (IEnumerable<Web_Stadium.EFCore.DichVu>)
                         ViewBag.DichVus)
                         {
                             var icon = icons.ContainsKey(dv.TenDichVu ?? "")
@@ -165,9 +165,9 @@
                     ⭐ Đánh giá từ người dùng
                 </div>
                 <div class="section-card-body">
-                    @if (Model.DanhGias != null && Model.DanhGias.Any())
+                    @if (Model.DanhGia != null && Model.DanhGia.Any())
                     {
-                        foreach (var dg in Model.DanhGias
+                        foreach (var dg in Model.DanhGia
                         .OrderByDescending(d => d.NgayDanhGia)
                         .Take(5))
                         {
@@ -305,7 +305,7 @@
         initVenuesDetails(@Model.Id, '@Model.TenSan');
         @if (ViewBag.DichVus != null)
         {
-                foreach (var dv in (IEnumerable<Web_Stadium.End.DichVu>)ViewBag.DichVus)
+                foreach (var dv in (IEnumerable<Web_Stadium.EFCore.DichVu>)ViewBag.DichVus)
                 {
                         <text>registerDichVu(@dv.Id, @dv.Gia);</text>
                 }

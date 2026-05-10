@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Web_Stadium.End;
+using Web_Stadium.EFCore;
+using Web_Stadium.EFCore;
 
 #nullable disable
 
@@ -25,7 +26,7 @@ namespace Web_Stadium.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("Web_Stadium.End.DanhGia", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.DanhGia", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -57,7 +58,7 @@ namespace Web_Stadium.Migrations
                     b.ToTable("DanhGias");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.DatSan", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.DatSan", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -97,7 +98,7 @@ namespace Web_Stadium.Migrations
                     b.ToTable("DatSans");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.DatSan_DichVu", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.DatSan_DichVu", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -123,7 +124,7 @@ namespace Web_Stadium.Migrations
                     b.ToTable("DatSan_DichVus");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.DichVu", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.DichVu", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -146,7 +147,7 @@ namespace Web_Stadium.Migrations
                     b.ToTable("DichVus");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.KhungGio", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.KhungGio", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -183,7 +184,7 @@ namespace Web_Stadium.Migrations
                     b.ToTable("KhungGios");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.Matchmaking", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.Matchmaking", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -224,7 +225,7 @@ namespace Web_Stadium.Migrations
                     b.ToTable("Matchmakings");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.SanBong", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.SanBong", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -286,7 +287,7 @@ namespace Web_Stadium.Migrations
                     b.ToTable("SanBongs");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.User", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -321,15 +322,15 @@ namespace Web_Stadium.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.DanhGia", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.DanhGia", b =>
                 {
-                    b.HasOne("Web_Stadium.End.SanBong", "SanBong")
+                    b.HasOne("Web_Stadium.EFCore.SanBong", "SanBong")
                         .WithMany("DanhGias")
                         .HasForeignKey("SanBongId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("Web_Stadium.End.User", "User")
+                    b.HasOne("Web_Stadium.EFCore.User", "User")
                         .WithMany("DanhGias")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -340,15 +341,15 @@ namespace Web_Stadium.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.DatSan", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.DatSan", b =>
                 {
-                    b.HasOne("Web_Stadium.End.KhungGio", "KhungGio")
+                    b.HasOne("Web_Stadium.EFCore.KhungGio", "KhungGio")
                         .WithMany("DanhSachDatSan")
                         .HasForeignKey("KhungGioId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("Web_Stadium.End.User", "User")
+                    b.HasOne("Web_Stadium.EFCore.User", "User")
                         .WithMany("DanhSachDatSan")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -359,15 +360,15 @@ namespace Web_Stadium.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.DatSan_DichVu", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.DatSan_DichVu", b =>
                 {
-                    b.HasOne("Web_Stadium.End.DatSan", "DatSan")
+                    b.HasOne("Web_Stadium.EFCore.DatSan", "DatSan")
                         .WithMany("DichVuKemTheo")
                         .HasForeignKey("DatSanId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("Web_Stadium.End.DichVu", "DichVu")
+                    b.HasOne("Web_Stadium.EFCore.DichVu", "DichVu")
                         .WithMany("DatSan_DichVus")
                         .HasForeignKey("DichVuId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -378,9 +379,9 @@ namespace Web_Stadium.Migrations
                     b.Navigation("DichVu");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.KhungGio", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.KhungGio", b =>
                 {
-                    b.HasOne("Web_Stadium.End.SanBong", "SanBong")
+                    b.HasOne("Web_Stadium.EFCore.SanBong", "SanBong")
                         .WithMany("KhungGios")
                         .HasForeignKey("SanBongId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -389,15 +390,15 @@ namespace Web_Stadium.Migrations
                     b.Navigation("SanBong");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.Matchmaking", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.Matchmaking", b =>
                 {
-                    b.HasOne("Web_Stadium.End.DatSan", "DatSan")
+                    b.HasOne("Web_Stadium.EFCore.DatSan", "DatSan")
                         .WithOne("matchmaking")
-                        .HasForeignKey("Web_Stadium.End.Matchmaking", "DatSanId")
+                        .HasForeignKey("Web_Stadium.EFCore.Matchmaking", "DatSanId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("Web_Stadium.End.User", "User")
+                    b.HasOne("Web_Stadium.EFCore.User", "User")
                         .WithMany("Matchmakings")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -408,9 +409,9 @@ namespace Web_Stadium.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.SanBong", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.SanBong", b =>
                 {
-                    b.HasOne("Web_Stadium.End.User", "Owner")
+                    b.HasOne("Web_Stadium.EFCore.User", "Owner")
                         .WithMany("SanBongSoHuu")
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -419,31 +420,31 @@ namespace Web_Stadium.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.DatSan", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.DatSan", b =>
                 {
                     b.Navigation("DichVuKemTheo");
 
                     b.Navigation("matchmaking");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.DichVu", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.DichVu", b =>
                 {
                     b.Navigation("DatSan_DichVus");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.KhungGio", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.KhungGio", b =>
                 {
                     b.Navigation("DanhSachDatSan");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.SanBong", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.SanBong", b =>
                 {
                     b.Navigation("DanhGias");
 
                     b.Navigation("KhungGios");
                 });
 
-            modelBuilder.Entity("Web_Stadium.End.User", b =>
+            modelBuilder.Entity("Web_Stadium.EFCore.User", b =>
                 {
                     b.Navigation("DanhGias");
 

@@ -121,6 +121,52 @@
     </div>
 </div>
 
+@{
+    var doanhThuOwner = (ViewBag.DoanhThuTheoOwner as IEnumerable<dynamic>)
+                        ?? Enumerable.Empty<dynamic>();
+}
+
+<!-- ══ DOANH THU THEO OWNER ══ -->
+<div class="charts-two-col" style="margin-top:32px">
+
+    <div class="chart-card">
+        <div class="chart-title">Doanh thu theo Owner</div>
+        <div class="chart-sub">Top chủ sân đóng góp nhiều nhất</div>
+        @{
+            var maxOwnerDT = doanhThuOwner.Any()
+            ? doanhThuOwner.Max(o => (double)o.DoanhThu) : 1;
+        }
+        @foreach (var o in doanhThuOwner.Take(8))
+        {
+            var pct = maxOwnerDT > 0 ? (int)((double)o.DoanhThu / maxOwnerDT * 100) : 0;
+            <div class="lap-day-bar">
+                <div class="lap-name" style="min-width:120px">@o.Owner</div>
+                <div class="lap-bar-wrap">
+                    <div class="lap-bar-fill" style="width:@pct%; background:#6caee0"></div>
+                </div>
+                <div class="lap-pct" style="color:#6caee0; min-width:80px; text-align:right">
+                    @(((double)o.DoanhThu / 1_000_000).ToString("F1"))M
+                </div>
+            </div>
+        }
+        @if (!doanhThuOwner.Any())
+        {
+            <p style="color:var(--muted); font-size:13px; text-align:center; padding:20px 0">
+                Chưa có dữ liệu doanh thu
+            </p>
+        }
+    </div>
+
+    <div class="chart-card">
+        <div class="chart-title">Phân bổ doanh thu</div>
+        <div class="chart-sub">Tỷ lệ % theo từng Owner</div>
+        <div style="position:relative; height:220px">
+            <canvas id="chartOwner"></canvas>
+        </div>
+    </div>
+
+</div>
+
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <script>
@@ -187,5 +233,45 @@
                 }
             }
         });
+
+
+        @{
+                    var ownerLabels = Newtonsoft.Json.JsonConvert.SerializeObject(
+                            doanhThuOwner.Select(o => (string)o.Owner));
+                    var ownerData = Newtonsoft.Json.JsonConvert.SerializeObject(
+                            doanhThuOwner.Select(o =>
+                                    ((double)o.DoanhThu / 1_000_000).ToString("F2",
+                                            System.Globalization.CultureInfo.InvariantCulture)));
+            }
+
+            new Chart(document.getElementById('chartOwner'), {
+                type: 'doughnut',
+                data: {
+                    labels: @Html.Raw(ownerLabels),
+                    datasets: [{
+                        data: @Html.Raw(ownerData),
+                        backgroundColor: [
+                            'rgba(30,215,96,0.7)',
+                            'rgba(108,174,224,0.7)',
+                            'rgba(246,170,56,0.7)',
+                            'rgba(229,77,77,0.7)',
+                            'rgba(167,119,227,0.7)',
+                            'rgba(80,200,180,0.7)',
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#ffffff80', font: { size: 11 }, padding: 10 }
+                        }
+                    }
+                }
+            });
     </script>
 }

@@ -1,0 +1,52 @@
+﻿@model Web_Stadium.EFCore.SanBong
+@{
+    ViewData["Title"] = "Xem hợp đồng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div style="background:var(--bg2);padding:100px 0 40px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Admin — Hợp đồng điện tử</div>
+        <h1 style="font-style:italic;line-height:0.9">HỢP ĐỒNG<br><span class="text-green">ĐÃ KÝ</span></h1>
+        <p style="color:var(--muted)">@Model.TenSan — Ký ngày @Model.NgayKyHopDong?.ToString("dd/MM/yyyy HH:mm")</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="section-card p-5">
+
+                <!-- Trạng thái -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+                    <div>
+                        <span class="badge bg-success" style="font-size:13px;padding:6px 14px">✅ Đã ký điện tử</span>
+                        <span style="color:var(--muted);font-size:13px;margin-left:12px">@Model.NgayKyHopDong?.ToString("HH:mm dd/MM/yyyy")</span>
+                    </div>
+                    <div style="font-size:13px;color:var(--muted)">
+                        Hoa hồng: <strong style="color:var(--green)">@((Model.TyLeHoaHong * 100).ToString("F0"))%</strong>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.NoiDungHopDong))
+                {
+                    <!-- Hiển thị nội dung hợp đồng snapshot -->
+                    <div style="font-family:'Times New Roman',serif;line-height:1.8;color:var(--muted2)">
+                        @Html.Raw(Model.NoiDungHopDong.Replace("\n", "<br/>"))
+                    </div>
+                }
+                else
+                {
+                    <div style="color:var(--muted);font-style:italic;text-align:center;padding:40px">
+                        Không có snapshot nội dung hợp đồng.
+                    </div>
+                }
+
+                <div style="margin-top:32px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between">
+                    <a href="/Admin/DuyetSan" class="btn btn-outline-secondary rounded-pill">← Quay lại</a>
+                    <button onclick="window.print()" class="btn btn-outline-light rounded-pill">🖨️ In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

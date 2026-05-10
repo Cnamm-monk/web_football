@@ -1,0 +1,135 @@
+﻿@model List<Web_Stadium.EFCore.KhieuNai>
+@{
+    ViewData["Title"] = "Xử lý Khiếu nại";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex align-items-center mb-4">
+        <h4 class="mb-0"><i class="bi bi-exclamation-triangle me-2 text-warning"></i>Xử lý Khiếu nại / Hoàn cọc</h4>
+        @if ((int)ViewBag.SoChoXuLy > 0)
+        {
+            <span class="badge bg-danger ms-2 fs-6">@ViewBag.SoChoXuLy chờ xử lý</span>
+        }
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Tabs lọc -->
+    <ul class="nav nav-pills mb-4">
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.TrangThaiFilter == "ChoXuLy" ? "active" : "")"
+               href="/Admin/KhieuNai?trangThai=ChoXuLy">
+                Chờ xử lý <span class="badge bg-danger ms-1">@ViewBag.SoChoXuLy</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.TrangThaiFilter == "DaHoanCoc" ? "active" : "")"
+               href="/Admin/KhieuNai?trangThai=DaHoanCoc">Đã hoàn cọc</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.TrangThaiFilter == "TuChoi" ? "active" : "")"
+               href="/Admin/KhieuNai?trangThai=TuChoi">Đã từ chối</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(ViewBag.TrangThaiFilter == "TatCa" ? "active" : "")"
+               href="/Admin/KhieuNai?trangThai=TatCa">Tất cả</a>
+        </li>
+    </ul>
+
+    @foreach (var kn in Model)
+    {
+        <div class="card shadow-sm mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center
+                    @(kn.TrangThai == "ChoXuLy" ? "bg-warning bg-opacity-25" :
+                                   kn.TrangThai == "DaHoanCoc" ? "bg-success bg-opacity-10" : "bg-light")">
+            <div>
+                <strong>#KN@kn.Id</strong> —
+                <span class="text-primary">@kn.User?.HoTen</span>
+                <small class="text-muted ms-2">@kn.NgayGui.ToString("dd/MM/yyyy HH:mm")</small>
+            </div>
+            <span class="badge @(kn.TrangThai == "ChoXuLy" ? "bg-warning text-dark" :
+                                                       kn.TrangThai == "DaHoanCoc" ? "bg-success" : "bg-secondary")">
+                @(kn.TrangThai == "ChoXuLy" ? "Chờ xử lý" :
+                                kn.TrangThai == "DaHoanCoc" ? "Đã hoàn cọc" : "Đã từ chối")
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <p><strong>Lý do:</strong> @kn.LyDo</p>
+                    @if (kn.DatSan?.KhungGio?.SanBong != null)
+                        {
+                            <p>
+                                <strong>Đơn đặt sân:</strong>
+                                <span class="badge bg-info text-dark me-1">#@kn.DatSanId</span>
+                                @kn.DatSan.KhungGio.SanBong.TenSan —
+                                @kn.DatSan.NgayThiDau.ToString("dd/MM/yyyy")
+                                <br />
+                                <strong>Tiền cọc:</strong>
+                                <span class="text-danger fw-bold">@kn.DatSan.TienCoc.ToString("N0")đ</span>
+                            </p>
+                        }
+                        @if (kn.TrangThai != "ChoXuLy")
+                        {
+                            <hr />
+                            <p><strong>Admin xử lý:</strong> @kn.AdminXuLy?.HoTen — @kn.NgayXuLy?.ToString("dd/MM/yyyy HH:mm")</p>
+                            @if (kn.SoTienHoan.HasValue)
+                            {
+                                <p><strong>Số tiền hoàn:</strong> <span class="text-success fw-bold">@kn.SoTienHoan.Value.ToString("N0")đ</span></p>
+                            }
+                            @if (!string.IsNullOrEmpty(kn.GhiChuAdmin))
+                            {
+                                <p><strong>Ghi chú:</strong> @kn.GhiChuAdmin</p>
+                            }
+                        }
+                    </div>
+
+                    @if (kn.TrangThai == "ChoXuLy")
+                    {
+                        <div class="col-md-4">
+                            <form method="post" action="/Admin/XuLyKhieuNai">
+                                <input type="hidden" name="id" value="@kn.Id" />
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold">Số tiền hoàn (đ)</label>
+                                    <input type="number" name="soTienHoan" class="form-control"
+                                           value="@kn.DatSan?.TienCoc" placeholder="Nhập số tiền hoàn..." />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Ghi chú Admin</label>
+                                    <textarea name="ghiChu" class="form-control" rows="2"
+                                      placeholder="Lý do quyết định..."></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" name="ketQua" value="DaHoanCoc"
+                                            class="btn btn-success flex-fill"
+                                            onclick="return confirm('Xác nhận hoàn cọc?')">
+                                        <i class="bi bi-check-circle me-1"></i>Hoàn cọc
+                                    </button>
+                                    <button type="submit" name="ketQua" value="TuChoi"
+                                            class="btn btn-outline-danger flex-fill"
+                                            onclick="return confirm('Từ chối khiếu nại?')">
+                                        <i class="bi bi-x-circle me-1"></i>Từ chối
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+            Không có khiếu nại nào trong mục này.
+        </div>
+    }
+</div>

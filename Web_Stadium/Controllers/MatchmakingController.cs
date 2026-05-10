@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Web_Stadium.End;
+using Web_Stadium.EFCore;
 using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
 

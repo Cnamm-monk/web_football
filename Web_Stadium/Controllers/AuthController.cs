@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Web_Stadium.End;
 using Web_Stadium.EFCore;
+using Web_Stadium.EFCore;
+
+// Cài package: dotnet add package BCrypt.Net-Next
+using BCrypt.Net;
 
 namespace Web_Stadium.Controllers
 {
@@ -9,9 +12,7 @@ namespace Web_Stadium.Controllers
         private readonly IRepository<User> _userRepo;
         private readonly IConfiguration _config;
 
-        public AuthController(
-            IRepository<User> userRepo,
-            IConfiguration config)
+        public AuthController(IRepository<User> userRepo, IConfiguration config)
         {
             _userRepo = userRepo;
             _config = config;
@@ -27,45 +28,46 @@ namespace Web_Stadium.Controllers
 
         // POST /Auth/Login
         [HttpPost]
-        public async Task<IActionResult> Login(
-            string email, string matkhau)
+        public async Task<IActionResult> Login(string email, string matkhau)
         {
-            var user = await _userRepo
-                .FirstOrDefaultAsync(u =>
-                    u.Email == email &&
-                    u.MatKhau == matkhau);
+            // Bước 1: tìm theo email trước (không query theo password nữa)
+            var user = await _userRepo.FirstOrDefaultAsync(u => u.Email == email);
 
-            if (user == null)
+            // Bước 2: kiểm tra mật khẩu bằng BCrypt
+            if (user == null || !BCrypt.Net.BCrypt.Verify(matkhau, user.MatKhau))
             {
-                ViewBag.Error =
-                    "Email hoặc mật khẩu không đúng.";
+                ViewBag.Error = "Email hoặc mật khẩu không đúng.";
                 return View();
             }
 
+            // Bước 3: kiểm tra IsActive
+            if (!user.IsActive)
+            {
+                ViewBag.Error = user.VaiTro == "Owner"
+                    ? "Tài khoản đang chờ Admin phê duyệt. Vui lòng chờ thông báo."
+                    : "Tài khoản đã bị khoá. Vui lòng liên hệ Admin.";
+                return View();
+            }
+
+            // Bước 4: cấp JWT
             var token = TokenHelper.TaoToken(user, _config);
+            var isDev = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
 
-            // ✅ FIX: Bỏ Secure = true khi chạy localhost HTTP
-            // Secure = true chỉ dùng khi deploy HTTPS thật
-            var isDev = Environment.GetEnvironmentVariable(
-                "ASPNETCORE_ENVIRONMENT") == "Development";
+            Response.Cookies.Append("jwt", token, new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = DateTimeOffset.Now.AddHours(24),
+                Path = "/",
+                Secure = !isDev,
+                SameSite = SameSiteMode.Lax
+            });
 
-            Response.Cookies.Append("jwt", token,
-                new CookieOptions
-                {
-                    HttpOnly = true,
-                    Expires = DateTimeOffset.Now.AddHours(24),
-                    Path = "/",
-                    Secure = !isDev,      // false khi Development
-                    SameSite = SameSiteMode.Lax  // Lax thay vì Strict
-                });
-
-            // Sử dụng switch để điều hướng dựa trên vai trò
             return user.VaiTro switch
             {
                 "Admin" => RedirectToAction("Index", "Admin"),
-                "Staff" => RedirectToAction("Index", "Staff"),
                 "Owner" => RedirectToAction("Index", "Owner"),
-                _ => RedirectToAction("Index", "Home") // Mặc định cho User hoặc các vai trò khác
+                "Staff" => RedirectToAction("Index", "Staff"),
+                _ => RedirectToAction("Index", "Home")
             };
         }
 
@@ -84,37 +86,45 @@ namespace Web_Stadium.Controllers
             string email, string matKhau,
             string soDienThoai, string vaiTro)
         {
-            var existing = await _userRepo
-                .FirstOrDefaultAsync(u => u.Email == email);
-
+            // Kiểm tra email đã tồn tại
+            var existing = await _userRepo.FirstOrDefaultAsync(u => u.Email == email);
             if (existing != null)
             {
                 ViewBag.Error = "Email này đã được đăng ký.";
                 return View();
             }
 
+            // Chỉ cho phép đăng ký 2 role: User hoặc Owner
+            // Whitelist cứng — không tin tham số từ client
+            var roleHopLe = new[] { "User", "Owner" };
+            var roleCuoi = roleHopLe.Contains(vaiTro) ? vaiTro : "User";
+
             var user = new User
             {
                 HoTen = $"{ho} {ten}".Trim(),
                 Email = email,
-                MatKhau = matKhau,
+                // Hash mật khẩu bằng BCrypt trước khi lưu
+                MatKhau = BCrypt.Net.BCrypt.HashPassword(matKhau),
                 SoDienThoai = soDienThoai,
-                VaiTro = string.IsNullOrEmpty(vaiTro) ? "User" : vaiTro,
+                VaiTro = roleCuoi,
+                // Owner mới = IsActive false, chờ Admin phê duyệt sân đầu tiên
+                // User thường = IsActive true ngay
+                IsActive = roleCuoi != "Owner",
                 NgayTao = DateTime.Now
             };
 
             await _userRepo.AddAsync(user);
 
-            TempData["Success"] =
-                "Đăng ký thành công! Vui lòng đăng nhập.";
+            TempData["Success"] = roleCuoi == "Owner"
+                ? "Đăng ký thành công! Tài khoản Owner cần Admin phê duyệt trước khi đăng nhập."
+                : "Đăng ký thành công! Vui lòng đăng nhập.";
             return RedirectToAction("Login");
         }
 
         // GET /Auth/Logout
         public IActionResult Logout()
         {
-            Response.Cookies.Delete("jwt",
-                new CookieOptions { Path = "/" });
+            Response.Cookies.Delete("jwt", new CookieOptions { Path = "/" });
             TempData["Success"] = "Đã đăng xuất thành công!";
             return RedirectToAction("Login");
         }

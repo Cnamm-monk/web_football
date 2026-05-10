@@ -1,83 +1,120 @@
-﻿@model IEnumerable<Web_Stadium.End.User>
+﻿@model List<Web_Stadium.EFCore.User>
 @{
-    ViewData["Title"] = "Quản lý người dùng";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Quản lý Tài khoản";
 }
 
-<!-- HEADER -->
-<div style="background:var(--bg2); padding:100px 0 40px; border-bottom:1px solid var(--border)">
-    <div class="container">
-        <div class="section-label">Admin</div>
-        <h1 style="font-style:italic; line-height:0.9">
-            QUẢN LÝ<br>
-            <span class="text-green">NGƯỜI DÙNG</span>
-        </h1>
-    </div>
-</div>
+<div class="container-fluid py-4">
+    <h4 class="mb-4"><i class="bi bi-people me-2"></i>Quản lý Tài khoản</h4>
 
-<!-- MENU ADMIN -->
-<div style="background:var(--bg3); border-bottom:1px solid var(--border); padding:12px 0">
-    <div class="container d-flex gap-3 flex-wrap">
-        <a href="/Admin" class="btn btn-sm btn-outline-light rounded-pill">📊 Tổng quan</a>
-        <a href="/Admin/DuyetSan" class="btn btn-sm btn-outline-warning rounded-pill">🏟️ Duyệt sân</a>
-        <a href="/Admin/QuanLyUser" class="btn btn-sm btn-success rounded-pill">👥 Quản lý User</a>
-        <a href="/Admin/BaoCao" class="btn btn-sm btn-outline-light rounded-pill">📈 Báo cáo</a>
-    </div>
-</div>
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
 
-<div class="container py-4">
+    <!-- Bộ lọc -->
+    <form method="get" class="row g-2 mb-4">
+        <div class="col-auto">
+            <select name="vaiTro" class="form-select">
+                <option value="">-- Tất cả vai trò --</option>
+                <option value="Admin" selected="@(ViewBag.VaiTro == "Admin")">Admin</option>
+                <option value="Owner" selected="@(ViewBag.VaiTro == "Owner")">Owner</option>
+                <option value="Staff" selected="@(ViewBag.VaiTro == "Staff")">Staff</option>
+                <option value="User" selected="@(ViewBag.VaiTro == "User")">User</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <input type="text" name="tuKhoa" class="form-control" placeholder="Tìm tên hoặc email..."
+                   value="@ViewBag.TuKhoa" />
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search me-1"></i>Tìm
+            </button>
+        </div>
+    </form>
 
-    <!-- BỘ LỌC THEO VAI TRÒ -->
-    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px">
-        <a href="/Admin/QuanLyUser" class="btn btn-sm @(ViewBag.VaiTro == null ? "btn-success" : "btn-outline-light") rounded-pill">
-            Tất cả (@Model.Count())
-        </a>
-        @foreach (var vt in new[] { "User", "Owner", "Staff", "Admin" })
-        {
-            <a href="/Admin/QuanLyUser?vaiTro=@vt"
-               class="btn btn-sm @(ViewBag.VaiTro == vt ? "btn-success" : "btn-outline-light") rounded-pill">
-                @vt (@Model.Count(u => u.VaiTro == vt))
-            </a>
-        }
-    </div>
-
-    <!-- BẢNG DANH SÁCH -->
-    <div class="section-card" style="overflow:hidden">
-        <div style="overflow-x:auto">
-            <table style="width:100%; border-collapse:collapse; font-size:13px">
-                <thead>
-                    <tr style="border-bottom:1px solid var(--border); color:var(--muted); font-size:11px; letter-spacing:1px">
-                        <th style="padding:12px 16px; text-align:left">ID</th>
-                        <th style="padding:12px 16px; text-align:left">HỌ TÊN</th>
-                        <th style="padding:12px 16px; text-align:left">EMAIL</th>
-                        <th style="padding:12px 16px; text-align:left">SĐT</th>
-                        <th style="padding:12px 16px; text-align:left">VAI TRÒ</th>
-                        <th style="padding:12px 16px; text-align:left">NGÀY TẠO</th>
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Họ tên</th>
+                        <th>Email</th>
+                        <th>Vai trò</th>
+                        <th>Ngày tạo</th>
+                        <th>Trạng thái</th>
+                        <th class="text-center">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var u in Model)
                     {
-                        <tr style="border-bottom:1px solid var(--border)">
-                            <td style="padding:12px 16px; color:var(--muted2)">#@u.Id</td>
-                            <td style="padding:12px 16px; font-weight:600">@u.HoTen</td>
-                            <td style="padding:12px 16px; color:var(--muted)">@u.Email</td>
-                            <td style="padding:12px 16px; color:var(--muted)">@(u.SoDienThoai ?? "—")</td>
-                            <td style="padding:12px 16px">
+                        <tr class="@(!u.IsActive ? "table-secondary" : "")">
+                            <td><small class="text-muted">#@u.Id</small></td>
+                            <td>
+                                <strong>@u.HoTen</strong>
+                                @if (!u.IsActive)
+                                {
+                                    <br />
+                            
+                                    <small class="text-danger"><i class="bi bi-lock-fill me-1"></i>Đã khoá</small>
+                                }
+                            </td>
+                            <td><small>@u.Email</small></td>
+                            <td>
                                 @{
-                                    var (bg, fg) = u.VaiTro switch
+                                    var badgeColor = u.VaiTro switch
                                     {
-                                        "Admin" => ("var(--green)", "#000"),
-                                        "Owner" => ("#6caee0", "#000"),
-                                        "Staff" => ("var(--yellow)", "#000"),
-                                        _ => ("var(--border)", "var(--text)")
+                                        "Admin" => "bg-danger",
+                                        "Owner" => "bg-primary",
+                                        "Staff" => "bg-warning text-dark",
+                                        _ => "bg-secondary"
                                     };
                                 }
-                                <span class="badge" style="background:@bg;color:@fg">@u.VaiTro</span>
+                                <span class="badge @badgeColor">@u.VaiTro</span>
                             </td>
-                            <td style="padding:12px 16px; color:var(--muted2)">
-                                @u.NgayTao.ToString("dd/MM/yyyy")
+                            <td><small>@u.NgayTao.ToString("dd/MM/yyyy")</small></td>
+                            <td>
+                                <span class="badge @(u.IsActive ? "bg-success" : "bg-secondary")">
+                                    @(u.IsActive ? "Hoạt động" : "Đã khoá")
+                                </span>
                             </td>
+                            <td class="text-center">
+                                @if (u.VaiTro != "Admin")
+                                {
+                                    <form method="post" action="/Admin/DoiTrangThaiTaiKhoan"
+                                          style="display:inline"
+                                          onsubmit="return confirm('@(u.IsActive ? $"Khoá tài khoản {u.HoTen}?" : $"Mở khoá tài khoản {u.HoTen}?")')">
+                                        <input type="hidden" name="id" value="@u.Id" />
+                                        <input type="hidden" name="isActive" value="@(!u.IsActive)" />
+                                        <button class="btn btn-sm @(u.IsActive ? "btn-outline-danger" : "btn-outline-success") rounded-pill">
+                                            <i class="bi @(u.IsActive ? "bi-lock" : "bi-unlock") me-1"></i>
+                                            @(u.IsActive ? "Khoá" : "Mở khoá")
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">Không tìm thấy tài khoản nào.</td>
                         </tr>
                     }
                 </tbody>

@@ -1,7 +1,7 @@
 ﻿@{
     ViewData["Title"] = "Đăng tin tìm đội";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var datSan = ViewBag.DatSan as Web_Stadium.End.DatSan;
+    var datSan = ViewBag.DatSan as Web_Stadium.EFCore.DatSan;
     var san = datSan?.KhungGio?.SanBong;
     var kg = datSan?.KhungGio;
 }

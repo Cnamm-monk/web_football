@@ -1,87 +1,140 @@
-﻿@model IEnumerable<Web_Stadium.End.SanBong>
+﻿@model List<Web_Stadium.EFCore.SanBong>
 @{
     ViewData["Title"] = "Duyệt sân";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<!-- HEADER -->
-<div style="background:var(--bg2); padding:100px 0 40px; border-bottom:1px solid var(--border)">
+<div style="background:var(--bg2);padding:100px 0 40px;border-bottom:1px solid var(--border)">
     <div class="container">
-        <div class="section-label">Admin</div>
-        <h1 style="font-style:italic; line-height:0.9">
-            DUYỆT SÂN<br>
-            <span class="text-green">CHỜ PHÊ DUYỆT</span>
-        </h1>
+        <div class="section-label">Admin — Franchise</div>
+        <h1 style="font-style:italic;line-height:0.9">DUYỆT SÂN<br><span class="text-green">HỒ SƠ CHỜ PHÊ DUYỆT</span></h1>
     </div>
 </div>
 
-<!-- MENU ADMIN -->
-<div style="background:var(--bg3); border-bottom:1px solid var(--border); padding:12px 0">
-    <div class="container d-flex gap-3 flex-wrap">
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2 flex-wrap">
         <a href="/Admin" class="btn btn-sm btn-outline-light rounded-pill">📊 Tổng quan</a>
-        <a href="/Admin/DuyetSan" class="btn btn-sm btn-success rounded-pill">🏟️ Duyệt sân</a>
-        <a href="/Admin/QuanLyUser" class="btn btn-sm btn-outline-info rounded-pill">👥 Quản lý User</a>
+        <a href="/Admin/DuyetSan" class="btn btn-sm btn-warning rounded-pill">🏟️ Duyệt sân</a>
+        <a href="/Admin/QuanLyUser" class="btn btn-sm btn-outline-info rounded-pill">👥 Tài khoản</a>
+        <a href="/Admin/MasterData" class="btn btn-sm btn-outline-light rounded-pill">🗂️ Master Data</a>
+        <a href="/Admin/KhieuNai" class="btn btn-sm btn-outline-warning rounded-pill">⚠️ Khiếu nại</a>
         <a href="/Admin/BaoCao" class="btn btn-sm btn-outline-light rounded-pill">📈 Báo cáo</a>
+        <a href="/Admin/AuditLog" class="btn btn-sm btn-outline-secondary rounded-pill">🛡️ Audit Log</a>
     </div>
 </div>
 
 <div class="container py-5">
 
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    }
+
     @if (!Model.Any())
     {
-        <div style="text-align:center; padding:80px 0">
-            <div style="font-size:4rem; margin-bottom:16px">✅</div>
-            <h3 style="font-family:var(--ff-h); color:var(--green)">Không có sân nào chờ duyệt!</h3>
-            <p style="color:var(--muted)">Tất cả sân đã được xử lý.</p>
+        <div style="text-align:center;padding:80px 0;color:var(--muted)">
+            <div style="font-size:3rem;margin-bottom:16px">🎉</div>
+            <div style="font-family:var(--ff-h);font-size:1.5rem;margin-bottom:8px">Không có hồ sơ chờ duyệt</div>
+            <div style="font-size:14px">Tất cả sân đã được xử lý</div>
         </div>
     }
-    else
+
+    @foreach (var san in Model)
     {
-        <div class="row g-4">
-            @foreach (var san in Model)
-            {
-                <div class="col-md-6" data-aos="fade-up">
-                    <div class="section-card p-4">
-                        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:16px">
-                            <div>
-                                <h4 style="font-family:var(--ff-h); margin-bottom:4px">@san.TenSan</h4>
-                                <div style="font-size:12px; color:var(--muted)">📍 @san.DiaChi — @san.Quan</div>
-                            </div>
-                            <span class="badge" style="background:var(--yellow); color:#000; font-size:11px">Chờ duyệt</span>
-                        </div>
-
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px">
-                            <span class="badge b-green">Sân @san.LoaiSan người</span>
-                            <span class="badge b-blue">@san.LoaiCo</span>
-                            <span style="font-size:12px; color:var(--muted2)">Chủ: @san.Owner?.HoTen (@san.Owner?.Email)</span>
-                        </div>
-
-                        @if (!string.IsNullOrEmpty(san.MoTa))
-                        {
-                            <p style="font-size:13px; color:var(--muted); margin-bottom:16px">@san.MoTa</p>
-                        }
-
-                        <div style="display:flex; gap:8px">
-                            <form method="post" action="/Admin/PheDuyet" style="flex:1">
-                                <input type="hidden" name="id" value="@san.Id" />
-                                <input type="hidden" name="trangThai" value="DaDuyet" />
-                                <button type="submit" class="btn btn-success w-100 rounded-pill fw-bold"
-                                        onclick="return confirm('Xác nhận PHÊ DUYỆT sân @san.TenSan?')">
-                                    ✅ Phê duyệt
-                                </button>
-                            </form>
-                            <form method="post" action="/Admin/PheDuyet" style="flex:1">
-                                <input type="hidden" name="id" value="@san.Id" />
-                                <input type="hidden" name="trangThai" value="TuChoi" />
-                                <button type="submit" class="btn btn-outline-danger w-100 rounded-pill"
-                                        onclick="return confirm('Xác nhận TỪ CHỐI sân @san.TenSan?')">
-                                    ❌ Từ chối
-                                </button>
-                            </form>
-                        </div>
+        <div class="section-card p-0 overflow-hidden mb-4">
+            <!-- Header sân -->
+            <div style="padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border)">
+                <div>
+                    <h5 style="margin:0;font-family:var(--ff-h)">@san.TenSan</h5>
+                    <div style="color:var(--muted);font-size:13px;margin-top:4px">
+                        📍 @san.DiaChi, @san.Quan, @san.ThanhPho
                     </div>
                 </div>
-            }
+                <div style="text-align:right">
+                    <div style="font-size:12px;color:var(--muted)">Loại sân</div>
+                    <span class="badge b-blue">@san.LoaiSan người — @san.LoaiCo</span>
+                </div>
+            </div>
+
+            <div class="row g-0">
+                <!-- Thông tin -->
+                <div class="col-md-6" style="padding:20px;border-right:1px solid var(--border)">
+                    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">THÔNG TIN CHỦ SÂN</div>
+                    <div style="font-size:13px;margin-bottom:6px">
+                        <strong>Chủ sân:</strong> @san.Owner?.HoTen
+                    </div>
+                    <div style="font-size:13px;margin-bottom:6px">
+                        <strong>Email:</strong> @san.Owner?.Email
+                    </div>
+                    <div style="font-size:13px;margin-bottom:6px">
+                        <strong>SĐT:</strong> @san.Owner?.SoDienThoai
+                    </div>
+                    <div style="font-size:13px;margin-bottom:6px">
+                        <strong>Tỷ lệ cọc:</strong> @((san.TyLeCoc * 100).ToString("F0"))%
+                    </div>
+
+                    <!-- Hợp đồng -->
+                    <div style="margin-top:16px;padding:12px;background:rgba(30,215,96,0.06);border:1px solid rgba(30,215,96,0.2);border-radius:8px">
+                        @if (san.DaKyHopDong)
+                        {
+                            <div style="color:var(--green);font-size:12px;font-weight:600;margin-bottom:6px">
+                                ✅ Đã ký hợp đồng điện tử — @san.NgayKyHopDong?.ToString("dd/MM/yyyy HH:mm")
+                            </div>
+                            <div style="font-size:12px;color:var(--muted)">
+                                Tỷ lệ HH trong HĐ: <strong style="color:var(--green)">@((san.TyLeHoaHong * 100).ToString("F0"))%</strong>
+                            </div>
+                            <a href="/Admin/XemHopDong/@san.Id" target="_blank"
+                               class="btn btn-sm btn-outline-success rounded-pill mt-2"
+                               style="font-size:11px">📄 Xem hợp đồng đã ký</a>
+                        }
+                        else
+                        {
+                            <div style="color:#f39c12;font-size:12px">⚠️ Chưa ký hợp đồng điện tử</div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Phê duyệt -->
+                <div class="col-md-6" style="padding:20px">
+                    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">QUYẾT ĐỊNH PHÊ DUYỆT</div>
+
+                    <!-- Override tỷ lệ nếu cần -->
+                    <div style="margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+                        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+                            Tỷ lệ hoa hồng từ vùng: <strong style="color:var(--green)">@((san.TyLeHoaHong * 100).ToString("F0"))%</strong>
+                        </div>
+                        <div style="font-size:12px;color:var(--muted)">Override (nếu có thỏa thuận đặc biệt):</div>
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                            <input type="number" id="tyLe_@san.Id" step="0.01" min="0.01" max="0.50"
+                                   value="@san.TyLeHoaHong"
+                                   style="background:var(--bg2);border:1px solid var(--border);color:white;border-radius:6px;padding:4px 8px;width:100px;font-size:13px" />
+                            <span style="font-size:12px;color:var(--muted)">(0.10 = 10%)</span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <form method="post" action="/Admin/PheDuyet" style="display:inline">
+                            <input type="hidden" name="id" value="@san.Id" />
+                            <input type="hidden" name="trangThai" value="DaDuyet" />
+                            <input type="hidden" name="tyLeOverride" id="tyLeHidden_@san.Id" />
+                            <button type="submit"
+                                    onclick="document.getElementById('tyLeHidden_@san.Id').value=document.getElementById('tyLe_@san.Id').value;return confirm('Phê duyệt sân @san.TenSan?')"
+                                    class="btn btn-success rounded-pill">
+                                ✓ Phê duyệt
+                            </button>
+                        </form>
+                        <form method="post" action="/Admin/PheDuyet" style="display:inline">
+                            <input type="hidden" name="id" value="@san.Id" />
+                            <input type="hidden" name="trangThai" value="TuChoi" />
+                            <button type="submit"
+                                    onclick="return confirm('Từ chối sân @san.TenSan?')"
+                                    class="btn btn-outline-danger rounded-pill">
+                                ✗ Từ chối
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     }
 </div>

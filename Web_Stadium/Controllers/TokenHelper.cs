@@ -2,7 +2,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Web_Stadium.End;
+using Web_Stadium.EFCore;
+using Web_Stadium.EFCore;
 
 namespace Web_Stadium.Controllers
 {

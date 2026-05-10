@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
-using Web_Stadium.End;
+using Web_Stadium.EFCore;
 
 namespace Web_Stadium.EFCore
 {

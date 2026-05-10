@@ -1,11 +1,11 @@
 ﻿@{
     ViewData["Title"] = "Xác nhận đặt sân";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var khungGio = ViewBag.KhungGio as Web_Stadium.End.KhungGio;
+    var khungGio = ViewBag.KhungGio as Web_Stadium.EFCore.KhungGio;
     var san = khungGio?.SanBong;
     var ngay = (DateTime)ViewBag.Ngay;
     var tienCoc = (decimal)ViewBag.TienCoc;
-    var dichVus = ViewBag.DichVus as IEnumerable<Web_Stadium.End.DichVu>;
+    var dichVus = ViewBag.DichVus as IEnumerable<Web_Stadium.EFCore.DichVu>;
 }
 
 <!-- HEADER -->
@@ -127,7 +127,7 @@
 
 @section Scripts {
     <script>
-        var dichVuGia = [@Html.Raw(string.Join(",", (dichVus ?? Enumerable.Empty<Web_Stadium.End.DichVu>()).Select(d => d.Gia)))];
+        var dichVuGia = [@Html.Raw(string.Join(",", (dichVus ?? Enumerable.Empty<Web_Stadium.EFCore.DichVu>()).Select(d => d.Gia)))];
         var tienCoc = @tienCoc;
 
         function changeQty(idx, delta) {

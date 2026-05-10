@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Web_Stadium.End;
+using Web_Stadium.EFCore;
 using Web_Stadium.EFCore;
 using Web_Stadium.Hubs;
 

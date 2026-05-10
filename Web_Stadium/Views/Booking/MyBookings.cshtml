@@ -1,4 +1,4 @@
-﻿@model IEnumerable<Web_Stadium.End.DatSan>
+﻿@model IEnumerable<Web_Stadium.EFCore.DatSan>
 @{
     ViewData["Title"] = "Lịch đặt sân của tôi";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -136,10 +136,10 @@
                 <!-- FOOTER -->
                 <div class="bc-footer">
                     <div class="dv-chips">
-                        @if (ds.DichVuKemTheo != null
-                                        && ds.DichVuKemTheo.Any())
+                        @if (ds.DatSanDichVus != null
+                                        && ds.DatSanDichVus.Any())
                         {
-                            foreach (var dv in ds.DichVuKemTheo)
+                            foreach (var dv in ds.DatSanDichVus)
                             {
                                 <span class="dv-chip">
                                     @dv.DichVu?.TenDichVu ×@dv.SoLuong
