@@ -55,6 +55,14 @@
                         {
                             <li><a href="/Admin">Quản trị</a></li>
                         }
+                        @if (role == "Owner")
+                        {
+                            <li><a href="/Owner">Chủ sân</a></li>
+                        }
+                        @if (role == "Staff")
+                        {
+                            <li><a href="/Staff">Nhân viên</a></li>
+                        }
                     }
                 </ul>
             </div>

@@ -124,6 +124,12 @@ namespace Web_Stadium.Controllers
             var list = await SanCuaToi()
                 .Include(s => s.KhungGios)
                 .OrderByDescending(s => s.Id).ToListAsync();
+
+            ViewBag.TyLeMap = await _context.DanhMucQuans
+                .Include(q => q.VungKhuVuc)
+                .Where(q => q.VungKhuVuc != null)
+                .ToDictionaryAsync(q => q.TenQuan, q => q.VungKhuVuc!.TyLeHoaHong);
+
             return View(list);
         }
 
@@ -260,19 +266,25 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
         // ══════════════════════════════════════════════════════════
         // 4. SỬA THÔNG TIN SÂN
         // ══════════════════════════════════════════════════════════
-        public async Task<IActionResult> SuaSan(int id)
+        public async Task<IActionResult> SuaSan(int sanId)
         {
-            var san = await SanCuaToi().FirstOrDefaultAsync(s => s.Id == id);
+            var san = await SanCuaToi().FirstOrDefaultAsync(s => s.Id == sanId);
             if (san == null) return NotFound();
+
+            ViewBag.TyLeMap = await _context.DanhMucQuans
+                .Include(q => q.VungKhuVuc)
+                .Where(q => q.VungKhuVuc != null)
+                .ToDictionaryAsync(q => q.TenQuan, q => q.VungKhuVuc!.TyLeHoaHong);
+
             ViewBag.LoaiSans = await _context.DanhMucLoaiSans.Where(l => l.IsActive).ToListAsync();
             ViewBag.LoaiCos = await _context.DanhMucLoaiCos.Where(l => l.IsActive).ToListAsync();
             return View(san);
         }
 
         [HttpPost]
-        public async Task<IActionResult> SuaSan(int id, string moTa, decimal tyLeCoc, bool isHidden)
+        public async Task<IActionResult> SuaSan(int sanId, string moTa, decimal tyLeCoc, bool isHidden)
         {
-            var san = await SanCuaToi().FirstOrDefaultAsync(s => s.Id == id);
+            var san = await SanCuaToi().FirstOrDefaultAsync(s => s.Id == sanId);
             if (san == null) return NotFound();
             san.MoTa = moTa;
             san.TyLeCoc = tyLeCoc;

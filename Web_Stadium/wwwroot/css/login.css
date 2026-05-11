@@ -1,6 +1,6 @@
 ﻿/* auth-login.css (Real Madrid Style) */
 body {
-    background-color: #111111; /* Màu nền xám đen đặc trưng của trang Login RM */
+    background-color: #EDF2F7; /* Màu nền xám đen đặc trưng của trang Login RM */
     margin: 0;
     font-family: var(--ff-b, 'Plus Jakarta Sans', sans-serif);
 }
@@ -46,7 +46,7 @@ body {
     }
 
 .rm-title {
-    color: #ffffff;
+    color: #0F172A;
     font-size: 28px;
     font-weight: 600;
     text-align: center;
@@ -56,7 +56,7 @@ body {
 /* ĐƯỜNG KẺ GIỮA */
 .rm-vertical-divider {
     width: 1px;
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(15,23,42,0.10);
     margin: 40px 0;
 }
 
@@ -72,10 +72,10 @@ body {
 .rm-input {
     width: 100%;
     padding: 16px 20px;
-    background-color: #1a1a1a; /* Nền input tối */
-    border: 1px solid #333333;
+    background-color: #F8FBFD; /* Nền input tối */
+    border: 1px solid rgba(15,23,42,0.12);
     border-radius: 12px; /* Bo góc tròn như RM */
-    color: #ffffff;
+    color: #0F172A;
     font-size: 15px;
     box-sizing: border-box;
     transition: border-color 0.3s;
@@ -83,11 +83,11 @@ body {
 
     .rm-input:focus {
         outline: none;
-        border-color: #5b5bff; /* Màu xanh tím khi focus */
+        border-color: #16C47F; /* Màu xanh tím khi focus */
     }
 
     .rm-input::placeholder {
-        color: #888888;
+        color: rgba(15,23,42,0.4);
     }
 
 /* NÚT BẤM */
@@ -111,16 +111,16 @@ body {
 
 .rm-btn-primary {
     /* Nút RM dùng màu xanh tím ánh dương. Bạn có thể đổi thành var(--green) nếu muốn giữ màu xanh cũ */
-    background-color: #5b5bff;
-    color: #ffffff;
+    background-color: #16C47F;
+    color: #0F172A;
     margin-bottom: 15px;
 }
 
     .rm-btn-primary:hover {
-        background-color: #4a4ae6;
+        background-color: #119B63;
     }
 
-.rm-helper-links{
+.rm-helper-links {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -128,7 +128,7 @@ body {
     margin-bottom: 25px
 }
 
-.rm-link-text{
+.rm-link-text {
     display: flex !important;
     color: 5#5bff;
     font-size: 13.5px;
@@ -137,12 +137,12 @@ body {
     font-weight: 500
 }
 
-.rm-link-text:hover{
-    color: #7a7aff;
-    text-decoration: underline;
-}
+    .rm-link-text:hover {
+        color: #119B63;
+        text-decoration: underline;
+    }
 
-.rm-dot-divider{
+.rm-dot-divider {
     color: #444;
     font-size: 10px
 }
@@ -160,7 +160,7 @@ body {
     .rm-divider::before, .rm-divider::after {
         content: '';
         flex: 1;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        border-bottom: 1px solid rgba(15,23,42,0.10);
     }
 
     .rm-divider span {
@@ -170,12 +170,12 @@ body {
 /* NÚT SOCIAL */
 .rm-btn-outline {
     background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #ffffff;
+    border: 1px solid rgba(15,23,42,0.12);
+    color: #0F172A;
 }
 
     .rm-btn-outline:hover {
-        background-color: rgba(255, 255, 255, 0.05);
+        background-color: rgba(15,23,42,0.03);
     }
 
 .google-icon {
@@ -211,7 +211,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 20px 24px;
-    background-color: #1a1a1a;
+    background-color: #F8FBFD;
     border-radius: 12px;
     text-decoration: none;
     border: 2px solid transparent;
@@ -220,27 +220,27 @@ body {
 
     /* Thẻ Free (Nổi bật nhất - Giống Madridista xanh gradient) */
     .rm-tier-card.active {
-        background: linear-gradient(90deg, #3636b5 0%, #1a1a1a 100%);
-        border-color: #5b5bff;
+        background: linear-gradient(90deg, rgba(22,196,127,0.12) 0%, #FFFFFF 100%);
+        border-color: #16C47F;
     }
 
     /* Thẻ Premium (Màu vàng gold) */
     .rm-tier-card.premium {
-        background: linear-gradient(90deg, #3a3219 0%, #1a1a1a 100%);
+        background: linear-gradient(90deg, #fffbf0 0%, #F8FBFD 100%);
     }
 
     /* Thẻ Platinum (Màu xám/bạc) */
     .rm-tier-card.platinum {
-        background: linear-gradient(90deg, #2a2a2a 0%, #1a1a1a 100%);
+        background: linear-gradient(90deg, #f5f7fa 0%, #F8FBFD 100%);
     }
 
     .rm-tier-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(255, 255, 255, 0.2);
+        border-color: rgba(15,23,42,0.18);
     }
 
     .rm-tier-card.active:hover {
-        border-color: #7a7aff;
+        border-color: #119B63;
     }
 
 .rm-tier-info {
@@ -250,13 +250,13 @@ body {
 }
 
 .rm-tier-name {
-    color: #ffffff;
+    color: #0F172A;
     font-size: 16px;
     font-weight: 700;
 }
 
 .rm-tier-price {
-    color: #aaaaaa;
+    color: rgba(15,23,42,0.5);
     font-size: 13px;
 }
 
@@ -264,7 +264,7 @@ body {
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(15,23,42,0.07);
     display: flex;
     justify-content: center;
     align-items: center;

@@ -1,5 +1,5 @@
 ﻿@model Web_Stadium.EFCore.SanBong
-@{
+
     ViewData["Title"] = "Sửa thông tin sân";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -22,6 +22,10 @@
 </div>
 
 <div class="container py-5">
+    @{
+        var tyLeMap = ViewBag.TyLeMap as Dictionary<string, decimal> ?? new Dictionary<string, decimal>();
+        var tyLe = tyLeMap.TryGetValue(Model.Quan ?? "", out var tl) ? tl : 0.10m;
+    }
     <div class="row justify-content-center">
         <div class="col-lg-7">
 
@@ -40,7 +44,7 @@
                     <div class="col-md-6"><span style="color:var(--muted)">Khu vực:</span> @Model.Quan, @Model.ThanhPho</div>
                     <div class="col-md-6"><span style="color:var(--muted)">Loại sân:</span> @Model.LoaiSan người</div>
                     <div class="col-md-6"><span style="color:var(--muted)">Loại cỏ:</span> @Model.LoaiCo</div>
-                    <div class="col-md-6"><span style="color:var(--muted)">Hoa hồng:</span> <span style="color:var(--green);font-weight:600">@((Model.TyLeHoaHong * 100).ToString("F0"))%</span></div>
+                    <div class="col-md-6"><span style="color:var(--muted)">Hoa hồng:</span> <span style="color:var(--green);font-weight:600">@((tyLe * 100).ToString("F0"))%</span></div>
                     <div class="col-md-6">
                         <span style="color:var(--muted)">Trạng thái duyệt:</span>
                         <span style="color:@(Model.TrangThaiDuyet == "DaDuyet" ? "var(--green)" : Model.TrangThaiDuyet == "TuChoi" ? "#e74c3c" : "#f39c12");font-weight:600">

@@ -5,7 +5,7 @@
 /* ── HEADER ── */
 .details-header {
     padding: 100px 0 50px;
-    background: linear-gradient(to bottom, #0a1a0f, var(--bg));
+    background: linear-gradient(to bottom, #f0faf5, var(--bg));
     position: relative;
     overflow: hidden;
 }
@@ -18,7 +18,7 @@
         width: 300px;
         height: 300px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(30,215,96,0.08) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(22,196,127,0.08) 0%, transparent 70%);
         pointer-events: none;
     }
 
@@ -64,7 +64,7 @@
 }
 
 .gio-item {
-    background: rgba(255,255,255,0.03);
+    background: rgba(15,23,42,0.03);
     border: 1px solid var(--border);
     border-radius: var(--r);
     padding: 14px 10px;
@@ -77,10 +77,10 @@
 }
 
     .gio-item[data-status="Trong"]:hover {
-        border-color: rgba(30,215,96,0.5);
-        background: rgba(30,215,96,0.06);
+        border-color: rgba(22,196,127,0.5);
+        background: rgba(22,196,127,0.06);
         transform: translateY(-3px) scale(1.03);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.4), 0 0 20px rgba(30,215,96,0.06);
+        box-shadow: 0 8px 20px rgba(15,23,42,0.08), 0 0 20px rgba(22,196,127,0.08);
     }
 
     .gio-item[data-status="DaDat"] {
@@ -124,7 +124,7 @@
 }
 
 .s-trong {
-    background: rgba(30,215,96,0.12);
+    background: rgba(22,196,127,0.10);
     color: var(--green);
 }
 
@@ -159,17 +159,17 @@
     border-radius: 50%;
     background: var(--green);
     margin-left: auto;
-    box-shadow: 0 0 8px rgba(30,215,96,0.5);
+    box-shadow: 0 0 8px rgba(22,196,127,0.5);
     animation: pulse-dot 2s infinite;
 }
 
 @keyframes pulse-dot {
     0%,100% {
-        box-shadow: 0 0 8px rgba(30,215,96,0.5);
+        box-shadow: 0 0 8px rgba(22,196,127,0.5);
     }
 
     50% {
-        box-shadow: 0 0 16px rgba(30,215,96,0.9);
+        box-shadow: 0 0 16px rgba(22,196,127,0.8);
     }
 }
 
@@ -191,8 +191,8 @@
     width: 36px;
     height: 36px;
     border-radius: var(--r);
-    background: rgba(30,215,96,0.1);
-    border: 1px solid rgba(30,215,96,0.2);
+    background: rgba(22,196,127,0.08);
+    border: 1px solid rgba(22,196,127,0.20);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -224,7 +224,7 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.06);
+    background: rgba(15,23,42,0.06);
     border: 1px solid var(--border2);
     color: var(--text);
     font-size: 16px;
@@ -252,8 +252,8 @@
 
 /* ── BOOKING PANEL (sticky) ── */
 .booking-panel {
-    background: linear-gradient(135deg, #0a1a0f 0%, #0c120f 100%);
-    border: 1px solid rgba(30,215,96,0.1);
+    background: linear-gradient(135deg, #F0FAF6 0%, #FFFFFF 100%);
+    border: 1px solid rgba(22,196,127,0.15);
     border-radius: var(--r-lg);
     padding: 24px;
     position: sticky;
@@ -270,8 +270,8 @@
 }
 
 .selected-slot {
-    background: rgba(30,215,96,0.08);
-    border: 1px solid rgba(30,215,96,0.2);
+    background: rgba(22,196,127,0.07);
+    border: 1px solid rgba(22,196,127,0.20);
     border-radius: var(--r);
     padding: 14px;
     margin-bottom: 14px;

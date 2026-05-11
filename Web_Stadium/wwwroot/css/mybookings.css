@@ -5,7 +5,7 @@
 /* ── HEADER ── */
 .my-header {
     padding: 100px 0 50px;
-    background: linear-gradient(135deg, #0a1a0f 0%, var(--bg) 100%);
+    background: linear-gradient(135deg, #f0faf5 0%, var(--bg) 100%);
     position: relative;
     overflow: hidden;
 }
@@ -18,7 +18,7 @@
         width: 280px;
         height: 280px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(30,215,96,0.06) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(22,196,127,0.08) 0%, transparent 70%);
         pointer-events: none;
     }
 
@@ -170,7 +170,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 20px;
-    background: rgba(255,255,255,0.01);
+    background: rgba(15,23,42,0.02);
     border-top: 1px solid var(--border);
     flex-wrap: wrap;
     gap: 8px;
@@ -192,7 +192,7 @@
 .dv-chip {
     font-size: 11px;
     padding: 3px 10px;
-    background: rgba(255,255,255,0.04);
+    background: rgba(15,23,42,0.03);
     border: 1px solid var(--border2);
     border-radius: 999px;
     color: var(--muted);

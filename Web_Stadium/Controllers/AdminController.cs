@@ -320,6 +320,12 @@ namespace Web_Stadium.Controllers
                 .Include(s => s.Owner)
                 .Where(s => s.TrangThaiDuyet == "ChoDuyet")
                 .OrderBy(s => s.Id).ToListAsync();
+
+            ViewBag.TyLeMap = await _context.DanhMucQuans
+                .Include(q => q.VungKhuVuc)
+                .Where(q => q.VungKhuVuc != null)
+                .ToDictionaryAsync(q => q.TenQuan, q => q.VungKhuVuc!.TyLeHoaHong);
+
             return View(list);
         }
 

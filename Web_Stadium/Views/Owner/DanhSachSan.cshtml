@@ -41,9 +41,13 @@
         </div>
     }
 
+    @{
+        var tyLeMap = ViewBag.TyLeMap as Dictionary<string, decimal> ?? new Dictionary<string, decimal>();
+    }
     <div class="row g-4">
         @foreach (var san in Model)
         {
+            var tyLe = tyLeMap.TryGetValue(san.Quan ?? "", out var tl) ? tl : 0.10m;
             var statusColor = san.TrangThaiDuyet switch
             {
                 "DaDuyet" => "var(--green)",
@@ -74,14 +78,14 @@
                         </div>
                         <div style="text-align:right;font-size:12px">
                             <div style="color:var(--muted)">Hoa hồng</div>
-                            <div style="color:var(--green);font-weight:700">@((san.DanhMucQuans?.VungKhuVuc?.TyLeHoaHong * 100).ToString("F0"))%</div>
+                            <div style="color:var(--green);font-weight:700">@((tyLe * 100).ToString("F0"))%</div>
                             <div style="color:var(--muted);margin-top:2px">Cọc: @((san.TyLeCoc * 100).ToString("F0"))%</div>
                         </div>
                     </div>
                     <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
-                        <a href="/Owner/KhungGio/@san.Id" class="btn btn-sm btn-outline-light rounded-pill">⏰ Khung giờ (@san.KhungGios?.Count ?? 0)</a>
-                        <a href="/Owner/KhoDichVu/@san.Id" class="btn btn-sm btn-outline-light rounded-pill">💼 Dịch vụ</a>
-                        <a href="/Owner/SuaSan/@san.Id" class="btn btn-sm btn-outline-secondary rounded-pill">✏️ Sửa</a>
+                        <a href="/Owner/KhungGio?sanId=@san.Id" class="btn btn-sm btn-outline-light rounded-pill">⏰ Khung giờ (@san.KhungGios?.Count ?? 0)</a>
+                        <a href="/Owner/KhoDichVu?sanId=@san.Id" class="btn btn-sm btn-outline-light rounded-pill">💼 Dịch vụ</a>
+                        <a href="/Owner/SuaSan?sanId=@san.Id" class="btn btn-sm btn-outline-secondary rounded-pill">✏️ Sửa</a>
                     </div>
                 </div>
             </div>

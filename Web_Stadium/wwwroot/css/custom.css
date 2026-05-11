@@ -6,33 +6,78 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
 
-/* ── DESIGN TOKENS ── */
+/* ── DESIGN TOKENS — AERO TURF 2026 ── */
 :root {
-    --bg: #030504;
-    --bg2: #0a0f0d;
-    --bg3: #111a15;
-    --bg4: #1a251f;
-    --green: #1ed760;
-    --green2: #1db954;
-    --green3: #15803d;
-    --city-blue: #6caee0;
-    --red: #ef4444;
-    --yellow: #fbbf24;
-    --text: #ffffff;
-    --text2: #e5e7eb;
-    --text3: #1ed760;
-    --muted: rgba(255,255,255,0.5);
-    --muted2: rgba(255,255,255,0.2);
-    --card: #0c120f;
-    --border: rgba(255,255,255,0.05);
-    --border2: rgba(255,255,255,0.1);
-    --r: 4px;
-    --r-sm: 2px;
-    --r-lg: 8px;
-    --glow-strong: rgba(30,215,96,0.35);
-    --glow-ambient: rgba(30,215,96,0.08);
-    --depth-shadow: 0 32px 80px rgba(0,0,0,0.9), 0 8px 24px rgba(0,0,0,0.6);
-    --card-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 -1px 0 rgba(0,0,0,0.8) inset, 0 20px 60px rgba(0,0,0,0.7);
+    /* ═════════════════════════════
+       BACKGROUND SYSTEM
+       ═════════════════════════════ */
+
+    --bg: #EEF3F8;
+    --bg2: #F8FBFD;
+    --bg3: #FFFFFF;
+    --bg4: #E7EEF5;
+    /* surface elevated */
+    --surface: rgba(255,255,255,0.72);
+    --surface-strong: rgba(255,255,255,0.92);
+    /* ═════════════════════════════
+       BRAND COLORS
+       ═════════════════════════════ */
+
+    --green: #16C47F;
+    --green-hover: #19D88C;
+    --green-deep: #119B63;
+    --city-blue: #0EA5E9;
+    --city-blue-soft: #38BDF8;
+    --energy: #FF8A00;
+    --danger: #EF4444;
+    /* ═════════════════════════════
+       TEXT SYSTEM
+       ═════════════════════════════ */
+
+    --text: #0F172A;
+    --text-soft: #1E293B;
+    --text-muted: rgba(15,23,42,0.68);
+    --text-fade: rgba(15,23,42,0.42);
+    /* text on dark/image */
+    --text-light: #F8FAFC;
+    --text-light-muted: rgba(248,250,252,0.72);
+    /* ═════════════════════════════
+       BORDER SYSTEM
+       ═════════════════════════════ */
+
+    --border: rgba(15,23,42,0.06);
+    --border-strong: rgba(15,23,42,0.10);
+    /* ═════════════════════════════
+       CARD SYSTEM
+       ═════════════════════════════ */
+
+    --card: rgba(255,255,255,0.78);
+    --card-solid: #FFFFFF;
+    --glass: rgba(255,255,255,0.68);
+    /* ═════════════════════════════
+       SHADOW SYSTEM
+       ═════════════════════════════ */
+
+    --shadow-sm: 0 2px 8px rgba(15,23,42,0.04);
+    --shadow-md: 0 8px 24px rgba(15,23,42,0.06);
+    --shadow-lg: 0 20px 40px rgba(15,23,42,0.08);
+    --shadow-hover: 0 30px 60px rgba(15,23,42,0.10);
+    /* green glow */
+    --glow-green: 0 0 24px rgba(22,196,127,0.18);
+    --glow-blue: 0 0 24px rgba(14,165,233,0.14);
+    /* ═════════════════════════════
+       RADIUS
+       ═════════════════════════════ */
+
+    --r-xs: 4px;
+    --r-sm: 8px;
+    --r: 14px;
+    --r-lg: 22px;
+    --r-xl: 28px;
+    /* ═════════════════════════════
+       TYPOGRAPHY
+       ═════════════════════════════ */
+
     --ff-h: 'Oswald', sans-serif;
     --ff-b: 'Plus Jakarta Sans', sans-serif;
 }
@@ -56,8 +101,8 @@ body {
     min-height: 100vh;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
-    background-image: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(30,215,96,0.12) 0%, transparent 70%), radial-gradient(ellipse 80% 50% at 80% 100%, rgba(108,174,224,0.04) 0%, transparent 60%);
-    padding-top: 80x !important; /* Đẩy nội dung xuống dưới để tránh bị navbar che khuất */
+    background-image: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(22,196,127,0.06) 0%, transparent 70%), radial-gradient(ellipse 80% 50% at 80% 100%, rgba(14,165,233,0.04) 0%, transparent 60%);
+    padding-top: 80x !important;
 }
 
 a {
@@ -88,7 +133,7 @@ h1, h2, h3, h4 {
 
 h1 {
     font-size: clamp(2.5rem, 7vw, 5rem);
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.1 !important;
     letter-spacing: 1.2px
 }
@@ -132,11 +177,13 @@ h4 {
     top: 0;
     left: 0;
     right: 0;
-    height: 80px; /* Chiều cao cố định chuẩn Real Madrid */
-    background: #030504;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    height: 80px;
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(15,23,42,0.06);
     display: flex;
-    align-items: center; /* Căn giữa tất cả theo chiều dọc */
+    align-items: center;
     z-index: 1000;
     transition: all 0.3s ease;
 }
@@ -179,10 +226,10 @@ h4 {
 .nav-logo {
     font-family: var(--ff-h);
     font-size: 24px;
-    font-weight: 800;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 2px;
-    color: #fff;
+    color: #0F172A;
     text-decoration: none;
 }
 
@@ -213,7 +260,7 @@ h4 {
         font-weight: 600;
         font-size: 14px;
         letter-spacing: 1px;
-        color: #aaa; /* Màu xám nhẹ như ảnh Real */
+        color: rgba(15,23,42,0.72);
         text-decoration: none;
         transition: 0.3s;
         display: flex;
@@ -221,16 +268,18 @@ h4 {
         height: 100%;
     }
 
-        .nav-links a:hover, .nav-links a.active {
-            color: #fff; /* Sáng trắng khi hover */
+        .nav-links a:hover {
+            color: #0F172A;
         }
-
-/* 7. PHẦN ĐĂNG NHẬP (Làm giống nút Sign In Real Madrid) */
-.nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
+        .nav-links a.active {
+            color: #16C47F;
+        }
+        /* 7. PHẦN ĐĂNG NHẬP (Làm giống nút Sign In Real Madrid) */
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
 
     .nav-actions a {
         font-family: var(--ff-h);
@@ -268,9 +317,7 @@ h4 {
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    background-image: 
-        linear-gradient(to bottom, rgba(3, 5, 4, 0.5), rgba(3, 5, 4,1)), 
-        url('/images/backgrounds/TrongDongStadium.jpg');
+    background-image: linear-gradient(to bottom, rgba(3, 5, 4, 0.5), rgba(3, 5, 4,1)), url('/images/backgrounds/TrongDongStadium.jpg');
     background-size: cover; /* Ảnh luôn phủ kín khung */
     background-position: center; /* Lấy tâm ảnh làm chuẩn */
     background-repeat: no-repeat;
@@ -291,7 +338,16 @@ h4 {
     position: absolute;
     inset: 0;
     z-index: 1;
-    background: linear-gradient(to bottom, rgba(3,5,4,0.5) 0%, rgba(3,5,4,0.1) 40%, rgba(3,5,4,0.9) 100%), radial-gradient(ellipse at center, transparent 40%, rgba(3,5,4,0.5) 100%), radial-gradient(ellipse 70% 50% at 50% 60%, rgba(30,215,96,0.06) 0%, transparent 70%);
+    background: 
+        linear-gradient( 
+            to bottom, 
+            rgba(237,242,247,0.12) 0%, 
+            rgba(237,242,247,0.06) 30%, 
+            rgba(237,242,247,0.82) 100% ), 
+        radial-gradient( 
+            ellipse 70% 50% at 50% 60%, 
+            rgba(22,196,127,0.08) 0%, 
+            transparent 70% );
 }
 
 .hero-content {
@@ -303,16 +359,21 @@ h4 {
 }
 
     .hero-content h1 {
+        color: #F8FAFC;
         font-style: italic;
         line-height: 0.9;
         margin: 16px 0;
-        text-shadow: 0 4px 24px rgba(0,0,0,0.6);
+        text-shadow: 0 2px 16px rgba(255,255,255,0.22);
     }
 
         .hero-content h1 .highlight {
-            color: var(--green);
+            color: #16C47F;
             filter: drop-shadow(0 0 20px var(--glow-strong));
         }
+
+    .hero-content p {
+        color: rgba(248,250,252,0.78);
+    }
 
 /* Badge kiểu thể thao */
 .badge-sport {
@@ -335,8 +396,7 @@ h4 {
     justify-content: center;
     gap: 8px;
     background: var(--green);
-    color: #030504;
-    border: none;
+    color: #ffffff;
     font-family: var(--ff-h);
     font-size: 13px;
     font-weight: 700;
@@ -347,12 +407,14 @@ h4 {
     cursor: pointer;
     transition: all 0.3s;
     text-decoration: none;
+    box-shadow: 0 10px 30px rgba(22,196,127,0.22);
 }
 
     .btn-primary-glow:hover {
         background: #fff;
-        color: #030504;
-        transform: scale(1.04);
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 16px 40px rgba(22,196,127,0.28);
     }
 
 .btn-ghost-glow {
@@ -532,8 +594,8 @@ h4 {
 
     .san-card:hover {
         transform: translateY(-12px) scale(1.015);
-        border-color: rgba(30,215,96,0.3);
-        box-shadow: 0 40px 80px rgba(0,0,0,0.8), 0 0 40px rgba(30,215,96,0.08);
+        border-color: rgba(22,196,127,0.3);
+        box-shadow: 0 10px 30px rgba(15,23,42,0.06), 0 2px 10px rgba(15,23,42,0.03);
     }
 
 .card-img-top {
@@ -553,10 +615,10 @@ h4 {
     padding: 20px;
 }
 
-/* Panel tối giống Login panel phải */
+/* Panel premium kiểu mới — light surface */
 .panel-dark {
-    background: linear-gradient(135deg, #0a1a0f 0%, #111a12 100%);
-    border: 1px solid rgba(30,215,96,0.08);
+    background: linear-gradient(135deg, #f0faf5 0%, #f8fbfd 100%);
+    border: 1px solid rgba(22,196,127,0.12);
     border-radius: var(--r-lg);
     position: relative;
     overflow: hidden;
@@ -570,7 +632,7 @@ h4 {
         width: 300px;
         height: 300px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(30,215,96,0.1) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(22,196,127,0.08) 0%, transparent 70%);
         pointer-events: none;
     }
 
@@ -615,7 +677,7 @@ h4 {
     display: inline-block;
     padding: 3px 12px;
     background: linear-gradient(135deg, var(--green3), var(--green));
-    color: #030504;
+    color: #111827;
     border-radius: 999px;
     font-size: 11px;
     font-weight: 700;
@@ -746,7 +808,7 @@ h4 {
     font-weight: 700;
     color: var(--green);
     line-height: 1;
-    text-shadow: 0 0 30px rgba(30,215,96,0.3);
+    text-shadow: 0 0 20px rgba(22,196,127,0.2);
 }
 
 .stat-label {
@@ -1042,8 +1104,7 @@ h4 {
    ABOUT SECTION — Why Choose Us (Real Madrid Style)
    ══════════════════════════════════════════════════ */
 .about-section {
-    background: #030504;
-    position: relative;
+    background: linear-gradient( 180deg, #F8FBFD 0%, #EDF2F7 100% );
     padding: 100px 0;
 }
 
@@ -1299,7 +1360,8 @@ h4 {
     top: calc(100% + 8px);
     right: 0;
     min-width: 200px;
-    background: var(--bg3);
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(16px);
     border: 1px solid var(--border2);
     border-radius: var(--r-lg);
     box-shadow: var(--depth-shadow);
@@ -1394,7 +1456,8 @@ h4 {
     flex-direction: column;
     padding: 12px 24px 20px;
     border-top: 1px solid var(--border);
-    background: var(--bg2);
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(12px);
 }
 
     .mobile-menu.open {
@@ -1479,9 +1542,9 @@ h4 {
     }
 
     .feature-card:hover {
-        border-color: rgba(30,215,96,0.25);
+        border-color: rgba(22,196,127,0.25);
         transform: translateY(-10px);
-        box-shadow: 0 24px 48px rgba(0,0,0,0.6), 0 0 30px rgba(30,215,96,0.06);
+        box-shadow: 0 24px 48px rgba(15,23,42,0.10), 0 0 30px rgba(22,196,127,0.06);
     }
 
 .feature-icon {

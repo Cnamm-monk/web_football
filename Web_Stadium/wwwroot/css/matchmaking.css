@@ -5,7 +5,7 @@
 /* ── HEADER ── */
 .mm-header {
     padding: 100px 0 60px;
-    background: linear-gradient(135deg, #0a1a0f 0%, #111a12 100%);
+    background: linear-gradient(135deg, #f0faf5 0%, #f8fbfd 100%);
     position: relative;
     overflow: hidden;
 }
@@ -18,7 +18,7 @@
         width: 400px;
         height: 400px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(30,215,96,0.1) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(22,196,127,0.10) 0%, transparent 70%);
         pointer-events: none;
     }
 
@@ -51,7 +51,7 @@
         font-size: 2rem;
         font-weight: 700;
         color: var(--green);
-        text-shadow: 0 0 20px rgba(30,215,96,0.3);
+        text-shadow: 0 0 16px rgba(22,196,127,0.20);
     }
 
     .stat-mini .lbl {
@@ -98,9 +98,9 @@
     }
 
     .mm-card:hover {
-        border-color: rgba(30,215,96,0.25);
+        border-color: rgba(22,196,127,0.25);
         transform: translateY(-6px);
-        box-shadow: 0 24px 48px rgba(0,0,0,0.6), 0 0 30px rgba(30,215,96,0.06);
+        box-shadow: 0 24px 48px rgba(15,23,42,0.10), 0 0 30px rgba(22,196,127,0.06);
     }
 
 /* ── CARD HEADER ── */
@@ -165,7 +165,7 @@
     color: var(--muted);
     line-height: 1.6;
     padding: 12px;
-    background: rgba(255,255,255,0.02);
+    background: rgba(15,23,42,0.02);
     border-radius: var(--r);
     border: 1px solid var(--border);
     margin-bottom: 16px;

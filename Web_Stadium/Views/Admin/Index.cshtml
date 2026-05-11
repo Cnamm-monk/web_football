@@ -115,7 +115,7 @@
                     DOANH THU THÁNG NÀY
                 </div>
                 <div style="font-family:var(--ff-h); font-size:2.4rem; color:var(--green); margin-bottom:4px">
-                    @(((decimal)ViewBag.DoanhThuThang / 1_000_000m).ToString("F1"))M
+                    @(((decimal)(ViewBag.DoanhThuThang ?? 0m) / 1_000_000m).ToString("F1"))
                     <span style="font-size:1rem; color:var(--muted)">VND</span>
                 </div>
                 <div style="color:var(--muted2); font-size:12px; margin-bottom:20px">
