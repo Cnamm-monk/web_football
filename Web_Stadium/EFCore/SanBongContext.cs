@@ -47,6 +47,8 @@ public partial class SanBongContext : DbContext
 
     public virtual DbSet<VungKhuVuc> VungKhuVucs { get; set; }
 
+    public virtual DbSet<AnhSanBong> AnhSanBongs { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=TunKittt;Database=SanBongBTL;User Id=sa;Password=422005;TrustServerCertificate=True;");
@@ -370,6 +372,29 @@ public partial class SanBongContext : DbContext
                 .HasForeignKey(d => d.OwnerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_SanBongs_Owner");
+        });
+
+
+        modelBuilder.Entity<AnhSanBong>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("AnhSanBongs");
+
+            entity.HasIndex(e => new { e.SanBongId, e.ThuTu }, "IX_AnhSanBongs_SanBong");
+
+            entity.Property(e => e.DuongDan).HasMaxLength(1000);
+            entity.Property(e => e.LoaiAnh).HasMaxLength(20).HasDefaultValue("Upload");
+            entity.Property(e => e.MoTa).HasMaxLength(200);
+            entity.Property(e => e.NgayThem)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+
+            entity.HasOne(d => d.SanBong)
+                .WithMany(p => p.AnhSanBongs)
+                .HasForeignKey(d => d.SanBongId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_AnhSanBongs_SanBong");
         });
 
         modelBuilder.Entity<StaffSanPhanCong>(entity =>

@@ -1,11 +1,11 @@
-﻿/* ════════════════════════════════════════════════
-   mybookings.css — Lịch đặt sân của tôi
+﻿/* mybookings.css — Lịch đặt sân của tôi
+   Đồng bộ custom.css (DatSan v5.1)
    ════════════════════════════════════════════════ */
 
 /* ── HEADER ── */
 .my-header {
     padding: 100px 0 50px;
-    background: linear-gradient(135deg, #f0faf5 0%, var(--bg) 100%);
+    background: linear-gradient(135deg, #edf7f2 0%, var(--bg) 100%);
     position: relative;
     overflow: hidden;
 }
@@ -18,7 +18,7 @@
         width: 280px;
         height: 280px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(22,196,127,0.08) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(14,168,106,0.07) 0%, transparent 70%);
         pointer-events: none;
     }
 
@@ -28,20 +28,23 @@
     gap: 4px;
     margin-bottom: 28px;
     border-bottom: 1px solid var(--border);
+    overflow-x: auto;
 }
 
 .b-tab {
     font-family: var(--ff-h);
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 2px;
     text-transform: uppercase;
     padding: 10px 18px;
     cursor: pointer;
-    color: var(--muted);
+    color: var(--muted); /* ✅ */
     border-bottom: 2px solid transparent;
     transition: all 0.2s;
     text-decoration: none;
     margin-bottom: -1px;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
     .b-tab.active {
@@ -64,7 +67,7 @@
 }
 
     .booking-card:hover {
-        border-color: rgba(30,215,96,0.15);
+        border-color: rgba(14,168,106,0.18);
         transform: translateY(-2px);
     }
 
@@ -80,11 +83,10 @@
 
 .bc-code {
     font-family: var(--ff-h);
-    font-size: 18px;
+    font-size: 17px;
     letter-spacing: 2px;
     color: var(--green);
     min-width: 110px;
-    text-shadow: 0 0 16px rgba(30,215,96,0.25);
 }
 
 .bc-san {
@@ -95,12 +97,12 @@
 .bc-san-name {
     font-size: 15px;
     font-weight: 600;
-    color: var(--text);
+    color: var(--text); /* ✅ */
 }
 
 .bc-san-addr {
     font-size: 12px;
-    color: var(--muted);
+    color: var(--muted); /* ✅ */
     margin-top: 2px;
 }
 
@@ -109,33 +111,34 @@
     font-family: var(--ff-h);
     font-size: 10px;
     letter-spacing: 1.5px;
+    text-transform: uppercase;
     padding: 5px 14px;
     border-radius: 999px;
     white-space: nowrap;
 }
 
 .st-cho {
-    background: rgba(251,191,36,0.1);
+    background: rgba(251,191,36,0.10);
     color: var(--yellow);
     border: 1px solid rgba(251,191,36,0.25);
 }
 
 .st-xn {
-    background: rgba(30,215,96,0.1);
+    background: rgba(14,168,106,0.10);
     color: var(--green);
-    border: 1px solid rgba(30,215,96,0.25);
+    border: 1px solid rgba(14,168,106,0.22);
 }
 
 .st-huy {
-    background: rgba(239,68,68,0.1);
-    color: #ef4444;
+    background: rgba(239,68,68,0.10);
+    color: var(--danger);
     border: 1px solid rgba(239,68,68,0.25);
 }
 
 .st-ht {
-    background: rgba(96,165,250,0.1);
+    background: rgba(14,165,233,0.10);
     color: var(--city-blue);
-    border: 1px solid rgba(96,165,250,0.25);
+    border: 1px solid rgba(14,165,233,0.25);
 }
 
 /* ── CARD BODY ── */
@@ -148,20 +151,22 @@
 
 .bc-info-label {
     font-size: 10px;
-    color: var(--muted2);
-    letter-spacing: 1px;
+    color: var(--muted2); /* ✅ */
+    letter-spacing: 1.5px;
     text-transform: uppercase;
     margin-bottom: 4px;
+    font-family: var(--ff-h);
 }
 
 .bc-info-val {
     font-size: 13px;
-    color: var(--text2);
+    color: var(--text2); /* ✅ */
     font-weight: 500;
 }
 
     .bc-info-val.highlight {
         color: var(--green);
+        font-weight: 700;
     }
 
 /* ── CARD FOOTER ── */
@@ -170,7 +175,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 20px;
-    background: rgba(15,23,42,0.02);
+    background: var(--bg3);
     border-top: 1px solid var(--border);
     flex-wrap: wrap;
     gap: 8px;
@@ -192,10 +197,10 @@
 .dv-chip {
     font-size: 11px;
     padding: 3px 10px;
-    background: rgba(15,23,42,0.03);
+    background: var(--bg4);
     border: 1px solid var(--border2);
     border-radius: 999px;
-    color: var(--muted);
+    color: var(--muted); /* ✅ */
 }
 
 /* ── EMPTY STATE ── */
@@ -211,10 +216,6 @@
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
-    .booking-tabs {
-        overflow-x: auto;
-    }
-
     .bc-top {
         gap: 10px;
     }
@@ -230,6 +231,6 @@
     }
 
     .bc-code {
-        font-size: 15px;
+        font-size: 14px;
     }
 }

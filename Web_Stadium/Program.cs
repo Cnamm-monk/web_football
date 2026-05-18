@@ -61,6 +61,8 @@ namespace Web_Stadium
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
+            builder.Services.AddHostedService<Web_Stadium.End.MatchmakingAutoCleanupService>();
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

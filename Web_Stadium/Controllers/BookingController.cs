@@ -83,10 +83,10 @@ namespace Web_Stadium.Controllers
                 .ToList() ?? new();
 
             ViewBag.KhungGio = khungGio;
-            ViewBag.Ngay     = ngay;
-            ViewBag.TyLeCoc  = tyLeCoc;
-            ViewBag.TienCoc  = khungGio.Gia * tyLeCoc;
-            ViewBag.DichVus  = dichVus;
+            ViewBag.Ngay = ngay;
+            ViewBag.TyLeCoc = tyLeCoc;
+            ViewBag.TienCoc = khungGio.Gia * tyLeCoc;
+            ViewBag.DichVus = dichVus;
 
             return View();
         }
@@ -116,12 +116,12 @@ namespace Web_Stadium.Controllers
 
             var datSan = new DatSan
             {
-                UserId      = userId!.Value,
-                KhungGioId  = khungGioId,
-                NgayThiDau  = ngayThiDau,
-                TienCoc     = tienCoc,
-                MaXacNhan   = maDatSan,
-                TrangThai   = "DaXacNhan",   // FIX: đã xác nhận (giả định đã thanh toán)
+                UserId = userId!.Value,
+                KhungGioId = khungGioId,
+                NgayThiDau = ngayThiDau,
+                TienCoc = tienCoc,
+                MaXacNhan = maDatSan,
+                TrangThai = "DaXacNhan",   // FIX: đã xác nhận (giả định đã thanh toán)
                 ThoiGianTao = DateTime.Now
             };
             await _datSanRepo.AddAsync(datSan);
@@ -141,7 +141,7 @@ namespace Web_Stadium.Controllers
                     {
                         DatSanId = datSan.Id,
                         DichVuId = dichVuIds[i],
-                        SoLuong  = sl
+                        SoLuong = sl
                     });
 
                     // Trừ tồn kho ngay khi đặt trước
@@ -188,7 +188,19 @@ namespace Web_Stadium.Controllers
                 .ToListAsync();
 
             ViewBag.DaDanhGiaIds = daDanhGiaIds;
-            ViewBag.TrangThai    = trangThai;
+            ViewBag.TrangThai = trangThai;
+
+            // Lay cac DatSanId da co tin matchmaking dang tim
+            var datSanIds = list.Select(d => d.Id).ToList();
+            var daTim = await _context.Matchmakings
+                .Where(m => m.TrangThai == "DangTim" && datSanIds.Contains(m.DatSanId))
+                .ToListAsync();
+
+            ViewBag.DaTim = daTim.Select(m => m.DatSanId).ToHashSet();
+
+            // Map DatSanId -> MatchmakingId de nut Huy tin biet id nao can huy
+            var mmIdMap = daTim.ToDictionary(m => m.DatSanId, m => m.Id);
+            ViewBag.MmIdMap = mmIdMap;
 
             return View(list);
         }
@@ -257,10 +269,10 @@ namespace Web_Stadium.Controllers
             _context.KhieuNais.Add(new KhieuNai
             {
                 DatSanId = datSanId,
-                UserId   = userId!.Value,
-                LyDo     = lyDo,
+                UserId = userId!.Value,
+                LyDo = lyDo,
                 TrangThai = "ChoXuLy",
-                NgayGui   = DateTime.Now
+                NgayGui = DateTime.Now
             });
             await _context.SaveChangesAsync();
 

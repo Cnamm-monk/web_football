@@ -147,6 +147,20 @@ namespace Web_Stadium.Controllers
             return View();
         }
 
+        public async Task<IActionResult> XemHopDong(int sanId)
+        {
+            var san = await _context.SanBongs
+                .FirstOrDefaultAsync(s => s.Id == sanId);
+            if (san == null) return NotFound();
+            if (!san.DaKyHopDong || string.IsNullOrEmpty(san.NoiDungHopDong))
+            {
+                TempData["Error"] = "Sân chưa có nội dung hợp đồng! Vui lòng điền đầy đủ thông tin sân trước.";
+                return RedirectToAction("DanhSachSan");
+            }
+            ViewBag.San = san;
+            return View(san);
+        }
+
         // POST bước 1: lưu thông tin sân tạm, chuyển sang trang HĐ
         [HttpPost]
         public async Task<IActionResult> XemHopDong(
@@ -178,49 +192,146 @@ namespace Web_Stadium.Controllers
             var owner = await _context.Users.FindAsync(ownerId);
             var ngayKy = DateTime.Now;
 
-            var hopDong = $@"HỢP ĐỒNG HỢP TÁC SỬ DỤNG NỀN TẢNG PITCHHUB
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            var soHopDong = $"PH-{ngayKy:yyyyMMdd}-{(owner?.Id ?? 0):D4}";
+            var ngayKetThuc = ngayKy.AddYears(1);
+            var tyLeHHPct = (tyLeHH * 100).ToString("F0");
+            var tyLeBenAPct = tyLeHHPct;
+            var tyLeBenBPct = (100 - decimal.Parse(tyLeHHPct)).ToString("F0");
 
-Ngày lập hợp đồng: {ngayKy:dd/MM/yyyy HH:mm}
+            var hopDong = $@"CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập – Tự do – Hạnh phúc
 
-BÊN A (PitchHub): Công ty TNHH PitchHub Việt Nam
-BÊN B (Chủ sân): {owner?.HoTen} — {owner?.Email} — {owner?.SoDienThoai}
+HỢP ĐỒNG HỢP TÁC KINH DOANH
+Số:........./HĐHTKD
 
-ĐIỀU 1 — ĐỐI TƯỢNG HỢP ĐỒNG
-Bên B đăng ký đưa cơ sở ""{tenSan}"" tại {diaChi}, {quan}, {thanhPho}
-lên nền tảng PitchHub để tiếp cận khách hàng đặt sân trực tuyến.
-Loại sân: {loaiSan} người | Loại cỏ: {loaiCo}
-Khu vực phân vùng: {tenVung}
+Căn cứ vào Bộ Luật Dân Sự số 91/2015/QH13 ngày 24 tháng 11 năm 2015;
+Căn cứ vào Luật Thương Mại số 36/2005/QH11 ngày 14 tháng 06 năm 2005;
+Căn cứ vào tình hình thực tế và nhu cầu hợp tác của Hai bên;
+Dựa trên tinh thần trung thực và thiện chí hợp tác;
 
-ĐIỀU 2 — PHÍ HOA HỒNG
-Căn cứ vào khu vực {quan} thuộc vùng ""{tenVung}"",
-tỷ lệ hoa hồng áp dụng là {tyLeHH:P0} tính trên doanh thu thực phát sinh:
-  - Kịch bản A (khách hủy sân): Hoa hồng = Tiền cọc × {tyLeHH:P0}
-  - Kịch bản B (khách đến đá đủ): Hoa hồng = Tổng tiền × {tyLeHH:P0}
-Thanh toán định kỳ hàng tháng, chậm nhất ngày 10 tháng kế tiếp.
+Chúng tôi gồm có:
 
-ĐIỀU 3 — QUYỀN VÀ NGHĨA VỤ BÊN B
-- Cung cấp thông tin sân trung thực, đầy đủ và cập nhật kịp thời.
-- Đảm bảo chất lượng dịch vụ phù hợp với mô tả trên hệ thống.
-- Không hủy đặt sân của khách hàng quá 3 lần/tháng.
-- Thực hiện đúng chính sách hoàn cọc theo quy định PitchHub.
+BÊN A (Đơn vị vận hành nền tảng):
+  Tên đơn vị    : Công ty TNHH PitchHub Việt Nam
+  Địa chỉ       : Thành phố Hồ Chí Minh, Việt Nam
+  Đại diện      : Giám đốc điều hành PitchHub
+  Email         : contact@pitchhub.vn
+  Điện thoại    : 1800-PITCH
+  (Sau đây gọi tắt là Bên A)
 
-ĐIỀU 4 — QUYỀN VÀ NGHĨA VỤ BÊN A
-- Cung cấp nền tảng ổn định, hỗ trợ kỹ thuật 24/7.
-- Quảng bá sân đến khách hàng trên toàn hệ thống.
-- Thanh toán phần doanh thu sau khi trừ hoa hồng đúng hạn.
+VÀ
 
-ĐIỀU 5 — THỜI HẠN
-Hợp đồng có hiệu lực 12 tháng kể từ ngày Admin phê duyệt.
-Tự động gia hạn thêm 12 tháng nếu không có thông báo chấm dứt trước 30 ngày.
+BÊN B (Chủ sân bóng):
+  Họ và tên     : {owner?.HoTen ?? "..."}
+  Địa chỉ       : {diaChi}, {quan}, {thanhPho}
+  Điện thoại    : {owner?.SoDienThoai ?? "..."}
+  Email         : {owner?.Email ?? "..."}
+  (Sau đây gọi tắt là Bên B)
 
-ĐIỀU 6 — CHẤM DỨT HỢP ĐỒNG
-Một trong hai bên có thể chấm dứt bằng văn bản/email thông báo trước 30 ngày.
-PitchHub có quyền chấm dứt ngay lập tức nếu Bên B vi phạm Điều 3.
+Cùng thỏa thuận ký hợp đồng hợp tác kinh doanh với những điều khoản sau:
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Hợp đồng được lập điện tử, có giá trị pháp lý tương đương hợp đồng giấy.
-Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều khoản trên.";
+Điều 1. MỤC TIÊU VÀ PHẠM VI HỢP TÁC
+
+1.1. Mục tiêu hợp tác
+Bên A và Bên B nhất trí hợp tác kinh doanh, điều hành và chia sẻ lợi nhuận 
+từ hoạt động cho thuê sân bóng thông qua nền tảng trực tuyến PitchHub.
+
+1.2. Phạm vi hợp tác
+Bên B đăng ký đưa cơ sở thể thao ""{tenSan}"" lên hệ thống PitchHub:
+  - Địa chỉ sân : {diaChi}, {quan}, {thanhPho}
+  - Loại sân    : Sân {loaiSan} người
+  - Loại cỏ     : {loaiCo}
+  - Khu vực     : {tenVung}
+
+Phạm vi Bên A: Vận hành nền tảng đặt sân, tiếp thị, hỗ trợ thanh toán.
+Phạm vi Bên B: Quản lý, vận hành cơ sở vật chất và dịch vụ tại sân.
+
+Điều 2. THỜI HẠN HỢP ĐỒNG
+
+Thời hạn hợp đồng: 1 năm (12 tháng) kể từ ngày ký.
+  - Bắt đầu : {ngayKy:dd/MM/yyyy}
+  - Kết thúc : {ngayKetThuc:dd/MM/yyyy}
+
+Gia hạn hợp đồng: Hết thời hạn trên, hai bên có thể thỏa thuận gia hạn 
+thêm 12 tháng hoặc ký hợp đồng mới. Nếu không có thông báo chấm dứt 
+trước 30 ngày, hợp đồng tự động gia hạn.
+
+Điều 3. PHÍ HOA HỒNG VÀ PHÂN CHIA LỢI NHUẬN
+
+3.1. Tỷ lệ hoa hồng
+Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
+  - Bên A (PitchHub) được hưởng : {tyLeBenAPct}% trên doanh thu thực phát sinh
+  - Bên B (Chủ sân)  được hưởng : {tyLeBenBPct}% trên doanh thu thực phát sinh
+
+3.2. Phương thức tính
+  - Khách hủy đặt sân : Hoa hồng Bên A = Tiền cọc đã thu × {tyLeBenAPct}%
+                        Bên B nhận = Tiền cọc - Hoa hồng Bên A
+  - Khách sử dụng đủ  : Hoa hồng Bên A = Tổng tiền thuê sân × {tyLeBenAPct}%
+                        Bên B nhận = Tổng tiền thuê sân - Hoa hồng Bên A
+
+3.3. Thanh toán
+Định kỳ hàng tháng, chậm nhất ngày 10 tháng kế tiếp qua chuyển khoản ngân hàng.
+
+Điều 4. CÁC NGUYÊN TẮC TÀI CHÍNH
+
+4.1. Hai bên tuân thủ nguyên tắc tài chính kế toán theo quy định pháp luật 
+     Cộng hoà xã hội chủ nghĩa Việt Nam.
+4.2. Mọi khoản thu chi đều được ghi chép rõ ràng, đầy đủ, xác thực.
+4.3. Hệ thống PitchHub ghi nhận tự động toàn bộ giao dịch đặt sân.
+
+Điều 5. QUYỀN VÀ NGHĨA VỤ CỦA BÊN A
+
+5.1. Quyền của Bên A
+  - Được hưởng {tyLeBenAPct}% hoa hồng theo Điều 3.
+  - Tạm ngưng hoặc gỡ sân khỏi hệ thống nếu Bên B vi phạm các điều khoản.
+  - Điều chỉnh tỷ lệ hoa hồng sau khi thông báo trước 30 ngày.
+
+5.2. Nghĩa vụ của Bên A
+  - Cung cấp nền tảng đặt sân ổn định, hỗ trợ kỹ thuật 24/7.
+  - Quảng bá sân đến khách hàng trên toàn hệ thống.
+  - Thanh toán phần doanh thu sau khi trừ hoa hồng đúng hạn quy định.
+  - Bảo mật thông tin kinh doanh của Bên B.
+
+Điều 6. QUYỀN VÀ NGHĨA VỤ CỦA BÊN B
+
+6.1. Quyền của Bên B
+  - Được hưởng {tyLeBenBPct}% doanh thu sau khi trừ hoa hồng.
+  - Tự quản lý lịch đặt sân, khung giờ và giá thuê trên hệ thống.
+  - Yêu cầu hỗ trợ kỹ thuật từ Bên A khi cần thiết.
+
+6.2. Nghĩa vụ của Bên B
+  - Cung cấp thông tin sân trung thực, đầy đủ và cập nhật kịp thời.
+  - Đảm bảo chất lượng cơ sở vật chất phù hợp với mô tả trên hệ thống.
+  - Không hủy đặt sân của khách hàng quá 3 lần/tháng không có lý do.
+  - Thực hiện đúng chính sách hoàn cọc theo quy định của PitchHub.
+  - Không tự ý liên hệ khách hàng để giao dịch ngoài hệ thống.
+
+Điều 7. ĐIỀU KHOẢN CHUNG
+
+7.1. Hợp đồng chịu sự điều chỉnh của pháp luật Cộng hoà xã hội chủ nghĩa Việt Nam.
+7.2. Bên vi phạm gây thiệt hại phải bồi thường toàn bộ và chịu phạt 8% 
+     giá trị hợp đồng bị vi phạm (trừ trường hợp bất khả kháng).
+7.3. Trong quá trình thực hiện, bên có khó khăn phải thông báo cho bên 
+     kia trong vòng 30 ngày.
+7.4. Mọi sửa đổi, bổ sung phải bằng văn bản và có chữ ký của hai bên.
+7.5. Tranh chấp được giải quyết qua thương lượng, hoà giải; nếu không 
+     thành sẽ giải quyết tại Toà án có thẩm quyền.
+
+Điều 8. HIỆU LỰC HỢP ĐỒNG
+
+8.1. Hợp đồng chấm dứt khi hết thời hạn tại Điều 2 hoặc theo quy định pháp luật.
+     Khi kết thúc, hai bên lập biên bản thanh lý hợp đồng.
+8.2. Hợp đồng được lập điện tử 02 (hai) bản bằng tiếng Việt, mỗi bên 
+     giữ 01 (một) bản có giá trị pháp lý như nhau.
+8.3. Hợp đồng có hiệu lực kể từ ngày được Admin PitchHub phê duyệt.
+
+                    {thanhPho}, ngày {ngayKy:dd} tháng {ngayKy:MM} năm {ngayKy:yyyy}
+
+        ĐẠI DIỆN BÊN A                    ĐẠI DIỆN BÊN B
+   (Ký, ghi rõ họ tên, đóng dấu)      (Ký, ghi rõ họ tên)
+
+   Công ty TNHH PitchHub                  {owner?.HoTen ?? "..."}
+   Giám đốc điều hành                     Chủ sân {tenSan}";
 
             TempData["HopDong"] = hopDong;
             return View();
@@ -602,8 +713,8 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
 
             ViewBag.Data = data;
             ViewBag.TieuDe = tieuDe;
-            ViewBag.TongThuThuan = data.Sum(d => ((dynamic)d).thuThuan);
-            ViewBag.TongLuot = data.Sum(d => (int)((dynamic)d).soLuot);
+            ViewBag.TongThuThuan = (double)data.Sum(d => (double)((dynamic)d).thuThuan);
+            ViewBag.TongLuot = (int)data.Sum(d => (double)((dynamic)d).soLuot);
 
             // Tỷ lệ lấp đầy từng sân
             ViewBag.TyLeLapDay = await SanCuaToi()
@@ -651,5 +762,165 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
                 soLuot = rows.Count
             };
         }
+        // ══════════════════════════════════════════════════════════
+        // QUAN LY ANH SAN
+        // ══════════════════════════════════════════════════════════
+
+        // GET /Owner/QuanLyAnh?sanId=1
+        public async Task<IActionResult> QuanLyAnh(int sanId)
+        {
+            var san = await SanCuaToi()
+                .Include(s => s.AnhSanBongs.Where(a => a.IsActive).OrderBy(a => a.ThuTu))
+                .FirstOrDefaultAsync(s => s.Id == sanId);
+            if (san == null) return NotFound();
+            ViewBag.San = san;
+            return View(san.AnhSanBongs.ToList());
+        }
+
+        // POST /Owner/ThemAnhURL — them anh tu URL
+        [HttpPost]
+        public async Task<IActionResult> ThemAnhURL(int sanId, string duongDan, string? moTa)
+        {
+            var san = await SanCuaToi().FirstOrDefaultAsync(s => s.Id == sanId);
+            if (san == null) return NotFound();
+
+            if (string.IsNullOrWhiteSpace(duongDan))
+            {
+                TempData["Error"] = "Vui lòng nhập đường dẫn ảnh!";
+                return RedirectToAction("QuanLyAnh", new { sanId });
+            }
+
+            // Kiem tra URL hop le
+            if (!Uri.TryCreate(duongDan, UriKind.Absolute, out _) &&
+                !duongDan.StartsWith("/"))
+            {
+                TempData["Error"] = "Đường dẫn không hợp lệ. Vui lòng nhập URL đầy đủ (https://...) hoặc đường dẫn /images/...";
+                return RedirectToAction("QuanLyAnh", new { sanId });
+            }
+
+            // So thu tu
+            var thuTu = await _context.AnhSanBongs
+                .Where(a => a.SanBongId == sanId && a.IsActive)
+                .MaxAsync(a => (int?)a.ThuTu) ?? 0;
+
+            _context.AnhSanBongs.Add(new AnhSanBong
+            {
+                SanBongId = sanId,
+                DuongDan = duongDan.Trim(),
+                LoaiAnh = duongDan.StartsWith("http") ? "URL" : "Upload",
+                MoTa = moTa,
+                ThuTu = thuTu + 1,
+                NgayThem = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Đã thêm ảnh thành công!";
+            return RedirectToAction("QuanLyAnh", new { sanId });
+        }
+
+        // POST /Owner/ThemAnhFile — upload file tu may
+        [HttpPost]
+        public async Task<IActionResult> ThemAnhFile(int sanId, IFormFile file, string? moTa)
+        {
+            var san = await SanCuaToi().FirstOrDefaultAsync(s => s.Id == sanId);
+            if (san == null) return NotFound();
+
+            if (file == null || file.Length == 0)
+            {
+                TempData["Error"] = "Vui lòng chọn file ảnh!";
+                return RedirectToAction("QuanLyAnh", new { sanId });
+            }
+
+            // Chi cho phep anh
+            var ext = Path.GetExtension(file.FileName).ToLower();
+            var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            if (!allowedExt.Contains(ext))
+            {
+                TempData["Error"] = "Chỉ chấp nhận file .jpg, .jpeg, .png, .webp";
+                return RedirectToAction("QuanLyAnh", new { sanId });
+            }
+
+            // Gioi han 10MB
+            if (file.Length > 10 * 1024 * 1024)
+            {
+                TempData["Error"] = "File quá lớn. Tối đa 10MB.";
+                return RedirectToAction("QuanLyAnh", new { sanId });
+            }
+
+            // Luu vao wwwroot/images/san/{sanId}/
+            var folder = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot", "images", "san", sanId.ToString());
+            Directory.CreateDirectory(folder);
+
+            var fileName = $"{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(folder, fileName);
+            var duongDan = $"/images/san/{sanId}/{fileName}";
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+                await file.CopyToAsync(stream);
+
+            // So thu tu
+            var thuTu = await _context.AnhSanBongs
+                .Where(a => a.SanBongId == sanId && a.IsActive)
+                .MaxAsync(a => (int?)a.ThuTu) ?? 0;
+
+            _context.AnhSanBongs.Add(new AnhSanBong
+            {
+                SanBongId = sanId,
+                DuongDan = duongDan,
+                LoaiAnh = "Upload",
+                MoTa = moTa,
+                ThuTu = thuTu + 1,
+                NgayThem = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Đã upload ảnh '{file.FileName}' thành công!";
+            return RedirectToAction("QuanLyAnh", new { sanId });
+        }
+
+        // POST /Owner/XoaAnh
+        [HttpPost]
+        public async Task<IActionResult> XoaAnh(int anhId, int sanId)
+        {
+            var anh = await _context.AnhSanBongs
+                .Include(a => a.SanBong)
+                .FirstOrDefaultAsync(a => a.Id == anhId && a.SanBong.OwnerId == GetOwnerId());
+            if (anh == null) return NotFound();
+
+            // Neu la file upload thi xoa file luon
+            if (anh.LoaiAnh == "Upload" && anh.DuongDan.StartsWith("/images/"))
+            {
+                var filePath = Path.Combine(
+                    Directory.GetCurrentDirectory(), "wwwroot",
+                    anh.DuongDan.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                if (System.IO.File.Exists(filePath))
+                    System.IO.File.Delete(filePath);
+            }
+
+            anh.IsActive = false;
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Đã xóa ảnh!";
+            return RedirectToAction("QuanLyAnh", new { sanId });
+        }
+
+        // POST /Owner/DoiThuTuAnh
+        [HttpPost]
+        public async Task<IActionResult> DoiThuTuAnh(int sanId, int[] anhIds)
+        {
+            var anhList = await _context.AnhSanBongs
+                .Include(a => a.SanBong)
+                .Where(a => a.SanBong.OwnerId == GetOwnerId() && a.SanBongId == sanId)
+                .ToListAsync();
+
+            for (int i = 0; i < anhIds.Length; i++)
+            {
+                var anh = anhList.FirstOrDefault(a => a.Id == anhIds[i]);
+                if (anh != null) anh.ThuTu = i + 1;
+            }
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true });
+        }
+
+
     }
 }

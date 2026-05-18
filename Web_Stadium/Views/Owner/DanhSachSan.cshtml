@@ -17,12 +17,12 @@
     </div>
 </div>
 <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap">
-        <a href="/Owner" class="btn btn-sm btn-outline-light rounded-pill">📊 Tổng quan</a>
-        <a href="/Owner/DanhSachSan" class="btn btn-sm btn-success rounded-pill">🏟️ Danh sách sân</a>
-        <a href="/Owner/DangKySan" class="btn btn-sm btn-outline-warning rounded-pill">➕ Đăng ký sân mới</a>
-        <a href="/Owner/QuanLyStaff" class="btn btn-sm btn-outline-info rounded-pill">👷 Nhân viên</a>
-        <a href="/Owner/BaoCao" class="btn btn-sm btn-outline-light rounded-pill">📈 Báo cáo</a>
+    <div class="container d-flex gap-2 flex-wrap justify-content-center">
+        <a href="/Owner" class="btn btn-outline-success rounded-pill">📊 Tổng quan</a>
+        <a href="/Owner/DanhSachSan" class="btn btn-outline-green rounded-pill">🏟️ Danh sách sân</a>
+        <a href="/Owner/DangKySan" class="btn btn-outline-warning rounded-pill">➕ Đăng ký sân mới</a>
+        <a href="/Owner/QuanLyStaff" class="btn btn-outline-info rounded-pill">👷 Nhân viên</a>
+        <a href="/Owner/BaoCao" class="btn btn-outline-primary rounded-pill">📈 Báo cáo</a>
     </div>
 </div>
 
@@ -83,8 +83,10 @@
                         </div>
                     </div>
                     <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
-                        <a href="/Owner/KhungGio?sanId=@san.Id" class="btn btn-sm btn-outline-light rounded-pill">⏰ Khung giờ (@san.KhungGios?.Count ?? 0)</a>
-                        <a href="/Owner/KhoDichVu?sanId=@san.Id" class="btn btn-sm btn-outline-light rounded-pill">💼 Dịch vụ</a>
+                        <a href="/Owner/KhungGio?sanId=@san.Id" class="btn btn-sm btn-outline-dark rounded-pill">⏰ Khung giờ</a>
+                        <a href="/Owner/KhoDichVu?sanId=@san.Id" class="btn btn-sm btn-outline-secondary rounded-pill">💼 Dịch vụ</a>
+                        <a href="/Owner/XemHopDong?sanId=@san.Id" class="btn btn-sm btn-outline-danger rounded-pill">📄 Xem hợp đồng</a>
+                        <a href="/Owner/QuanLyAnh?sanId=@san.Id" class="btn btn-sm btn-outline-primary rounded-pill">📸 Quản lý ảnh</a>
                         <a href="/Owner/SuaSan?sanId=@san.Id" class="btn btn-sm btn-outline-secondary rounded-pill">✏️ Sửa</a>
                     </div>
                 </div>

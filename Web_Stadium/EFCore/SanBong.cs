@@ -52,4 +52,7 @@ public partial class SanBong
     public virtual User Owner { get; set; } = null!;
 
     public virtual ICollection<StaffSanPhanCong> StaffSanPhanCongs { get; set; } = new List<StaffSanPhanCong>();
+
+    // Anh san do Owner upload
+    public virtual ICollection<AnhSanBong> AnhSanBongs { get; set; } = new List<AnhSanBong>();
 }

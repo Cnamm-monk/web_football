@@ -99,6 +99,13 @@ namespace Web_Stadium.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            // Anh san do Owner upload
+            var anhSanBongs = await _context.AnhSanBongs
+                .Where(a => a.SanBongId == id && a.IsActive)
+                .OrderBy(a => a.ThuTu)
+                .ToListAsync();
+            ViewBag.AnhSanBongs = anhSanBongs;
+
             // FIX 3: Chỉ lấy dịch vụ còn tồn kho của sân này
             ViewBag.DichVus = sanBong.DichVus
                 .Where(d => d.IsActive && d.TonKho > 0)

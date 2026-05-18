@@ -1,18 +1,18 @@
-﻿/* auth-register.css - ĐỒNG BỘ 100% VỚI LOGIN VÀ CSHTML MỚI */
+﻿/* register.css — đồng bộ với custom.css (DatSan v5.1) */
+
 body {
-    background-color: #EDF2F7;
-    margin: 0;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    padding-top: 0 !important;
 }
 
-/* CONTAINER TỔNG */
+/* ── WRAP ── */
 .rm-auth-wrap {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    padding: 75px 20px 40px 20px;
+    padding: 60px 20px 40px;
     box-sizing: border-box;
+    background: var(--bg);
 }
 
 .rm-auth-container {
@@ -22,7 +22,7 @@ body {
     background: transparent;
 }
 
-/* CHIA CỘT */
+/* ── HAI CỘT ── */
 .rm-auth-side {
     flex: 1;
     padding: 20px 40px;
@@ -33,36 +33,40 @@ body {
 
 .rm-vertical-divider {
     width: 1px;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--border2);
     margin: 40px 0;
 }
 
-/* LOGO & TITLE */
+/* ── LOGO & TITLE ── */
 .rm-logo {
-    font-family: 'Oswald', sans-serif;
+    font-family: var(--ff-h);
     font-size: 42px;
     font-weight: 800;
-    color: #FFFFFF;
+    color: var(--text); /* ✅ tối nổi trên nền sáng */
     text-decoration: none;
     text-align: center;
     margin-bottom: 5px;
     display: block;
+    text-transform: uppercase;
+    letter-spacing: 2px;
 }
 
     .rm-logo span {
-        color: #1ed760;
+        color: var(--green);
     }
 
 .rm-title {
-    color: #0F172A;
-    font-size: 24px;
-    font-weight: 600;
+    color: var(--text); /* ✅ */
+    font-family: var(--ff-h);
+    font-size: 20px;
+    font-weight: 700;
     text-align: center;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
     text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
-/* FORM ELEMENTS */
+/* ── FORM ── */
 .rm-row {
     display: flex;
     gap: 12px;
@@ -76,29 +80,35 @@ body {
 .rm-input {
     width: 100%;
     padding: 14px 18px;
-    background-color: #F8FBFD;
-    border: 1px solid rgba(15,23,42,0.12);
-    border-radius: 12px;
-    color: #FFFFFF;
+    background-color: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    color: var(--text); /* ✅ */
+    font-family: var(--ff-b);
     font-size: 14px;
     box-sizing: border-box;
-    transition: 0.3s;
+    transition: border-color 0.25s, background 0.25s;
+    outline: none;
 }
 
     .rm-input:focus {
-        outline: none;
-        border-color: #16C47F;
-        background-color: #222;
+        border-color: rgba(14,168,106,0.45);
+        background: rgba(14,168,106,0.04);
     }
 
-/* ROLE SELECTION */
+    .rm-input::placeholder {
+        color: var(--muted2);
+    }
+
+/* ── ROLE SELECTION ── */
 .rm-label-small {
-    color: rgba(15,23,42,0.45);
-    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--ff-h);
+    font-size: 10px;
     text-transform: uppercase;
+    letter-spacing: 1.5px;
     margin-bottom: 8px;
     display: block;
-    letter-spacing: 1px;
 }
 
 .rm-role-group {
@@ -110,272 +120,230 @@ body {
 .rm-role-btn {
     flex: 1;
     padding: 10px 5px;
-    background: #F8FBFD;
-    border: 1px solid rgba(15,23,42,0.12);
-    border-radius: 10px;
-    color: rgba(15,23,42,0.55);
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    color: var(--muted); /* ✅ */
     text-align: center;
     cursor: pointer;
+    font-family: var(--ff-b);
     font-size: 12px;
-    transition: 0.3s;
+    font-weight: 600;
+    transition: all 0.2s;
 }
 
     .rm-role-btn.active {
-        background: #16C47F;
-        color: #FFFFFF;
-        border-color: #16C47F;
+        background: var(--green);
+        color: #ffffff;
+        border-color: var(--green);
     }
 
-/* BUTTONS */
+    .rm-role-btn:hover:not(.active) {
+        border-color: rgba(14,168,106,0.35);
+        color: var(--text2);
+    }
+
+/* ── BUTTONS ── */
 .rm-btn {
     width: 100%;
-    padding: 16px;
-    border-radius: 12px;
+    padding: 14px 16px;
+    border-radius: var(--r);
+    font-family: var(--ff-h);
     font-size: 14px;
     font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
     cursor: pointer;
     border: none;
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 10px;
-    transition: 0.3s;
-    text-transform: uppercase;
+    transition: all 0.25s;
     text-decoration: none;
+    box-sizing: border-box;
 }
 
 .rm-btn-primary {
-    background-color: #16C47F;
-    color: #FFFFFF;
+    background-color: var(--green);
+    color: #ffffff;
     margin-bottom: 12px;
+    box-shadow: 0 8px 24px rgba(14,168,106,0.22);
 }
 
     .rm-btn-primary:hover {
-        background-color: #119B63;
+        background-color: var(--green-deep);
+        transform: translateY(-2px);
+        box-shadow: 0 14px 32px rgba(14,168,106,0.28);
     }
 
 .rm-btn-outline {
-    background: transparent;
-    border: 1px solid rgba(15,23,42,0.12);
-    color: #FFFFFF;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text); /* ✅ */
     margin-bottom: 15px;
 }
 
     .rm-btn-outline:hover {
-        background: rgba(255,255,255,0.05);
+        background: var(--bg4);
+        border-color: var(--border-strong);
     }
 
-/* DIVIDER & HELPER */
+/* ── DIVIDER ── */
 .rm-divider {
     display: flex;
     align-items: center;
     text-align: center;
-    color: rgba(15,23,42,0.35);
-    font-size: 12px;
-    margin: 15px 0;
+    color: var(--muted);
+    font-family: var(--ff-h);
+    font-size: 11px;
+    letter-spacing: 2px;
+    margin: 14px 0;
 }
 
-    .rm-divider::before, .rm-divider::after {
+    .rm-divider::before,
+    .rm-divider::after {
         content: '';
         flex: 1;
-        border-bottom: 1px solid rgba(15,23,42,0.10);
+        border-bottom: 1px solid var(--border2);
     }
 
     .rm-divider span {
-        padding: 0 10px;
+        padding: 0 12px;
     }
 
+/* ── HELPER LINKS ── */
 .rm-helper-links {
     display: flex;
     justify-content: center;
     gap: 8px;
     font-size: 13px;
+    color: var(--muted);
 }
 
 .rm-link-text {
-    color: #16C47F;
+    color: var(--green);
     text-decoration: none;
     font-weight: 600;
+    transition: opacity 0.2s;
 }
 
-/* auth-register.css - HIỆU CHỈNH BÊN PHẢI (STEPS & QUOTE) */
-
-.rm-steps-container {
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* Tăng khoảng cách một chút cho thoáng */
-    margin-bottom: 30px;
-}
-
-.rm-step-card {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 20px;
-    /* Làm nền sáng hơn một chút để không bị chìm */
-    background: rgba(15,23,42,0.03);
-    border: 1px solid rgba(15,23,42,0.08);
-    border-radius: 14px;
-    transition: all 0.3s ease;
-}
-
-    .rm-step-card:hover {
-        /* Hiệu ứng sáng viền màu xanh tím giống Login RM */
-        border-color: #16C47F;
-        background: rgba(22,196,127,0.06);
-        transform: translateX(8px); /* Nhích nhẹ sang phải khi hover */
+    .rm-link-text:hover {
+        opacity: 0.75;
     }
 
-.step-badge {
-    width: 36px;
-    height: 36px;
-    background: #16C47F;
-    color: #FFFFFF;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(22,196,127,0.3);
-}
-
-.step-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.step-name {
-    color: #0F172A;
-    font-weight: 700;
-    font-size: 15px;
-    letter-spacing: 0.5px;
-}
-
-.step-sub {
-    color: rgba(15,23,42,0.45); /* Sáng hơn màu #777 cũ một chút */
-    font-size: 12.5px;
-    line-height: 1.4;
-}
-
-/* HIỆU CHỈNH KHỐI TRÍCH DẪN (QUOTE) */
+/* ── STEP CARDS (cột phải) ── */
 .rm-steps-container {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    margin-bottom: 30px;
+    gap: 14px;
+    margin-bottom: 28px;
 }
 
-/* 1. DÁN ĐÈ TỪ ĐÂY */
 .rm-step-card {
     display: flex;
     align-items: center;
-    gap: 20px;
-    padding: 24px;
-    background: rgba(22,196,127,0.04); /* Nền xanh tím cực nhẹ */
-    border: 1px solid rgba(22,196,127,0.18); /* Viền mờ */
-    border-radius: 16px;
-    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    gap: 18px;
+    padding: 20px;
+    background: rgba(14,168,106,0.04);
+    border: 1px solid rgba(14,168,106,0.14);
+    border-radius: var(--r);
+    transition: all 0.35s cubic-bezier(0.25,0.8,0.25,1);
     position: relative;
     overflow: hidden;
     cursor: default;
 }
 
-    /* Thêm mới phần hiệu ứng tia sáng */
     .rm-step-card::before {
-        content: "";
+        content: '';
         position: absolute;
         top: 0;
         left: -100%;
         width: 100%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(22,196,127,0.10), transparent);
+        background: linear-gradient(90deg, transparent, rgba(14,168,106,0.08), transparent);
         transition: 0.6s;
     }
 
     .rm-step-card:hover {
-        background: rgba(15,23,42,0.05);
-        border-color: #16C47F;
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(22,196,127,0.20); /*Đổ bóng màu xanh lá*/
+        border-color: var(--green);
+        background: rgba(14,168,106,0.07);
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-md), 0 0 18px rgba(14,168,106,0.10);
     }
 
         .rm-step-card:hover::before {
             left: 100%;
         }
 
-/* 2. DÁN ĐÈ PHẦN SỐ (BADGE) */
 .step-badge {
-    width: 42px;
-    height: 42px;
-    background: linear-gradient(135deg, #16C47F 0%, #119B63 100%);
-    color: #FFFFFF;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--green) 0%, var(--green-deep) 100%);
+    color: #ffffff;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-family: var(--ff-h);
     font-weight: 800;
-    font-size: 18px;
+    font-size: 17px;
     flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(22,196,127,0.3);
-    transition: transform 0.3s ease;
+    box-shadow: 0 4px 12px rgba(14,168,106,0.28);
+    transition: transform 0.3s;
 }
 
 .rm-step-card:hover .step-badge {
-    transform: rotate(10deg) scale(1.1);
+    transform: rotate(8deg) scale(1.1);
 }
 
-/* 3. CẬP NHẬT THÔNG TIN CHỮ */
 .step-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
 }
 
 .step-name {
-    color: #0F172A;
+    color: var(--text); /* ✅ */
+    font-family: var(--ff-b);
     font-weight: 700;
-    font-size: 16px;
-    margin-bottom: 4px;
-    letter-spacing: 0.5px;
+    font-size: 15px;
+    letter-spacing: 0.3px;
 }
 
 .step-sub {
-    color: rgba(15,23,42,0.5);
-    font-size: 13px;
+    color: var(--muted); /* ✅ */
+    font-size: 12.5px;
     line-height: 1.5;
 }
 
+/* ── QUOTE BOX ── */
 .rm-quote-box {
-    /* Tạo gradient từ đen sang xanh đậm rất nhẹ */
-    background: linear-gradient(135deg, rgba(22,196,127,0.04) 0%, rgba(14,165,233,0.03) 100%);
-    padding: 24px;
-    border-radius: 16px;
-    border: 1px solid rgba(15,23,42,0.06);
+    background: linear-gradient(135deg, rgba(14,168,106,0.04) 0%, rgba(14,165,233,0.03) 100%);
+    padding: 22px 22px 22px 28px;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
     position: relative;
     overflow: hidden;
 }
 
-    /* Thêm vệt xanh lá đặc trưng RM làm điểm nhấn */
     .rm-quote-box::before {
-        content: "";
+        content: '';
         position: absolute;
         left: 0;
         top: 20%;
         height: 60%;
         width: 4px;
-        background: #1ed760;
+        background: var(--green);
         border-radius: 0 4px 4px 0;
     }
 
     .rm-quote-box p {
-        color: #1E293B;
+        color: var(--text2); /* ✅ */
         font-style: italic;
-        font-size: 14px;
-        line-height: 1.6;
-        margin-bottom: 20px;
-        position: relative;
+        font-size: 13.5px;
+        line-height: 1.65;
+        margin-bottom: 18px;
     }
 
 .quote-user {
@@ -385,44 +353,51 @@ body {
 }
 
 .user-avt {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, #1ed760, #169c46);
-    color: #000;
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, var(--green), var(--green-deep));
+    color: #ffffff;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-family: var(--ff-h);
     font-weight: 800;
     font-size: 14px;
-    box-shadow: 0 4px 10px rgba(30, 215, 96, 0.2);
+    box-shadow: 0 4px 10px rgba(14,168,106,0.22);
+    flex-shrink: 0;
 }
 
 .quote-user strong {
-    color: #FFFFFF;
-    font-size: 14px;
+    color: var(--text); /* ✅ */
+    font-size: 13px;
     display: block;
 }
 
 .quote-user span {
-    color: #777;
+    color: var(--muted); /* ✅ */
     font-size: 12px;
 }
 
-/* ĐỒNG BỘ GOOGLE ICON */
+/* ── GOOGLE ICON ── */
 .google-icon {
     width: 18px;
     height: 18px;
+    border-radius: 50%;
+    background: conic-gradient(from -45deg, #ea4335 110deg, #4285f4 90deg 180deg, #34a853 180deg 270deg, #fbbc05 270deg) 73% 55%/150% 150% no-repeat;
     flex-shrink: 0;
 }
-/* RESPONSIVE */
+
+/* ── RESPONSIVE ── */
 @media (max-width: 900px) {
     .rm-auth-container {
         flex-direction: column;
     }
 
     .rm-vertical-divider {
-        display: none;
+        width: 100%;
+        height: 1px;
+        margin: 20px 0;
     }
 
     .rm-auth-side {

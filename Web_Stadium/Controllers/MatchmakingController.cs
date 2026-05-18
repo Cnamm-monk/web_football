@@ -13,8 +13,8 @@ namespace Web_Stadium.Controllers
         private readonly IConfiguration _config;
 
         public MatchmakingController(
-            SanBongContext context, 
-            IRepository<Matchmaking> repo, 
+            SanBongContext context,
+            IRepository<Matchmaking> repo,
             IConfiguration config)
         {
             _context = context;
@@ -48,6 +48,7 @@ namespace Web_Stadium.Controllers
             ViewBag.LoaiSan = loaiSan;
             ViewBag.Quan = quan;
             ViewBag.TongTin = list.Count;
+            ViewBag.CurrentUserId = TokenHelper.LayUserId(Request, _config);
             return View(list);
         }
 
@@ -59,7 +60,7 @@ namespace Web_Stadium.Controllers
             var datSan = await _context.DatSans
                 .Include(d => d.KhungGio)
                     .ThenInclude(k => k.SanBong)
-                .FirstOrDefaultAsync(d => 
+                .FirstOrDefaultAsync(d =>
                     d.Id == datSanId &&
                     d.UserId == userId);
 
@@ -92,7 +93,7 @@ namespace Web_Stadium.Controllers
             int soNguoiCanThem)
         {
             var userId = TokenHelper.LayUserId(Request, _config);
-            
+
             var mm = new Matchmaking
             {
                 DatSanId = datSanId,
@@ -140,8 +141,49 @@ namespace Web_Stadium.Controllers
                 return NotFound();
             mm.TrangThai = "DaDong";
             await _repo.UpdateAsync(mm);
-            TempData["Success"] = "Đã đóng tin tìm đội!";
+            TempData["Success"] = "Da huy tin tim doi!";
+            // Neu tu MyBookings thi quay lai MyBookings, neu khong thi ve Index
+            var referer = Request.Headers["Referer"].ToString();
+            if (referer.Contains("MyBookings"))
+                return RedirectToAction("MyBookings", "Booking");
             return RedirectToAction("Index");
+        }
+
+        // GET /Matchmaking/GetDonCuaToi
+        [YeuCauDangNhap]
+        public async Task<IActionResult> GetDonCuaToi()
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+
+            var daTim = await _context.Matchmakings
+                .Where(m => m.UserId == userId && m.TrangThai == "DangTim")
+                .Select(m => m.DatSanId)
+                .ToListAsync();
+
+            var don = await _context.DatSans
+                .Include(d => d.KhungGio)
+                    .ThenInclude(k => k.SanBong)
+                .Where(d => d.UserId == userId
+                         && d.TrangThai == "DaXacNhan"
+                         && d.NgayThiDau >= DateTime.Today
+                         && !daTim.Contains(d.Id))
+                .OrderBy(d => d.NgayThiDau)
+                .ToListAsync();
+
+            var result = don.Select(d => new {
+                id = d.Id,
+                tenSan = d.KhungGio != null && d.KhungGio.SanBong != null
+                             ? d.KhungGio.SanBong.TenSan : "San khong xac dinh",
+                diaChi = d.KhungGio != null && d.KhungGio.SanBong != null
+                             ? d.KhungGio.SanBong.DiaChi + " - " + d.KhungGio.SanBong.Quan : "",
+                ngayThiDau = d.NgayThiDau.ToString("dd/MM/yyyy"),
+                gio = d.KhungGio != null
+                             ? d.KhungGio.GioBatDau.ToString(@"hh\:mm")
+                               + " - " + d.KhungGio.GioKetThuc.ToString(@"hh\:mm")
+                             : ""
+            });
+
+            return Json(result);
         }
     }
 }

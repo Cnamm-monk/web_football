@@ -2,71 +2,502 @@
 @{
     ViewData["Title"] = Model.TenSan;
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var anhList = (ViewBag.AnhSanBongs as List<Web_Stadium.EFCore.AnhSanBong>)
+                  ?? new List<Web_Stadium.EFCore.AnhSanBong>();
+    var anhDau = anhList.FirstOrDefault();
+    <script>
+        // Canvas Image Viewer: Pan + Zoom
+        (function(){
+          var dataEl = document.getElementById('anhData');
+          if(!dataEl) return;
+          var srcs   = JSON.parse(dataEl.textContent.trim());
+          if(!srcs.length) return;
+
+          var canvas = document.getElementById('imgCanvas');
+          var wrap   = document.getElementById('imgViewerWrap');
+          var ctx    = canvas.getContext('2d');
+          var hint   = document.getElementById('viewerHint');
+          var zbadge = document.getElementById('zoomBadge');
+          var nbadge = document.getElementById('numBadge');
+
+          var imgs   = srcs.map(function(s){ var i=new Image(); i.crossOrigin='anonymous'; i.src=s; return i; });
+          var curIdx = 0;
+          var st     = {ox:0,oy:0,sc:1}, tgt={ox:0,oy:0,sc:1};
+          var SC_MIN=1.0, SC_MAX=5.0;
+          var drag=false, dsx=0,dsy=0,dox=0,doy=0, hinted=false;
+          var tc={sx:0,sy:0,sox:0,soy:0,p0:0,sp0:1};
+
+          function resize(){ canvas.width=wrap.offsetWidth; canvas.height=wrap.offsetHeight; }
+
+          function covScale(img){
+            return Math.max(canvas.width/img.naturalWidth, canvas.height/img.naturalHeight);
+          }
+
+          function draw(){
+            var img=imgs[curIdx];
+            if(!img.complete||!img.naturalWidth) return;
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            var sc0=covScale(img), sc=sc0*st.sc;
+            var dw=img.naturalWidth*sc, dh=img.naturalHeight*sc;
+            ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+            ctx.drawImage(img,(canvas.width-dw)/2+st.ox,(canvas.height-dh)/2+st.oy,dw,dh);
+          }
+
+          function maxOff(){
+            var img=imgs[curIdx];
+            if(!img.complete||!img.naturalWidth) return {x:0,y:0};
+            var sc0=covScale(img);
+            return {
+              x:Math.max(0,(img.naturalWidth *sc0*tgt.sc-canvas.width )/2),
+              y:Math.max(0,(img.naturalHeight*sc0*tgt.sc-canvas.height)/2)
+            };
+          }
+          function clamp(){ var mo=maxOff(); tgt.ox=Math.max(-mo.x,Math.min(mo.x,tgt.ox)); tgt.oy=Math.max(-mo.y,Math.min(mo.y,tgt.oy)); }
+          function lerp(a,b,t){ return a+(b-a)*t; }
+          function hideHint(){ if(!hinted){ hinted=true; if(hint) hint.style.opacity='0'; } }
+
+          function loop(){
+            requestAnimationFrame(loop);
+            st.sc=lerp(st.sc,tgt.sc,0.12); st.ox=lerp(st.ox,tgt.ox,0.12); st.oy=lerp(st.oy,tgt.oy,0.12);
+            draw();
+            if(zbadge) zbadge.textContent=st.sc.toFixed(1)+'x';
+          }
+
+          window.switchImg = function(idx){
+            curIdx=idx; st={ox:0,oy:0,sc:1}; tgt={ox:0,oy:0,sc:1};
+            if(nbadge) nbadge.textContent=(idx+1)+' / '+srcs.length;
+            document.querySelectorAll('.thumb-item').forEach(function(el,i){
+              el.style.borderColor = i===idx?'var(--green)':'transparent';
+              el.style.opacity     = i===idx?'1':'0.6';
+            });
+          };
+
+          // Mouse drag
+          wrap.addEventListener('mousedown',function(e){ drag=true;dsx=e.clientX;dsy=e.clientY;dox=tgt.ox;doy=tgt.oy;e.preventDefault(); });
+          window.addEventListener('mouseup',function(){ drag=false; });
+          window.addEventListener('mousemove',function(e){
+            if(!drag) return; hideHint();
+            tgt.ox=dox+(e.clientX-dsx); tgt.oy=doy+(e.clientY-dsy); clamp();
+          });
+
+          // Touch drag + pinch zoom
+          wrap.addEventListener('touchstart',function(e){
+            if(e.touches.length===1){ tc.sx=e.touches[0].clientX;tc.sy=e.touches[0].clientY;tc.sox=tgt.ox;tc.soy=tgt.oy; }
+            if(e.touches.length===2){ tc.p0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);tc.sp0=tgt.sc; }
+          },{passive:true});
+          wrap.addEventListener('touchmove',function(e){
+            if(e.touches.length===1){ hideHint();tgt.ox=tc.sox+(e.touches[0].clientX-tc.sx);tgt.oy=tc.soy+(e.touches[0].clientY-tc.sy);clamp(); }
+            if(e.touches.length===2){ var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);tgt.sc=Math.max(SC_MIN,Math.min(SC_MAX,tc.sp0*(d/tc.p0)));clamp(); }
+          },{passive:true});
+
+          // Scroll zoom
+          wrap.addEventListener('wheel',function(e){
+            e.preventDefault(); hideHint();
+            var old=tgt.sc; tgt.sc=Math.max(SC_MIN,Math.min(SC_MAX,tgt.sc+(e.deltaY>0?-0.2:0.2)));
+            var r=tgt.sc/old, mx=e.offsetX-canvas.width/2, my=e.offsetY-canvas.height/2;
+            tgt.ox=mx+(tgt.ox-mx)*r; tgt.oy=my+(tgt.oy-my)*r; clamp();
+          },{passive:false});
+
+          // Double click zoom
+          wrap.addEventListener('dblclick',function(e){
+            hideHint();
+            if(tgt.sc<2.0){
+              var newSc=2.5,r=newSc/tgt.sc,mx=e.offsetX-canvas.width/2,my=e.offsetY-canvas.height/2;
+              tgt.sc=newSc;tgt.ox=mx+(tgt.ox-mx)*r;tgt.oy=my+(tgt.oy-my)*r;clamp();
+            } else { tgt.sc=1.0;tgt.ox=0;tgt.oy=0; }
+          });
+
+          // Keyboard nav
+          document.addEventListener('keydown',function(e){
+            if(e.key==='ArrowLeft')  switchImg((curIdx-1+srcs.length)%srcs.length);
+            if(e.key==='ArrowRight') switchImg((curIdx+1)%srcs.length);
+          });
+
+          // Preload
+          imgs.forEach(function(img,i){ img.onload=function(){ if(i===curIdx)draw(); }; });
+
+          resize();
+          window.addEventListener('resize',resize);
+          loop();
+        })();
+    </script>
+
 }
 
 @section Styles {
-    <link rel="stylesheet"
-          href="~/css/venues-details.css" />
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
+    <link rel="stylesheet" href="~/css/venues-details.css" />
+
 }
 
 <!-- HEADER -->
 <div class="details-header">
     <div class="container">
-        <nav style="margin-bottom:12px">
-            <a href="/Venues"
-               style="font-size:11px; color:var(--muted);
-                      letter-spacing:1px; text-decoration:none">
-                ← DANH SÁCH SÂN
-            </a>
-        </nav>
-        <h1 style="font-style:italic; line-height:0.9; margin-bottom:14px">
-            @Model.TenSan.ToUpper()
-        </h1>
-        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
-            <span class="badge b-green">Sân @Model.LoaiSan người</span>
-            <span class="badge b-blue">@Model.LoaiCo</span>
-            <span style="font-size:13px; color:var(--muted)">
-                📍 @Model.DiaChi — @Model.Quan
-            </span>
-            <span style="font-size:13px; color:var(--yellow)">
-                ★ @Model.DanhGiaTrungBinh.ToString("F1")
-            </span>
+
+        <!-- Breadcrumb -->
+        <div class="header-breadcrumb">
+            <a href="/Venues">Danh sách sân</a>
         </div>
+
+        <!-- Title row -->
+        <div class="header-title-row">
+            <h1 style="font-family:'Segoe UI',Arial,sans-serif;font-weight:800;font-style:normal;font-size:clamp(28px,4vw,44px);letter-spacing:-0.5px;line-height:1.05;margin:0;">@Model.TenSan</h1>
+            <div class="header-rating-badge">
+                ★ @Model.DanhGiaTrungBinh.ToString("F1")
+                <span style="font-size:12px;opacity:0.65;font-weight:400;">/ 5.0</span>
+            </div>
+        </div>
+
+        <!-- Meta pills -->
+        <div class="header-meta">
+            <span class="meta-pill green">⚽ Sân @Model.LoaiSan người</span>
+            <span class="meta-pill blue">🌱 @Model.LoaiCo</span>
+            <span class="meta-pill muted">📍 @Model.DiaChi — @Model.Quan</span>
+        </div>
+
     </div>
 </div>
 
-<div class="container" style="padding-top:32px; padding-bottom:60px">
+<!-- BODY -->
+<div class="container" style="padding-top:36px;padding-bottom:72px">
     <div class="details-grid">
 
         <!-- ════ CỘT TRÁI ════ -->
         <div>
 
-            <!-- PANORAMA 360° -->
+            <!-- ANH SAN THUC TE -->
             <div class="section-card">
                 <div class="section-card-header">
-                    🌐 Panorama 360°
+                    📷 <span>Ảnh sân thực tế</span>
+                    @if (anhList.Any())
+                    {
+                        <span style="margin-left:auto;font-size:11px;color:var(--muted);
+                                                     font-weight:400;letter-spacing:0;text-transform:none;">
+                            @anhList.Count ảnh · Bấm để xem to · Scroll để zoom
+                        </span>
+                    }
                 </div>
-                <div class="panorama-wrap">
-                    <div id="panorama" style="height:400px"></div>
-                </div>
+
+                @if (!anhList.Any())
+                {
+                    <div style="padding:48px;text-align:center;">
+                        <div style="font-size:48px;opacity:.25;margin-bottom:12px;">📷</div>
+                        <div style="font-size:15px;color:var(--muted);">
+                            Chủ sân chưa cập nhật ảnh thực tế
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- VIEWER -->
+                    <div id="imgViewerWrap"
+                         style="
+                                position:relative;
+                                overflow:hidden;
+                                background:#0b1220;
+                                cursor:grab;
+                                height:480px;
+                                border-bottom:1px solid var(--border);
+                                border-radius:0 0 22px 22px;
+                             ">
+
+                        <canvas id="imgCanvas"
+                                style="display:block;width:100%;height:100%;">
+                        </canvas>
+
+                        <!-- HINT -->
+                        <!-- HINT -->
+                        <!-- HINT -->
+                        <!-- HINT -->
+                        <!-- HINT -->
+                        <div id="viewerHint"
+                             style="
+                                    position:absolute;
+                                    bottom:14px;
+                                    left:50%;
+                                    transform:translateX(-50%);
+                                    background:rgba(0,0,0,.45);
+                                    backdrop-filter:blur(12px);
+                                    color:rgba(255,255,255,.82);
+                                    font-size:9px;
+                                    letter-spacing:1.2px;
+                                    text-transform:uppercase;
+                                    padding:3px 9px;
+                                    border-radius:999px;
+                                    pointer-events:none;
+                                    z-index:10;
+                                 ">
+                            Kéo di chuyển · Scroll zoom · Dbl-click phóng to
+                        </div>
+
+                        <!-- ZOOM -->
+                        <div id="zoomBadge"
+                             style="
+                                    position:absolute;
+                                    top:14px;
+                                    right:14px;
+                                    background:rgba(0,0,0,.45);
+                                    backdrop-filter:blur(12px);
+                                    color:#fff;
+                                    font-size:11px;
+                                    font-weight:700;
+                                    padding:6px 14px;
+                                    border-radius:999px;
+                                    z-index:10;
+                                 ">
+                            1.0x
+                        </div>
+
+                        <!-- COUNT -->
+                        <div id="numBadge"
+                             style="
+                                    position:absolute;
+                                    top:14px;
+                                    left:14px;
+                                    background:rgba(0,0,0,.45);
+                                    backdrop-filter:blur(12px);
+                                    color:#fff;
+                                    font-size:11px;
+                                    font-weight:700;
+                                    padding:6px 14px;
+                                    border-radius:999px;
+                                    z-index:10;
+                                 ">
+                            1 / @anhList.Count
+                        </div>
+
+                    </div>
+
+                    <!-- THUMBNAILS -->
+                    <div style="
+                            display:flex;
+                            gap:10px;
+                            padding:14px 16px;
+                            overflow-x:auto;
+                            background:#fff;
+                        ">
+                        @for (int i = 0; i < anhList.Count; i++)
+                        {
+                            <img src="@anhList[i].DuongDan"
+                                 alt="Ảnh @(i + 1)"
+                                 class="thumb-item"
+                                 onclick="switchImg(@i)"
+                                 style="
+                                                            width:88px;
+                                                            height:62px;
+                                                            object-fit:cover;
+                                                            border-radius:12px;
+                                                            cursor:pointer;
+                                                            flex-shrink:0;
+                                                            border:2px solid @(i == 0 ? "var(--green)" : "transparent");
+                                                            opacity:@(i == 0 ? "1" : ".55");
+                                                            transition:.25s;
+                                                         "
+                                 onerror="this.style.display='none'" />
+                        }
+                    </div>
+
+                    <!-- DATA -->
+                    <script id="anhData" type="application/json">
+                        @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                            anhList.Select(a => a.DuongDan)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ))
+                </script>
+
+                <script>
+
+                    const anhData = JSON.parse(
+                        document.getElementById('anhData').textContent
+                    );
+
+                    const canvas = document.getElementById('imgCanvas');
+                    const ctx = canvas.getContext('2d');
+
+                    const wrap = document.getElementById('imgViewerWrap');
+
+                    const zoomBadge = document.getElementById('zoomBadge');
+
+                    let currentIndex = 0;
+
+                    let scale = 1;
+                    let minScale = 1;
+                    let maxScale = 5;
+
+                    let offsetX = 0;
+                    let offsetY = 0;
+
+                    let isDragging = false;
+
+                    let startX = 0;
+                    let startY = 0;
+
+                    const img = new Image();
+
+                    // RESIZE
+                    function resizeCanvas() {
+
+                        canvas.width = wrap.clientWidth;
+                        canvas.height = wrap.clientHeight;
+
+                        drawImage();
+                    }
+
+                    // DRAW
+                    function drawImage() {
+
+                        if (!img.complete) return;
+
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                        // COVER FULL
+                        const baseScale = Math.max(
+                            canvas.width / img.width,
+                            canvas.height / img.height
+                        );
+
+                        const finalScale = baseScale * scale;
+
+                        const w = img.width * finalScale;
+                        const h = img.height * finalScale;
+
+                        const x = (canvas.width - w) / 2 + offsetX;
+                        const y = (canvas.height - h) / 2 + offsetY;
+
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+
+                        ctx.drawImage(img, x, y, w, h);
+
+                        zoomBadge.innerText = scale.toFixed(1) + 'x';
+                    }
+
+                    // RESET
+                    function resetView() {
+
+                        scale = 1;
+
+                        offsetX = 0;
+                        offsetY = 0;
+                    }
+
+                    // LOAD
+                    function loadImg(index) {
+
+                        currentIndex = index;
+
+                        resetView();
+
+                        img.onload = function () {
+
+                            resizeCanvas();
+
+                            document.getElementById('numBadge').innerText =
+                                (index + 1) + ' / ' + anhData.length;
+                        };
+
+                        img.src = anhData[index];
+
+                        document.querySelectorAll('.thumb-item')
+                            .forEach((t, i) => {
+
+                                t.style.borderColor =
+                                    i === index
+                                        ? 'var(--green)'
+                                        : 'transparent';
+
+                                t.style.opacity =
+                                    i === index
+                                        ? '1'
+                                        : '.55';
+                            });
+                    }
+
+                    // SWITCH
+                    function switchImg(index) {
+                        loadImg(index);
+                    }
+
+                    // WHEEL ZOOM
+                    wrap.addEventListener('wheel', function (e) {
+
+                        e.preventDefault();
+
+                        const delta = e.deltaY > 0 ? -0.12 : 0.12;
+
+                        scale += delta;
+
+                        if (scale < minScale) scale = minScale;
+                        if (scale > maxScale) scale = maxScale;
+
+                        drawImage();
+
+                    }, { passive: false });
+
+                    // DOUBLE CLICK
+                    wrap.addEventListener('dblclick', function () {
+
+                        if (scale > 1) {
+
+                            resetView();
+
+                        } else {
+
+                            scale = 2;
+                        }
+
+                        drawImage();
+                    });
+
+                    // DRAG START
+                    wrap.addEventListener('mousedown', function (e) {
+
+                        isDragging = true;
+
+                        startX = e.clientX - offsetX;
+                        startY = e.clientY - offsetY;
+
+                        wrap.style.cursor = 'grabbing';
+                    });
+
+                    // DRAG MOVE
+                    window.addEventListener('mousemove', function (e) {
+
+                        if (!isDragging) return;
+
+                        offsetX = e.clientX - startX;
+                        offsetY = e.clientY - startY;
+
+                        drawImage();
+                    });
+
+                    // DRAG END
+                    window.addEventListener('mouseup', function () {
+
+                        isDragging = false;
+
+                        wrap.style.cursor = 'grab';
+                    });
+
+                    // RESPONSIVE
+                    window.addEventListener('resize', resizeCanvas);
+
+                    // INIT
+                    loadImg(0);
+
+                </script>
+                                }
+                }
             </div>
 
-            <!-- BẢNG KHUNG GIỜ — REAL-TIME -->
+            <!-- KHUNG GIỜ LIVE -->
             <div class="section-card">
                 <div class="section-card-header">
-                    🕐 Chọn khung giờ
-                    <span class="realtime-dot" style="margin-left:auto"></span>
-                    <span style="font-size:10px; color:var(--green);
-                                 letter-spacing:1px">
-                        LIVE
-                    </span>
+                    🕐 <span>Chọn khung giờ</span>
+                    <span class="realtime-dot"></span>
+                    <span class="live-label">LIVE</span>
                 </div>
                 <div class="section-card-body">
                     <div class="gio-grid" id="khungGioGrid">
-                        @foreach (var kg in Model.KhungGios
-                                                .OrderBy(k => k.GioBatDau))
+                        @foreach (var kg in Model.KhungGios.OrderBy(k => k.GioBatDau))
                         {
                             <div class="gio-item"
                                  id="kg-@kg.Id"
@@ -76,31 +507,17 @@
                                  data-batdau="@kg.GioBatDau.ToString(@"hh\:mm")"
                                  data-ketthuc="@kg.GioKetThuc.ToString(@"hh\:mm")"
                                  onclick="chonKhungGio(this)">
-                                <div class="gio-time">
-                                    @kg.GioBatDau.ToString(@"hh\:mm")
-                                    –
-                                    @kg.GioKetThuc.ToString(@"hh\:mm")
+                                <div class="gio-time" style="font-family:'Segoe UI',Arial,sans-serif;font-style:normal;">
+                                    @kg.GioBatDau.ToString(@"hh\:mm") – @kg.GioKetThuc.ToString(@"hh\:mm")
                                 </div>
-                                <div class="gio-price">
-                                    @kg.Gia.ToString("N0")đ
+                                <div class="gio-price">@kg.Gia.ToString("N0")đ</div>
+                                <div class="gio-status @(kg.TrangThai == "Trong" ? "s-trong" : kg.TrangThai == "DaDat" ? "s-dadat" : "s-giucho")">
+                                    @(kg.TrangThai == "Trong" ? "Còn trống" : kg.TrangThai == "DaDat" ? "Đã đặt" : "Đang giữ chỗ")
                                 </div>
-                                <div class="gio-status @(
-                                     kg.TrangThai == "Trong" ? "s-trong" :
-                                     kg.TrangThai == "DaDat" ? "s-dadat" :
-                                     "s-giucho")">
-                                @(kg.TrangThai == "Trong" ? "Còn trống" :
-                                kg.TrangThai == "DaDat" ? "Đã đặt" :
-                                "Đang giữ chỗ")
-                            </div>
-                            @if (kg.TrangThai == "DangGiu"
-                                                        && kg.ThoiGianHetGiuCho.HasValue)
+                                @if (kg.TrangThai == "DangGiu" && kg.ThoiGianHetGiuCho.HasValue)
                                 {
                                     <div class="countdown-wrap">
-                                        ⏱
-                                        <span class="countdown"
-                                              data-end="@kg.ThoiGianHetGiuCho
-                                                        .Value.ToString("yyyy-MM-ddTHH:mm:ss")">
-                                        </span>
+                                        ⏱ <span class="countdown" data-end="@kg.ThoiGianHetGiuCho.Value.ToString("yyyy-MM-ddTHH:mm:ss")"></span>
                                     </div>
                                 }
                             </div>
@@ -109,10 +526,10 @@
                 </div>
             </div>
 
-            <!-- DỊCH VỤ KÈM THEO -->
+            <!-- DỊCH VỤ KÈM -->
             <div class="section-card">
                 <div class="section-card-header">
-                    🛒 Dịch vụ kèm theo
+                    🛒 <span>Dịch vụ kèm theo</span>
                 </div>
                 <div class="section-card-body">
                     @if (ViewBag.DichVus != null)
@@ -121,39 +538,27 @@
                                         {"Nuoc uong","💧"},{"Thue bong","⚽"},
                                         {"Thue trong tai","🟡"},{"Thue ao","👕"}
                                         };
-                        foreach (var dv in
-                        (IEnumerable<Web_Stadium.EFCore.DichVu>)
-                        ViewBag.DichVus)
+                        foreach (var dv in (IEnumerable<Web_Stadium.EFCore.DichVu>)ViewBag.DichVus)
                         {
-                            var icon = icons.ContainsKey(dv.TenDichVu ?? "")
-                            ? icons[dv.TenDichVu!] : "🎁";
+                            var icon = icons.ContainsKey(dv.TenDichVu ?? "") ? icons[dv.TenDichVu!] : "🎁";
                             <div class="dv-item">
                                 <div class="dv-icon">@icon</div>
                                 <div>
                                     <div class="dv-name">@dv.TenDichVu</div>
-                                    <div class="dv-price">
-                                        @dv.Gia.ToString("N0")đ / đơn vị
-                                    </div>
+                                    <div class="dv-price">@dv.Gia.ToString("N0")đ / đơn vị</div>
                                 </div>
                                 <div class="dv-qty">
-                                    <button type="button" class="qty-btn"
-                                            onclick="thayDoiSoLuong(@dv.Id,-1)">
-                                        −
-                                    </button>
-                                    <span class="qty-num"
-                                          id="qty-@dv.Id">0</span>
-                                    <button type="button" class="qty-btn"
-                                            onclick="thayDoiSoLuong(@dv.Id,1)">
-                                        +
-                                    </button>
+                                    <button type="button" class="qty-btn" onclick="thayDoiSoLuong(@dv.Id,-1)">−</button>
+                                    <span class="qty-num" id="qty-@dv.Id">0</span>
+                                    <button type="button" class="qty-btn" onclick="thayDoiSoLuong(@dv.Id,1)">+</button>
                                 </div>
                             </div>
                         }
                     }
                     else
                     {
-                        <p style="color:var(--muted); font-size:13px">
-                            Chưa có dịch vụ.
+                        <p style="color:var(--muted);font-size:15px;text-align:center;padding:16px 0">
+                            Chưa có dịch vụ kèm theo.
                         </p>
                     }
                 </div>
@@ -162,23 +567,18 @@
             <!-- ĐÁNH GIÁ -->
             <div class="section-card">
                 <div class="section-card-header">
-                    ⭐ Đánh giá từ người dùng
+                    ⭐ <span>Đánh giá từ người dùng</span>
                 </div>
                 <div class="section-card-body">
                     @if (Model.DanhGia != null && Model.DanhGia.Any())
                     {
-                        foreach (var dg in Model.DanhGia
-                        .OrderByDescending(d => d.NgayDanhGia)
-                        .Take(5))
+                        foreach (var dg in Model.DanhGia.OrderByDescending(d => d.NgayDanhGia).Take(5))
                         {
                             <div class="review-item">
                                 <div class="review-header">
-                                    <strong style="font-size:13px">
-                                        @dg.User?.HoTen
-                                    </strong>
+                                    <span class="review-author">@dg.User?.HoTen</span>
                                     <span class="review-stars">
-                                        @string.Concat(Enumerable.Repeat("★", dg.SoSao))
-                                        @string.Concat(Enumerable.Repeat("☆", 5 - dg.SoSao))
+                                        @string.Concat(Enumerable.Repeat("★", dg.SoSao))@string.Concat(Enumerable.Repeat("☆", 5 - dg.SoSao))
                                     </span>
                                 </div>
                                 <div class="review-text">@dg.NhanXet</div>
@@ -187,128 +587,129 @@
                     }
                     else
                     {
-                        <p style="color:var(--muted); font-size:13px;
-                                      text-align:center; padding:20px 0">
+                        <p style="color:var(--muted);font-size:15px;text-align:center;padding:24px 0">
                             Chưa có đánh giá nào.
                         </p>
                     }
                 </div>
             </div>
 
+
+
+        </div>
+
+        <!-- ════ CỘT PHẢI — Sticky ════ -->
+        <div class="right-col-sticky">
+
             <!-- BẢN ĐỒ -->
-            <div class="section-card">
-                <div class="section-card-header">📍 Vị trí sân</div>
-                <div style="border-radius:0 0 var(--r-lg) var(--r-lg);
-                            overflow:hidden">
+            <div class="section-card" style="overflow:hidden;border-radius:16px;">
+                <div class="section-card-header">
+                    📍 <span>Vị trí sân</span>
+                </div>
+                <div class="map-wrap">
                     <iframe src="https://maps.google.com/maps?q=@Model.Latitude,@Model.Longitude&z=16&output=embed"
-                            width="100%" height="280"
-                            style="border:0; display:block"
+                            width="100%" height="240"
+                            style="border:0;display:block"
                             loading="lazy">
                     </iframe>
                 </div>
             </div>
-        </div>
 
-        <!-- ════ CỘT PHẢI: Booking Panel ════ -->
-        <div>
+            <!-- BOOKING PANEL -->
             <div class="booking-panel">
-                <div class="booking-panel-title">Đặt sân</div>
 
-                <div class="selected-slot" id="selectedSlot">
-                    <div class="slot-time" id="slotTime">—</div>
-                    <div style="font-size:12px; color:var(--muted);
-                                margin-top:10px">
-                        Ngày thi đấu:
-                    </div>
-                    <input type="date" id="ngayThiDau"
-                           class="form-input" style="margin-top:8px"
-                           min="@DateTime.Today.ToString("yyyy-MM-dd")"
-                           value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                <!-- Head -->
+                <div class="booking-panel-head">
+                    <div class="booking-panel-title" style="font-family:'Segoe UI',Arial,sans-serif;font-size:18px;font-weight:700;font-style:normal;color:var(--text);margin:0 0 4px;">Đặt sân ngay</div>
+                    <div class="booking-panel-sub">Chọn khung giờ bên trái rồi xác nhận</div>
                 </div>
 
-                <div class="price-breakdown" id="priceBreakdown">
-                    <div class="price-row">
-                        <span>Giá thuê sân</span>
-                        <span class="val" id="priceGia">—</span>
+                <!-- Body -->
+                <div class="booking-panel-body">
+
+                    <!-- Slot đã chọn -->
+                    <div class="selected-slot" id="selectedSlot">
+                        <span class="slot-badge">Đã chọn</span>
+                        <div class="slot-time" id="slotTime" style="font-family:'Segoe UI',Arial,sans-serif;font-size:22px;font-weight:700;font-style:normal;color:var(--green);letter-spacing:-0.5px;margin-bottom:10px;">—</div>
+                        <div class="date-label">Ngày thi đấu</div>
+                        <input type="date" id="ngayThiDau"
+                               class="form-input"
+                               min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                               value="@DateTime.Today.ToString("yyyy-MM-dd")" />
                     </div>
-                    <div class="price-row">
-                        <span>Tiền cọc (30%)</span>
-                        <span class="val" id="priceCoc">—</span>
+
+                    <!-- Price breakdown -->
+                    <div class="price-breakdown" id="priceBreakdown">
+                        <div class="price-row">
+                            <span>Giá thuê sân</span>
+                            <span class="val" id="priceGia">—</span>
+                        </div>
+                        <div class="price-row">
+                            <span>Tiền cọc (30%)</span>
+                            <span class="val" id="priceCoc">—</span>
+                        </div>
+                        <div class="price-row" id="priceServiceRow" style="display:none">
+                            <span>Dịch vụ kèm</span>
+                            <span class="val" id="priceService">—</span>
+                        </div>
+                        <div class="price-row total">
+                            <span>Thanh toán ngay</span>
+                            <span class="val" id="priceTotal">—</span>
+                        </div>
                     </div>
-                    <div class="price-row" id="priceServiceRow"
-                         style="display:none">
-                        <span>Dịch vụ kèm</span>
-                        <span class="val" id="priceService">—</span>
+
+                    <!-- Form -->
+                    <form method="post" action="/Booking/Create" id="bookingForm">
+                        <input type="hidden" id="khungGioInput" name="khungGioId" value="" />
+                        <input type="hidden" id="ngayInput" name="ngayThiDau" value="" />
+                        <div id="dichVuInputs"></div>
+                        <button type="submit" class="btn-primary-glow" id="btnDatSan">
+                            XÁC NHẬN ĐẶT SÂN
+                        </button>
+                    </form>
+
+                    <!-- No slot -->
+                    <div id="noSlotMsg">
+                        <span class="no-slot-icon">🏟️</span>
+                        Chọn khung giờ bên trái để đặt sân
                     </div>
-                    <div class="price-row total">
-                        <span>Thanh toán ngay</span>
-                        <span class="val" id="priceTotal">—</span>
+
+                </div>
+
+                <!-- Venue info summary -->
+                <div class="venue-info-grid">
+                    <div class="venue-info-row">
+                        <span class="lbl">Loại sân</span>
+                        <span class="val">@Model.LoaiSan người</span>
+                    </div>
+                    <div class="venue-info-row">
+                        <span class="lbl">Loại cỏ</span>
+                        <span class="val">@Model.LoaiCo</span>
+                    </div>
+                    <div class="venue-info-row">
+                        <span class="lbl">Địa chỉ</span>
+                        <span class="val">@Model.DiaChi, @Model.Quan</span>
                     </div>
                 </div>
 
-                <form method="post" action="/Booking/Create"
-                      id="bookingForm">
-                    <input type="hidden" id="khungGioInput"
-                           name="khungGioId" value="" />
-                    <input type="hidden" id="ngayInput"
-                           name="ngayThiDau" value="" />
-                    <div id="dichVuInputs"></div>
-
-                    <button type="submit" class="btn-primary-glow"
-                            id="btnDatSan"
-                            style="width:100%; padding:14px;
-                                   font-size:13px; display:none;
-                                   margin-top:8px">
-                        XÁC NHẬN ĐẶT SÂN
-                    </button>
-                </form>
-
-                <div id="noSlotMsg"
-                     style="text-align:center; padding:20px 0;
-                            color:var(--muted); font-size:13px">
-                    Chọn khung giờ bên trái để đặt sân
-                </div>
-
-                <!-- Thông tin sân tóm tắt -->
-                <div style="border-top:1px solid var(--border);
-                            margin-top:20px; padding-top:16px;
-                            display:flex; flex-direction:column; gap:8px">
-                    <div style="display:flex; gap:8px; font-size:12px">
-                        <span style="color:var(--muted); width:90px">
-                            Loại sân
-                        </span>
-                        <span>@Model.LoaiSan người</span>
-                    </div>
-                    <div style="display:flex; gap:8px; font-size:12px">
-                        <span style="color:var(--muted); width:90px">
-                            Loại cỏ
-                        </span>
-                        <span>@Model.LoaiCo</span>
-                    </div>
-                    <div style="display:flex; gap:8px; font-size:12px">
-                        <span style="color:var(--muted); width:90px">
-                            Địa chỉ
-                        </span>
-                        <span>@Model.DiaChi</span>
-                    </div>
-                </div>
             </div>
+
+
         </div>
     </div>
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
     <script src="~/js/venues-details.js"></script>
     <script>
         initVenuesDetails(@Model.Id, '@Model.TenSan');
         @if (ViewBag.DichVus != null)
         {
-                foreach (var dv in (IEnumerable<Web_Stadium.EFCore.DichVu>)ViewBag.DichVus)
-                {
-                        <text>registerDichVu(@dv.Id, @dv.Gia);</text>
-                }
+                                foreach (var dv in (IEnumerable<Web_Stadium.EFCore.DichVu>)ViewBag.DichVus)
+                                {
+                                                        <text>registerDichVu(@dv.Id, @dv.Gia);</text>
+                                }
         }
     </script>
 }

@@ -12,14 +12,15 @@
 </div>
 
 <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap">
-        <a href="/Admin" class="btn btn-sm btn-outline-light rounded-pill">📊 Tổng quan</a>
-        <a href="/Admin/DuyetSan" class="btn btn-sm btn-warning rounded-pill">🏟️ Duyệt sân</a>
-        <a href="/Admin/QuanLyUser" class="btn btn-sm btn-outline-info rounded-pill">👥 Tài khoản</a>
-        <a href="/Admin/MasterData" class="btn btn-sm btn-outline-light rounded-pill">🗂️ Master Data</a>
-        <a href="/Admin/KhieuNai" class="btn btn-sm btn-outline-warning rounded-pill">⚠️ Khiếu nại</a>
-        <a href="/Admin/BaoCao" class="btn btn-sm btn-outline-light rounded-pill">📈 Báo cáo</a>
-        <a href="/Admin/AuditLog" class="btn btn-sm btn-outline-secondary rounded-pill">🛡️ Audit Log</a>
+    <div class="container d-flex gap-2 flex-wrap justify-content-center align-items-center">
+        <a href="/Admin" class="btn btn-outline-green rounded-pill">📊 Tổng quan</a>
+        <a href="/Admin/DuyetSan" class="btn btn-outline-warning rounded-pill">🏟️ Duyệt sân</a>
+        <a href="/Admin/QuanLyUser" class="btn btn-outline-info rounded-pill">👥 Tài khoản</a>
+        <a href="/Admin/MasterData" class="btn btn-outline-green rounded-pill">🗂️ Master Data</a>
+        <a href="/Admin/KhieuNai" class="btn btn-outline-warning rounded-pill">⚠️ Khiếu nại</a>
+        <a href="/Admin/BaoCao" class="btn btn-outline-secondary rounded-pill">📈 Báo cáo</a>
+        <a href="/Admin/AuditLog" class="btn btn-outline-secondary rounded-pill">🛡️ Audit Log</a>
+        <a href="/Admin/TatCaHopDong" class="btn btn-outline-primary rounded-pill">📑 Hợp đồng</a>
     </div>
 </div>
 
@@ -35,7 +36,7 @@
         <div style="text-align:center;padding:80px 0;color:var(--muted)">
             <div style="font-size:3rem;margin-bottom:16px">🎉</div>
             <div style="font-family:var(--ff-h);font-size:1.5rem;margin-bottom:8px">Không có hồ sơ chờ duyệt</div>
-            <div style="font-size:14px">Tất cả sân đã được xử lý</div>
+            <div style="font-size:16px">Tất cả sân đã được xử lý</div>
         </div>
     }
 
@@ -47,33 +48,33 @@
         var tyLe = tyLeMap.TryGetValue(san.Quan ?? "", out var tl) ? tl : 0.10m;
         <div class="section-card p-0 overflow-hidden mb-4">
             <!-- Header sân -->
-            <div style="padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border)">
+            <div style="padding:20px 24px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border)">
                 <div>
                     <h5 style="margin:0;font-family:var(--ff-h)">@san.TenSan</h5>
-                    <div style="color:var(--muted);font-size:13px;margin-top:4px">
+                    <div style="color:var(--muted);font-size:15px;margin-top:6px">
                         📍 @san.DiaChi, @san.Quan, @san.ThanhPho
                     </div>
                 </div>
                 <div style="text-align:right">
-                    <div style="font-size:12px;color:var(--muted)">Loại sân</div>
+                    <div style="font-size:14px;color:var(--muted)">Loại sân</div>
                     <span class="badge b-blue">@san.LoaiSan người — @san.LoaiCo</span>
                 </div>
             </div>
 
             <div class="row g-0">
                 <!-- Thông tin -->
-                <div class="col-md-6" style="padding:20px;border-right:1px solid var(--border)">
-                    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">THÔNG TIN CHỦ SÂN</div>
-                    <div style="font-size:13px;margin-bottom:6px">
+                <div class="col-md-6" style="padding:24px;border-right:1px solid var(--border)">
+                    <div style="font-size:13px;color:var(--muted);letter-spacing:1px;margin-bottom:14px">THÔNG TIN CHỦ SÂN</div>
+                    <div style="font-size:15px;margin-bottom:8px">
                         <strong>Chủ sân:</strong> @san.Owner?.HoTen
                     </div>
-                    <div style="font-size:13px;margin-bottom:6px">
+                    <div style="font-size:15px;margin-bottom:8px">
                         <strong>Email:</strong> @san.Owner?.Email
                     </div>
-                    <div style="font-size:13px;margin-bottom:6px">
+                    <div style="font-size:15px;margin-bottom:8px">
                         <strong>SĐT:</strong> @san.Owner?.SoDienThoai
                     </div>
-                    <div style="font-size:13px;margin-bottom:6px">
+                    <div style="font-size:15px;margin-bottom:8px">
                         <strong>Tỷ lệ cọc:</strong> @((san.TyLeCoc * 100).ToString("F0"))%
                     </div>
 
@@ -81,38 +82,38 @@
                     <div style="margin-top:16px;padding:12px;background:rgba(30,215,96,0.06);border:1px solid rgba(30,215,96,0.2);border-radius:8px">
                         @if (san.DaKyHopDong)
                         {
-                            <div style="color:var(--green);font-size:12px;font-weight:600;margin-bottom:6px">
+                            <div style="color:var(--green);font-size:14px;font-weight:600;margin-bottom:8px">
                                 ✅ Đã ký hợp đồng điện tử — @san.NgayKyHopDong?.ToString("dd/MM/yyyy HH:mm")
                             </div>
-                            <div style="font-size:12px;color:var(--muted)">
+                            <div style="font-size:14px;color:var(--muted)">
                                 Tỷ lệ HH trong HĐ: <strong style="color:var(--green)">@((tyLe * 100).ToString("F0"))%</strong>
                             </div>
                             <a href="/Admin/XemHopDong/@san.Id" target="_blank"
                                class="btn btn-sm btn-outline-success rounded-pill mt-2"
-                               style="font-size:11px">📄 Xem hợp đồng đã ký</a>
+                               style="font-size:13px">📄 Xem hợp đồng đã ký</a>
                         }
                         else
                         {
-                            <div style="color:#f39c12;font-size:12px">⚠️ Chưa ký hợp đồng điện tử</div>
+                            <div style="color:#f39c12;font-size:14px">⚠️ Chưa ký hợp đồng điện tử</div>
                         }
                     </div>
                 </div>
 
                 <!-- Phê duyệt -->
-                <div class="col-md-6" style="padding:20px">
-                    <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">QUYẾT ĐỊNH PHÊ DUYỆT</div>
+                <div class="col-md-6" style="padding:24px">
+                    <div style="font-size:13px;color:var(--muted);letter-spacing:1px;margin-bottom:14px">QUYẾT ĐỊNH PHÊ DUYỆT</div>
 
                     <!-- Override tỷ lệ nếu cần -->
                     <div style="margin-bottom:16px;padding:12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
-                        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+                        <div style="font-size:14px;color:var(--muted);margin-bottom:10px">
                             Tỷ lệ hoa hồng từ vùng: <strong style="color:var(--green)">@((tyLe * 100).ToString("F0"))%</strong>
                         </div>
-                        <div style="font-size:12px;color:var(--muted)">Override (nếu có thỏa thuận đặc biệt):</div>
+                        <div style="font-size:14px;color:var(--muted)">Override (nếu có thỏa thuận đặc biệt):</div>
                         <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
                             <input type="number" id="tyLe_@san.Id" step="0.01" min="0.01" max="0.50"
                                    value="@tyLe"
                                    style="background:var(--bg2);border:1px solid var(--border);color:white;border-radius:6px;padding:4px 8px;width:100px;font-size:13px" />
-                            <span style="font-size:12px;color:var(--muted)">(0.10 = 10%)</span>
+                            <span style="font-size:14px;color:var(--muted)">(0.10 = 10%)</span>
                         </div>
                     </div>
 
@@ -142,3 +143,4 @@
         </div>
     }
 </div>
+

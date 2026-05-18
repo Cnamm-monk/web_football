@@ -384,6 +384,138 @@ namespace Web_Stadium.Controllers
             return View(san);
         }
 
+        // Admin: Danh sach tat ca hop dong + filter
+        public async Task<IActionResult> TatCaHopDong(string? tuKhoa, string? sapXep)
+        {
+            var query = _context.SanBongs
+                .Include(s => s.Owner)
+                .Where(s => s.DaKyHopDong && !string.IsNullOrEmpty(s.NoiDungHopDong))
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(tuKhoa))
+                query = query.Where(s => s.TenSan.Contains(tuKhoa)
+                                      || s.Owner.HoTen.Contains(tuKhoa)
+                                      || s.Quan.Contains(tuKhoa));
+
+            query = sapXep == "cu_nhat"
+                ? query.OrderBy(s => s.NgayKyHopDong)
+                : query.OrderByDescending(s => s.NgayKyHopDong);
+
+            var list = await query.ToListAsync();
+            ViewBag.TuKhoa = tuKhoa;
+            ViewBag.SapXep = sapXep;
+            ViewBag.TongHD = list.Count;
+            return View(list);
+        }
+
+        // Admin: Xuat Word (RTF) hop dong
+        public async Task<IActionResult> XuatWordHopDong(int sanId)
+        {
+            var san = await _context.SanBongs
+                .Include(s => s.Owner)
+                .FirstOrDefaultAsync(s => s.Id == sanId);
+
+            if (san == null || string.IsNullOrEmpty(san.NoiDungHopDong))
+                return NotFound();
+
+            var tenFile = $"HopDong_{san.TenSan.Replace(" ", "_")}_{san.NgayKyHopDong:yyyyMMdd}.rtf";
+            var bytes = TaoRtfHopDong(san, san.NoiDungHopDong);
+            return File(bytes, "application/rtf", tenFile);
+        }
+
+        private static byte[] TaoRtfHopDong(Web_Stadium.EFCore.SanBong san, string noiDung)
+        {
+            // RTF header
+            var header = new System.Text.StringBuilder();
+            header.AppendLine(@"{\rtf1\ansi\ansicpg1252\deff0\deflang1066");
+            header.AppendLine(@"{\fonttbl{\f0\froman\fprq2\fcharset0 Times New Roman;}}");
+            header.AppendLine(@"{\colortbl ;\red0\green128\blue0;\red100\green100\blue100;}");
+            header.AppendLine(@"\paperw11906\paperh16838");
+            header.AppendLine(@"\margl1800\margr1800\margt1440\margb1440");
+            header.AppendLine(@"\widowctrl\hyphauto");
+
+            var body = new System.Text.StringBuilder();
+
+            // Phan noi dung hop dong chinh (tu NoiDungHopDong)
+            var lines = noiDung.Replace("\r", "").Split('\n');
+            foreach (var raw in lines)
+            {
+                var l = raw.TrimEnd();
+                if (string.IsNullOrWhiteSpace(l))
+                { body.AppendLine(@"\pard\par"); continue; }
+
+                var esc = RtfEsc(l);
+
+                // Bo qua duong ke ngang (───)
+                if (l.Contains("\u2500\u2500\u2500") || l.Contains("───"))
+                    continue;
+
+                // Quoc hieu, doc lap
+                if (l.StartsWith("C\u1ed8NG HO\u00c0") || l.StartsWith("C\u1ed8NG H\u00d2A") ||
+                    l.StartsWith("\u0110\u1ed9c l\u1eadp"))
+                    body.AppendLine($@"\pard\qc\f0\fs24\b {esc}\b0\par");
+                // Tieu de hop dong lon
+                else if (l.Contains("H\u1ee2P \u0110\u1ed2NG H\u1ee2P T\u00c1C") || l.StartsWith("S\u1ed1:"))
+                    body.AppendLine($@"\pard\qc\f0\fs28\b {esc}\b0\par");
+                // Dieu khoan (Dieu 1. Dieu 2. ...)
+                else if (System.Text.RegularExpressions.Regex.IsMatch(l.TrimStart(), @"^\u0110i\u1ec1u [0-9]+\."))
+                    body.AppendLine($@"\pard\ql\sb200\f0\fs24\b {esc}\b0\par");
+                // Tieu muc (1.1. 2.3. ...)
+                else if (System.Text.RegularExpressions.Regex.IsMatch(l.TrimStart(), @"^[0-9]+\.[0-9]+\."))
+                    body.AppendLine($@"\pard\ql\sb100\f0\fs22\b {esc}\b0\par");
+                // Dong gach dau
+                else if (l.TrimStart().StartsWith("  -") || l.TrimStart().StartsWith("- ") ||
+                         l.TrimStart().StartsWith("   -"))
+                    body.AppendLine($@"\pard\ql\li720\fi-360\f0\fs22 {esc}\par");
+                // Phan chu ky / dia diem ngay thang
+                else if (l.TrimStart().StartsWith("H\u00e0 N\u1ed9i") || l.TrimStart().StartsWith("Th\u00e0nh ph\u1ed1") ||
+                         l.Contains("\u0110\u1ea0I DI\u1ec6N B\u00caNA") || l.Contains("\u0110\u1ea0I DI\u1ec6N B\u00caN B") ||
+                         l.Contains("\u0110\u1ea0I DI\u1ec6N B\u1ec2N A") || l.Contains("\u0110\u1ea0I DI\u1ec6N B\u1ec2N B") ||
+                         l.Contains("(K\u00fd,") || l.Contains("C\u00f4ng ty TNHH") || l.Contains("Gi\u00e1m \u0111\u1ed1c") ||
+                         l.Contains("Ch\u1ee7 s\u00e2n"))
+                    body.AppendLine($@"\pard\ql\f0\fs22 {esc}\par");
+                else
+                    body.AppendLine($@"\pard\ql\f0\fs22 {esc}\par");
+            }
+
+            // Phan chu ky cuoi hop dong - them tu dong neu chua co trong noiDung
+            if (!noiDung.Contains("\u0110\u1ea0I DI\u1ec6N B\u00caNA") && !noiDung.Contains("\u0110\u1ea0I DI\u1ec6N B\u1ec2N A"))
+            {
+                var ngayKy = san.NgayKyHopDong?.ToString("dd/MM/yyyy") ?? System.DateTime.Now.ToString("dd/MM/yyyy");
+                var tenOwner = RtfEsc(san.Owner?.HoTen ?? "");
+                var tenSan = RtfEsc(san.TenSan ?? "");
+
+                body.AppendLine(@"\pard\par");
+                body.AppendLine($@"\pard\ql\f0\fs22                 {RtfEsc("H\u00e0 N\u1ed9i, ng\u00e0y")} {RtfEsc(ngayKy.Split('/')[0])} {RtfEsc("th\u00e1ng")} {RtfEsc(ngayKy.Split('/')[1])} {RtfEsc("n\u0103m")} {RtfEsc(ngayKy.Split('/')[2])}\par");
+                body.AppendLine(@"\pard\par");
+                body.AppendLine($@"\pard\ql\f0\fs22         {RtfEsc("\u0110\u1ea0I DI\u1ec6N B\u00caN A")}                    {RtfEsc("\u0110\u1ea0I DI\u1ec6N B\u00caN B")}\par");
+                body.AppendLine($@"\pard\ql\f0\fs22    {RtfEsc("(K\u00fd, ghi r\u00f5 h\u1ecd t\u00ean, \u0111\u00f3ng d\u1ea5u)")}      {RtfEsc("(K\u00fd, ghi r\u00f5 h\u1ecd t\u00ean)")}\par");
+                body.AppendLine(@"\pard\par");
+                body.AppendLine(@"\pard\par");
+                body.AppendLine(@"\pard\par");
+                body.AppendLine($@"\pard\ql\f0\fs22    {RtfEsc("C\u00f4ng ty TNHH PitchHub")}                  {tenOwner}\par");
+                body.AppendLine($@"\pard\ql\f0\fs22    {RtfEsc("Gi\u00e1m \u0111\u1ed1c \u0111i\u1ec1u h\u00e0nh")}                     {RtfEsc("Ch\u1ee7 s\u00e2n")} {tenSan}\par");
+            }
+
+            var rtf = header.ToString() + body.ToString() + "}";
+            return System.Text.Encoding.GetEncoding(1252).GetBytes(rtf);
+        }
+
+        private static string RtfEsc(string s)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (char ch in s)
+            {
+                if (ch == '\\') sb.Append(@"\\");
+                else if (ch == '{') sb.Append(@"\{");
+                else if (ch == '}') sb.Append(@"\}");
+                else if (ch > 127) sb.Append("\\u" + (int)ch + "?");
+                else sb.Append(ch);
+            }
+            return sb.ToString();
+        }
+
+
         public async Task<IActionResult> QuanLyUser(string? vaiTro, string? tuKhoa)
         {
             var query = _context.Users.AsQueryable();
@@ -542,10 +674,21 @@ namespace Web_Stadium.Controllers
             }
 
             ViewBag.Data = data; ViewBag.TieuDe = tieuDe;
-            ViewBag.TongPhiHoaHong = data.Sum(d => ((dynamic)d).phi);
-            ViewBag.TongDoanhThuSan = data.Sum(d => ((dynamic)d).dtSan);
-            ViewBag.TongLuot = data.Sum(d => (int)((dynamic)d).soLuot);
-            ViewBag.DiemCaoNhat = data.OrderByDescending(d => ((dynamic)d).phi).FirstOrDefault();
+            ViewBag.TongPhiHoaHong = (double)data.Sum(d => (double)((dynamic)d).phi);
+            ViewBag.TongDoanhThuSan = (double)data.Sum(d => (double)((dynamic)d).dtSan);
+            ViewBag.TongLuot = (int)data.Sum(d => (int)((dynamic)d).soLuot);
+            ViewBag.DiemCaoNhat = data.OrderByDescending(d => (double)((dynamic)d).phi).FirstOrDefault();
+
+            // Aliases cho BaoCao View
+            ViewBag.DoanhThuNam = data.Select(d => new
+            {
+                thang = (string)((dynamic)d).nhan,
+                dt = (double)((dynamic)d).dtSan,
+                soLuot = (int)((dynamic)d).soLuot
+            }).Cast<dynamic>().ToList();
+
+            ViewBag.DoanhThuTheoOwner = ViewBag.XepHangSan; // duoc set ben duoi
+
 
             // Load TyLeHoaHong map từ VungKhuVuc trước
             var tyLeMap = await _context.DanhMucQuans
@@ -594,6 +737,8 @@ namespace Web_Stadium.Controllers
                     Tong = s.KhungGios.Count,
                     DaDat = s.KhungGios.Count(k => k.TrangThai == "DaDat")
                 }).ToListAsync();
+            ViewBag.TyLe = ViewBag.TyLeLapDay;
+            ViewBag.DoanhThuTheoOwner = ViewBag.XepHangSan;
 
             return View();
         }

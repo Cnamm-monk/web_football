@@ -15,12 +15,12 @@
         <p style="color:var(--muted)">Quản lý dịch vụ kèm theo đơn đặt sân — User chọn khi booking</p>
     </div>
 </div>
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2">
-        <a href="/Owner/DanhSachSan" class="btn btn-sm btn-outline-light rounded-pill">← Danh sách sân</a>
+<<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:10px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex justify-content-between align-items-center gap-2">
+        <a href="/Owner/DanhSachSan" class="btn btn-outline-success rounded-pill">← Danh sách sân</a>
         @if (dmChuaBat.Any())
         {
-            <button class="btn btn-sm btn-success rounded-pill" data-bs-toggle="modal" data-bs-target="#modalBatDV">+ Bật dịch vụ</button>
+            <button class="btn btn-success rounded-pill" data-bs-toggle="modal" data-bs-target="#modalBatDV">+ Bật dịch vụ</button>
         }
     </div>
 </div>

@@ -1,5 +1,5 @@
 ﻿@model Web_Stadium.EFCore.SanBong
-
+@{
     ViewData["Title"] = "Sửa thông tin sân";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -13,11 +13,8 @@
 </div>
 
 <div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap">
-        <a href="/Owner" class="btn btn-sm btn-outline-light rounded-pill">📊 Tổng quan</a>
-        <a href="/Owner/DanhSachSan" class="btn btn-sm btn-success rounded-pill">🏟️ Danh sách sân</a>
-        <a href="/Owner/KhungGio/@Model.Id" class="btn btn-sm btn-outline-light rounded-pill">⏰ Khung giờ</a>
-        <a href="/Owner/KhoDichVu/@Model.Id" class="btn btn-sm btn-outline-light rounded-pill">💼 Dịch vụ</a>
+    <div class="container d-flex gap-2 flex-wrap align-items-left">
+        <a href="/Owner/DanhSachSan" class="btn btn-outline-success rounded-pill">← Danh sách sân</a>
     </div>
 </div>
 
