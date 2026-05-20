@@ -11,10 +11,13 @@ namespace Web_Stadium.Controllers
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
 
-        public OwnerController(SanBongContext context, IConfiguration config)
+        private readonly IHttpClientFactory _httpClientFactory;
+
+        public OwnerController(SanBongContext context, IConfiguration config, IHttpClientFactory httpClientFactory)
         {
             _context = context;
             _config = config;
+            _httpClientFactory = httpClientFactory;
         }
 
         // Helper lấy OwnerId từ JWT
@@ -383,7 +386,56 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
             TempData["Success"] = "Đã xoá khung giờ!";
             return RedirectToAction("KhungGio", new { sanId });
         }
+        public async Task<IActionResult> GoiYGiaSan()
+        {
+            try
+            {
+                var san = await SanCuaToi().FirstOrDefaultAsync();
+                if (san == null)
+                {
+                    ViewBag.Error = "Chưa có sân để gợi ý.";
+                    return View();
+                }
 
+                var requestData = new { sanId = san.Id, month = DateTime.Now.Month, year = DateTime.Now.Year };
+                var client = _httpClientFactory.CreateClient();
+                client.BaseAddress = new Uri("http://localhost:8080/");
+                client.Timeout = TimeSpan.FromSeconds(5);
+
+                var response = await client.PostAsJsonAsync("/api/owner/suggest-price", requestData);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonString = await response.Content.ReadAsStringAsync();
+                    // Log ra output debug
+                    System.Diagnostics.Debug.WriteLine($"Java response: {jsonString}");
+
+                    using var doc = System.Text.Json.JsonDocument.Parse(jsonString);
+                    var root = doc.RootElement;
+                    var suggestion = new
+                    {
+                        suggestedGoldPrice = root.GetProperty("suggestedGoldPrice").GetDecimal(),
+                        suggestedRegularPrice = root.GetProperty("suggestedRegularPrice").GetDecimal(),
+                        reason = root.GetProperty("reason").GetString() ?? "",
+                        confidence = root.GetProperty("confidence").GetDouble()
+                    };
+                    ViewBag.Suggestion = suggestion;
+                }
+                else
+                {
+                    var errorBody = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"Java API error: {response.StatusCode} - {errorBody}");
+                    ViewBag.Error = $"Java service trả về lỗi: {response.StatusCode}";
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Exception: {ex.Message}");
+                ViewBag.Error = $"Lỗi kết nối Java: {ex.Message}";
+            }
+
+            return View();
+        }
         // ══════════════════════════════════════════════════════════
         // 6. QUẢN LÝ STAFF
         // ══════════════════════════════════════════════════════════
@@ -855,5 +907,6 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
                 soLuot = rows.Count
             };
         }
+
     }
 }

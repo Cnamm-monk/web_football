@@ -44,6 +44,6 @@ public partial class User
     public virtual User? OwnerIdCuaStaffNavigation { get; set; }
 
     public virtual ICollection<SanBong> SanBongs { get; set; } = new List<SanBong>();
-
+ 
     public virtual ICollection<StaffSanPhanCong> StaffSanPhanCongs { get; set; } = new List<StaffSanPhanCong>();
 }

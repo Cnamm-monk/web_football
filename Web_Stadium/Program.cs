@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Web_Stadium.EFCore;
-using Web_Stadium.EFCore;
 using Web_Stadium.Hubs;
 
 namespace Web_Stadium
@@ -53,6 +52,7 @@ namespace Web_Stadium
                 };
             });
 
+            builder.Services.AddHttpClient();
             // Đăng ký IConfiguration để dùng được trong _Layout.cshtml
             builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 

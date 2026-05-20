@@ -33,10 +33,14 @@ namespace Web_Stadium.Controllers
         // GET /Booking/Create?khungGioId=1&ngay=2024-04-15
         // ══════════════════════════════════════════════════════════
         [YeuCauDangNhap]
-        public async Task<IActionResult> Create(int khungGioId, DateTime ngay)
+        public async Task<IActionResult> Create(int khungGioId, DateTime? ngay)
         {
-            var userId = TokenHelper.LayUserId(Request, _config);
+            // Xác định ngày hợp lệ: nếu không có hoặc nhỏ hơn hôm nay thì lấy ngày mai
+            var ngayValid = ngay ?? DateTime.Now.Date.AddDays(1);
+            if (ngayValid < DateTime.Now.Date)
+                ngayValid = DateTime.Now.Date.AddDays(1);
 
+            // Lấy khung giờ kèm sân và dịch vụ
             var khungGio = await _context.KhungGios
                 .Include(k => k.SanBong)
                     .ThenInclude(s => s.DichVus)
@@ -45,9 +49,8 @@ namespace Web_Stadium.Controllers
 
             if (khungGio == null) return NotFound();
 
-            // Kiểm tra hết hạn giữ chỗ
-            if (khungGio.TrangThai == "DangGiu"
-                && khungGio.ThoiGianHetGiuCho < DateTime.Now)
+            // Kiểm tra và giải phóng giữ chỗ hết hạn
+            if (khungGio.TrangThai == "DangGiu" && khungGio.ThoiGianHetGiuCho < DateTime.Now)
             {
                 khungGio.TrangThai = "Trong";
                 khungGio.ThoiGianHetGiuCho = null;
@@ -56,6 +59,7 @@ namespace Web_Stadium.Controllers
                     .SendAsync("CapNhatKhungGio", new { khungGioId = khungGio.Id, trangThai = "Trong" });
             }
 
+            // Nếu khung giờ đã bị đặt
             if (khungGio.TrangThai == "DaDat")
             {
                 TempData["Error"] = "Khung giờ này đã bị đặt!";
@@ -74,16 +78,13 @@ namespace Web_Stadium.Controllers
                     hetHan = khungGio.ThoiGianHetGiuCho
                 });
 
-            // FIX 1: Tính tiền cọc theo TyLeCoc của sân (không cứng 30%)
             var tyLeCoc = khungGio.SanBong?.TyLeCoc ?? 0.30m;
-
-            // FIX 2: Lấy dịch vụ của sân cụ thể (còn tồn kho)
             var dichVus = khungGio.SanBong?.DichVus
                 .Where(d => d.IsActive && d.TonKho > 0)
                 .ToList() ?? new();
 
             ViewBag.KhungGio = khungGio;
-            ViewBag.Ngay = ngay;
+            ViewBag.Ngay = ngayValid;
             ViewBag.TyLeCoc = tyLeCoc;
             ViewBag.TienCoc = khungGio.Gia * tyLeCoc;
             ViewBag.DichVus = dichVus;
@@ -91,42 +92,64 @@ namespace Web_Stadium.Controllers
             return View();
         }
 
+
         // ══════════════════════════════════════════════════════════
         // POST /Booking/Create
         // ══════════════════════════════════════════════════════════
         [HttpPost]
         [YeuCauDangNhap]
         public async Task<IActionResult> Create(
-            int khungGioId,
-            DateTime ngayThiDau,
-            List<int>? dichVuIds,
-            List<int>? soLuongs)
+     int khungGioId,
+     string ngayThiDau,
+     List<int>? dichVuIds,
+     List<int>? soLuongs)
         {
-            var userId = TokenHelper.LayUserId(Request, _config);
+            // Lấy khung giờ để biết SanBongId (dùng cho redirect nếu lỗi)
             var khungGio = await _context.KhungGios
                 .Include(k => k.SanBong)
                 .FirstOrDefaultAsync(k => k.Id == khungGioId);
             if (khungGio == null) return NotFound();
 
-            // FIX 1: Tính cọc theo TyLeCoc của sân
+            // Parse ngày thi đấu an toàn (định dạng yyyy-MM-dd)
+            if (!DateTime.TryParseExact(ngayThiDau, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var ngay))
+            {
+                TempData["Error"] = "Ngày thi đấu không hợp lệ. Vui lòng chọn lại ngày.";
+                return RedirectToAction("Details", "Venues", new { id = khungGio.SanBongId });
+            }
+
+            // Không cho đặt sân trong quá khứ
+            if (ngay < DateTime.Now.Date)
+            {
+                TempData["Error"] = "Không thể đặt sân cho ngày trong quá khứ.";
+                return RedirectToAction("Details", "Venues", new { id = khungGio.SanBongId });
+            }
+
+            // Kiểm tra lại khung giờ (tránh trường hợp giữ chỗ hết hạn)
+            var khungGioMoi = await _context.KhungGios.FindAsync(khungGioId);
+            if (khungGioMoi == null || khungGioMoi.TrangThai == "DaDat")
+            {
+                TempData["Error"] = "Khung giờ đã bị người khác đặt mất. Vui lòng chọn khung khác.";
+                return RedirectToAction("Details", "Venues", new { id = khungGio.SanBongId });
+            }
+
+            var userId = TokenHelper.LayUserId(Request, _config);
             var tyLeCoc = khungGio.SanBong?.TyLeCoc ?? 0.30m;
             var tienCoc = khungGio.Gia * tyLeCoc;
-
             var maDatSan = Guid.NewGuid().ToString()[..8].ToUpper();
 
             var datSan = new DatSan
             {
                 UserId = userId!.Value,
                 KhungGioId = khungGioId,
-                NgayThiDau = ngayThiDau,
+                NgayThiDau = ngay,
                 TienCoc = tienCoc,
                 MaXacNhan = maDatSan,
-                TrangThai = "DaXacNhan",   // FIX: đã xác nhận (giả định đã thanh toán)
+                TrangThai = "DaXacNhan",   // Giả sử đã thanh toán cọc
                 ThoiGianTao = DateTime.Now
             };
             await _datSanRepo.AddAsync(datSan);
 
-            // FIX 2: Thêm dịch vụ + trừ tồn kho ngay khi đặt
+            // Xử lý dịch vụ kèm theo, trừ tồn kho ngay khi đặt
             if (dichVuIds != null)
             {
                 for (int i = 0; i < dichVuIds.Count; i++)
@@ -143,17 +166,15 @@ namespace Web_Stadium.Controllers
                         DichVuId = dichVuIds[i],
                         SoLuong = sl
                     });
-
-                    // Trừ tồn kho ngay khi đặt trước
                     dv.TonKho -= sl;
                 }
                 await _context.SaveChangesAsync();
             }
 
-            // Khoá slot
-            khungGio.TrangThai = "DaDat";
-            khungGio.ThoiGianHetGiuCho = null;
-            await _khungGioRepo.UpdateAsync(khungGio);
+            // Cập nhật trạng thái khung giờ thành "Đã đặt"
+            khungGioMoi.TrangThai = "DaDat";
+            khungGioMoi.ThoiGianHetGiuCho = null;
+            await _khungGioRepo.UpdateAsync(khungGioMoi);
             await _hub.Clients.Group($"san_{khungGio.SanBongId}")
                 .SendAsync("CapNhatKhungGio", new { khungGioId = khungGio.Id, trangThai = "DaDat" });
 

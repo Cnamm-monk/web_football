@@ -6,7 +6,7 @@ namespace Web_Stadium.EFCore;
 public partial class DatSan
 {
     public int Id { get; set; }
-
+    
     public int UserId { get; set; }
 
     public int KhungGioId { get; set; }
