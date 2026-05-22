@@ -62,6 +62,7 @@ namespace Web_Stadium
             builder.Services.AddControllersWithViews();
 
             builder.Services.AddHostedService<Web_Stadium.End.MatchmakingAutoCleanupService>();
+            builder.Services.AddScoped<Web_Stadium.Services.EmailService>();
 
             var app = builder.Build();
 

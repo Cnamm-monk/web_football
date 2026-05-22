@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
+using Web_Stadium.Services;
 
 namespace Web_Stadium.Controllers
 {
@@ -10,11 +11,13 @@ namespace Web_Stadium.Controllers
     {
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
+        private readonly EmailService _emailService;
 
-        public AdminController(SanBongContext context, IConfiguration config)
+        public AdminController(SanBongContext context, IConfiguration config, EmailService emailService)
         {
             _context = context;
             _config = config;
+            _emailService = emailService;
         }
 
         private int GetAdminId() => TokenHelper.LayUserId(Request, _config)!.Value;
@@ -330,8 +333,10 @@ namespace Web_Stadium.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> PheDuyet(int id, string trangThai, decimal? tyLeOverride)
+        public async Task<IActionResult> PheDuyet(int id, string trangThai, decimal? tyLeOverride, string? lyDoTuChoi)
         {
+            if (!string.IsNullOrEmpty(lyDoTuChoi))
+                TempData["LyDoTuChoi"] = lyDoTuChoi;
             var san = await _context.SanBongs
                 .Include(s => s.Owner)
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -367,9 +372,62 @@ namespace Web_Stadium.Controllers
             await GhiLog(trangThai == "DaDuyet" ? "PheDuyetSan" : "TuChoiSan",
                 "SanBong", id, $"{trangThai}: {san.TenSan} — HH: {tyLeLog:P0}");
 
+            // ✅ Gửi email thông báo cho Owner
+if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
+{
+    if (trangThai == "DaDuyet")
+    {
+        await _emailService.GuiEmailAsync(
+            san.Owner.Email, 
+            san.Owner.HoTen,
+            $"✅ Sân \"{san.TenSan}\" đã được phê duyệt — PitchHub", // ĐÃ FIX: Escape dấu ngoặc kép bằng \"
+            $@"<div style='font-family:Arial,sans-serif;max-width:560px;margin:0 auto;'>
+                <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:28px;text-align:center;border-radius:16px 16px 0 0;'>
+                    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+                </div>
+                <div style='padding:28px;background:#fff;border-radius:0 0 16px 16px;'>
+                    <h2 style='color:#1ed760;'>🎉 Sân đã được phê duyệt!</h2>
+                    <p>Xin chào <strong>{san.Owner.HoTen}</strong>,</p>
+                    <p>Sân <strong>{san.TenSan}</strong> đã được Admin PitchHub phê duyệt thành công.</p>
+                    <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:10px;padding:16px;margin:16px 0;'>
+                        <p>📍 Địa chỉ: {san.DiaChi}, {san.Quan}</p>
+                        <p>💰 Tỷ lệ hoa hồng: <strong>{tyLeLog:P0}</strong></p>
+                        <p>📅 Ngày duyệt: {DateTime.Now:dd/MM/yyyy HH:mm}</p>
+                    </div>
+                    <p>Bạn có thể bắt đầu cấu hình khung giờ, bảng giá và đưa sân vào hoạt động ngay!</p>
+                    <a href='https://pitchhub.vn/Owner' style='display:inline-block;background:#1ed760;color:#000;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;'>Vào quản lý sân →</a>
+                </div>
+            </div>"
+        );
+    }
+    else
+    {
+        var lyDo = TempData["LyDoTuChoi"]?.ToString() ?? "Hồ sơ chưa đầy đủ hoặc không phù hợp";
+        await _emailService.GuiEmailAsync(
+            san.Owner.Email, 
+            san.Owner.HoTen,
+            $"❌ Sân \"{san.TenSan}\" chưa được phê duyệt — PitchHub", // ĐÃ FIX: Escape dấu ngoặc kép bằng \"
+            $@"<div style='font-family:Arial,sans-serif;max-width:560px;margin:0 auto;'>
+                <div style='background:linear-gradient(135deg,#1a0a0a,#2a1010);padding:28px;text-align:center;border-radius:16px 16px 0 0;'>
+                    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+                </div>
+                <div style='padding:28px;background:#fff;border-radius:0 0 16px 16px;'>
+                    <h2 style='color:#e74c3c;'>Hồ sơ chưa được duyệt</h2>
+                    <p>Xin chào <strong>{san.Owner.HoTen}</strong>,</p>
+                    <p>Sân <strong>{san.TenSan}</strong> chưa được phê duyệt vào thời điểm này.</p>
+                    <div style='background:#fff8f0;border:1px solid #f59e0b;border-radius:10px;padding:16px;margin:16px 0;'>
+                        <p><strong>Lý do:</strong> {lyDo}</p>
+                    </div>
+                    <p>Bạn có thể bổ sung thông tin và gửi lại hồ sơ. Nếu cần hỗ trợ, vui lòng liên hệ support@pitchhub.vn</p>
+                </div>
+            </div>"
+        );
+    }
+}
+
             TempData["Success"] = trangThai == "DaDuyet"
-                ? $"Đã duyệt \"{san.TenSan}\" (hoa hồng {tyLeLog:P0})"
-                : $"Đã từ chối \"{san.TenSan}\"";
+                ? $"Đã duyệt \"{san.TenSan}\" (hoa hồng {tyLeLog:P0}) — Email đã gửi cho Owner"
+                : $"Đã từ chối \"{san.TenSan}\" — Email đã gửi cho Owner";
 
             return RedirectToAction("DuyetSan");
         }
@@ -576,9 +634,48 @@ namespace Web_Stadium.Controllers
             await _context.SaveChangesAsync();
             await GhiLog(ketQua == "DaHoanCoc" ? "HoanCoc" : "TuChoiHoanCoc",
                 "KhieuNai", id, $"{kn.User?.HoTen} — {soTienHoan:N0}đ");
+
+            // Gửi email thông báo kết quả cho User
+            if (kn.User != null && !string.IsNullOrEmpty(kn.User.Email))
+            {
+                if (ketQua == "DaHoanCoc")
+                {
+                    await _emailService.GuiEmailAsync(
+                        kn.User.Email, kn.User.HoTen,
+                        "✅ Khiếu nại của bạn đã được chấp nhận — PitchHub",
+                        $@"<div style='font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px;'>
+                            <h2 style='color:#1ed760;'>Khiếu nại được chấp nhận</h2>
+                            <p>Xin chào <strong>{kn.User.HoTen}</strong>,</p>
+                            <p>Admin PitchHub đã xem xét và chấp nhận khiếu nại của bạn.</p>
+                            <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:10px;padding:16px;'>
+                                <p>💰 Số tiền hoàn: <strong style='color:#1ed760;font-size:1.3rem;'>{soTienHoan:N0}đ</strong></p>
+                                <p>📝 Ghi chú: {ghiChu ?? "Hoàn tiền theo chính sách PitchHub"}</p>
+                                <p>⏱ Tiền hoàn về phương thức thanh toán ban đầu trong 1-3 ngày làm việc.</p>
+                            </div>
+                        </div>"
+                    );
+                }
+                else
+                {
+                    await _emailService.GuiEmailAsync(
+                        kn.User.Email, kn.User.HoTen,
+                        "❌ Khiếu nại của bạn không được chấp nhận — PitchHub",
+                        $@"<div style='font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:28px;'>
+                            <h2 style='color:#e74c3c;'>Khiếu nại không được chấp nhận</h2>
+                            <p>Xin chào <strong>{kn.User.HoTen}</strong>,</p>
+                            <p>Sau khi xem xét, Admin PitchHub không thể chấp nhận khiếu nại này.</p>
+                            <div style='background:#fff8f0;border:1px solid #f59e0b;border-radius:10px;padding:16px;'>
+                                <p>📝 Lý do: {ghiChu ?? "Khiếu nại không có cơ sở theo chính sách PitchHub"}</p>
+                            </div>
+                            <p>Nếu cần hỗ trợ thêm, vui lòng liên hệ support@pitchhub.vn</p>
+                        </div>"
+                    );
+                }
+            }
+
             TempData["Success"] = ketQua == "DaHoanCoc"
-                ? $"Đã hoàn {soTienHoan:N0}đ cho \"{kn.User?.HoTen}\""
-                : "Đã từ chối khiếu nại.";
+                ? $"Đã hoàn {soTienHoan:N0}đ cho \"{kn.User?.HoTen}\" — Email đã gửi"
+                : "Đã từ chối khiếu nại — Email đã gửi cho khách.";
             return RedirectToAction("KhieuNai");
         }
 
@@ -778,6 +875,132 @@ namespace Web_Stadium.Controllers
 
             return View(await query.OrderByDescending(a => a.ThoiGian)
                 .Skip((trang - 1) * pageSize).Take(pageSize).ToListAsync());
+        }
+
+        // AJAX: Số khiếu nại chờ xử lý — dùng cho badge navbar
+        [HttpGet]
+        public async Task<IActionResult> GetSoKhieuNai()
+        {
+            var so = await _context.KhieuNais.CountAsync(k => k.TrangThai == "ChoXuLy");
+            var soSan = await _context.SanBongs.CountAsync(s => s.TrangThaiDuyet == "ChoDuyet");
+            return Json(new { soKhieuNai = so, soSanChoDuyet = soSan });
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // HO SO
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> HoSo(string tab = "suckhoe")
+        {
+            var adminId = TokenHelper.LayUserId(Request, _config);
+            if (adminId == null) return RedirectToAction("Login", "Auth");
+            var user = await _context.Users.FindAsync(adminId);
+
+            // KPI hôm nay
+            var homNay = DateTime.Today;
+            var donHomNay = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Where(d => d.ThoiGianTao.Date == homNay
+                         && (d.TrangThai == "HoanThanh" || d.TrangThai == "DaXacNhan"))
+                .ToListAsync();
+
+            double dtHomNay = (double)donHomNay.Sum(d => d.TongTien > 0 ? d.TongTien : d.TienCoc);
+
+            // Cảnh báo hệ thống
+            var canhBao = new List<string>();
+            int knCho = await _context.KhieuNais.CountAsync(k => k.TrangThai == "ChoXuLy");
+            int sanCho = await _context.SanBongs.CountAsync(s => s.TrangThaiDuyet == "ChoDuyet");
+            if (knCho > 0) canhBao.Add($"{knCho} khiếu nại đang chờ xử lý");
+            if (sanCho > 0) canhBao.Add($"{sanCho} sân mới đang chờ phê duyệt");
+
+            ViewBag.TongSan = await _context.SanBongs.CountAsync(s => s.TrangThaiDuyet == "DaDuyet");
+            ViewBag.TongUser = await _context.Users.CountAsync(u => u.VaiTro == "User");
+            ViewBag.TongOwner = await _context.Users.CountAsync(u => u.VaiTro == "Owner");
+            ViewBag.TongStaff = await _context.Users.CountAsync(u => u.VaiTro == "Staff");
+            ViewBag.TongAdmin = await _context.Users.CountAsync(u => u.VaiTro == "Admin");
+            ViewBag.TongKN = knCho;
+            ViewBag.SanChoDuyet = sanCho;
+            ViewBag.SanDaDuyet = await _context.SanBongs.CountAsync(s => s.TrangThaiDuyet == "DaDuyet");
+            ViewBag.SanTuChoi = await _context.SanBongs.CountAsync(s => s.TrangThaiDuyet == "TuChoi");
+            ViewBag.DoanhThuHomNay = dtHomNay;
+            ViewBag.LuotDatHomNay = donHomNay.Count;
+            ViewBag.UserMoiTuan = await _context.Users
+                .CountAsync(u => u.NgayTao >= DateTime.Now.AddDays(-7));
+            ViewBag.CanhBao = canhBao;
+            ViewBag.AuditLogs = await _context.AuditLogs
+                .Where(a => a.UserId == adminId)
+                .OrderByDescending(a => a.ThoiGian).Take(50).ToListAsync();
+            ViewBag.Tab = tab;
+            return View(user);
+        }
+        // ══════════════════════════════════════════════════════════
+        // QUAN LY SAN
+        // ══════════════════════════════════════════════════════════
+
+        public async Task<IActionResult> QuanLySan(
+    int? ownerId, string? trangThai, string? keyword)
+        {
+            // Danh sách Owner để filter dropdown
+            ViewBag.OwnerList = await _context.Users
+                .Where(u => u.VaiTro == "Owner")
+                .OrderBy(u => u.HoTen)
+                .ToListAsync();
+
+            // Query sân — include Owner, DichVus, AnhSanBongs, Quan→Vung(Lat/Lng)
+            var query = _context.SanBongs
+                .Include(s => s.Owner)
+                .Include(s => s.DichVus)
+                .Include(s => s.AnhSanBongs)
+                .AsQueryable();
+
+            // Lọc theo Owner
+            if (ownerId.HasValue)
+                query = query.Where(s => s.OwnerId == ownerId.Value);
+
+            // Lọc theo trạng thái
+            if (!string.IsNullOrEmpty(trangThai))
+                query = query.Where(s => s.TrangThaiDuyet == trangThai);
+
+            // Tìm theo tên hoặc địa chỉ
+            if (!string.IsNullOrEmpty(keyword))
+                query = query.Where(s =>
+                    s.TenSan.Contains(keyword) ||
+                    s.DiaChi.Contains(keyword) ||
+                    s.Quan.Contains(keyword));
+
+            var sanList = await query.OrderBy(s => s.TenSan).ToListAsync();
+
+            // Lấy tọa độ theo quận (Lat/Lng nằm ở VungKhuVuc qua DanhMucQuan)
+            var quanMap = await _context.DanhMucQuans
+                .Include(q => q.VungKhuVuc)
+                .Where(q => q.IsActive)
+                .ToDictionaryAsync(
+                    q => q.TenQuan,
+                    q => new { lat = q.VungKhuVuc?.Lat ?? 21.028, lng = q.VungKhuVuc?.Lng ?? 105.854 }
+                );
+
+            // Build data cho bản đồ — gán tọa độ từ vùng của quận sân đó
+            var mapData = sanList.Select(s => new {
+                id = s.Id,
+                ten = s.TenSan,
+                diaChi = s.DiaChi + ", " + s.Quan,
+                trangThai = s.TrangThaiDuyet,
+                owner = s.Owner?.HoTen ?? "",
+                loaiSan = s.LoaiSan,
+                lat = quanMap.ContainsKey(s.Quan ?? "") ? quanMap[s.Quan!].lat : 21.028,
+                lng = quanMap.ContainsKey(s.Quan ?? "") ? quanMap[s.Quan!].lng : 105.854,
+                dichVus = (s.DichVus ?? new List<DichVu>())
+                                .Where(d => d.IsActive)
+                                .Select(d => new { ten = d.TenDichVu, gia = d.Gia, kho = d.TonKho })
+                                .ToList()
+            }).ToList();
+
+            ViewBag.SanList = sanList;
+            ViewBag.MapDataJson = System.Text.Json.JsonSerializer.Serialize(mapData);
+            ViewBag.FilterOwner = ownerId;
+            ViewBag.FilterTT = trangThai;
+            ViewBag.Keyword = keyword;
+
+            return View();
         }
     }
 }

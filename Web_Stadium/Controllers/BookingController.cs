@@ -33,9 +33,13 @@ namespace Web_Stadium.Controllers
         // GET /Booking/Create?khungGioId=1&ngay=2024-04-15
         // ══════════════════════════════════════════════════════════
         [YeuCauDangNhap]
-        public async Task<IActionResult> Create(int khungGioId, DateTime ngay)
+        public async Task<IActionResult> Create(int khungGioId, string? ngayStr)
         {
             var userId = TokenHelper.LayUserId(Request, _config);
+
+            // Parse ngày an toàn — tránh SqlDateTime overflow
+            if (!DateTime.TryParse(ngayStr, out var ngay) || ngay < new DateTime(1753, 1, 1))
+                ngay = DateTime.Today;
 
             var khungGio = await _context.KhungGios
                 .Include(k => k.SanBong)
@@ -62,9 +66,9 @@ namespace Web_Stadium.Controllers
                 return RedirectToAction("Details", "Venues", new { id = khungGio.SanBongId });
             }
 
-            // Giữ chỗ 10 phút
+            // Giữ chỗ 5 phút (theo flow)
             khungGio.TrangThai = "DangGiu";
-            khungGio.ThoiGianHetGiuCho = DateTime.Now.AddMinutes(10);
+            khungGio.ThoiGianHetGiuCho = DateTime.Now.AddMinutes(5);
             await _khungGioRepo.UpdateAsync(khungGio);
             await _hub.Clients.Group($"san_{khungGio.SanBongId}")
                 .SendAsync("CapNhatKhungGio", new
@@ -74,19 +78,27 @@ namespace Web_Stadium.Controllers
                     hetHan = khungGio.ThoiGianHetGiuCho
                 });
 
-            // FIX 1: Tính tiền cọc theo TyLeCoc của sân (không cứng 30%)
             var tyLeCoc = khungGio.SanBong?.TyLeCoc ?? 0.30m;
-
-            // FIX 2: Lấy dịch vụ của sân cụ thể (còn tồn kho)
             var dichVus = khungGio.SanBong?.DichVus
                 .Where(d => d.IsActive && d.TonKho > 0)
                 .ToList() ?? new();
+
+            // Voucher user đang có (chưa dùng, chưa hết hạn)
+            var vouchers = await _context.UserVouchers
+                .Include(uv => uv.Voucher)
+                .Where(uv => uv.UserId == userId
+                          && !uv.IsUsed
+                          && uv.NgayHetHan > DateTime.Now)
+                .OrderBy(uv => uv.NgayHetHan)
+                .ToListAsync();
 
             ViewBag.KhungGio = khungGio;
             ViewBag.Ngay = ngay;
             ViewBag.TyLeCoc = tyLeCoc;
             ViewBag.TienCoc = khungGio.Gia * tyLeCoc;
             ViewBag.DichVus = dichVus;
+            ViewBag.Vouchers = vouchers;
+            ViewBag.HetHan = khungGio.ThoiGianHetGiuCho;
 
             return View();
         }
@@ -98,56 +110,146 @@ namespace Web_Stadium.Controllers
         [YeuCauDangNhap]
         public async Task<IActionResult> Create(
             int khungGioId,
-            DateTime ngayThiDau,
+            string? ngayThiDauStr,
             List<int>? dichVuIds,
-            List<int>? soLuongs)
+            List<int>? soLuongs,
+            string? userVoucherId)
         {
+            // Parse ngày an toàn — tránh SqlDateTime overflow
+            if (!DateTime.TryParse(ngayThiDauStr, out var ngayThiDau) || ngayThiDau < new DateTime(1753, 1, 1))
+                ngayThiDau = DateTime.Today;
+
+            // ❌ FIX 1: Không cho đặt ngày trong quá khứ
+            if (ngayThiDau.Date < DateTime.Today)
+            {
+                TempData["Error"] = "Không thể đặt sân cho ngày đã qua. Vui lòng chọn ngày hôm nay hoặc tương lai!";
+                return RedirectToAction("Details", "Venues", new { id = khungGioId });
+            }
+
             var userId = TokenHelper.LayUserId(Request, _config);
+
+            // ❌ FIX 2: Kiểm tra đã xác thực SĐT/Email chưa
+            var userCheck = await _context.Users.FindAsync(userId);
+            if (userCheck == null || !userCheck.DaXacThucSdt)
+            {
+                var returnUrl = $"/Booking/Create?khungGioId={khungGioId}&ngayThiDauStr={ngayThiDauStr}";
+                // Giải phóng slot đang giữ
+                var kgTam = await _context.KhungGios.FindAsync(khungGioId);
+                if (kgTam != null && kgTam.TrangThai == "DangGiu")
+                {
+                    kgTam.TrangThai = "Trong";
+                    kgTam.ThoiGianHetGiuCho = null;
+                    await _context.SaveChangesAsync();
+                }
+                return RedirectToAction("XacThuc", "Otp", new { returnUrl });
+            }
+
             var khungGio = await _context.KhungGios
                 .Include(k => k.SanBong)
                 .FirstOrDefaultAsync(k => k.Id == khungGioId);
             if (khungGio == null) return NotFound();
 
-            // FIX 1: Tính cọc theo TyLeCoc của sân
-            var tyLeCoc = khungGio.SanBong?.TyLeCoc ?? 0.30m;
-            var tienCoc = khungGio.Gia * tyLeCoc;
-
-            var maDatSan = Guid.NewGuid().ToString()[..8].ToUpper();
-
-            var datSan = new DatSan
+            // ❌ FIX 1b: Nếu đặt hôm nay → kiểm tra khung giờ chưa qua
+            if (ngayThiDau.Date == DateTime.Today)
             {
-                UserId = userId!.Value,
-                KhungGioId = khungGioId,
-                NgayThiDau = ngayThiDau,
-                TienCoc = tienCoc,
-                MaXacNhan = maDatSan,
-                TrangThai = "DaXacNhan",   // FIX: đã xác nhận (giả định đã thanh toán)
-                ThoiGianTao = DateTime.Now
-            };
-            await _datSanRepo.AddAsync(datSan);
+                var gioBD = khungGio.GioBatDau.ToTimeSpan();
+                if (DateTime.Now.TimeOfDay >= gioBD)
+                {
+                    TempData["Error"] = "Khung giờ này đã qua hôm nay. Vui lòng chọn ngày khác!";
+                    return RedirectToAction("Details", "Venues", new { id = khungGio.SanBongId });
+                }
+            }
 
-            // FIX 2: Thêm dịch vụ + trừ tồn kho ngay khi đặt
+            var tyLeCoc = khungGio.SanBong?.TyLeCoc ?? 0.30m;
+            var tienCocGoc = khungGio.Gia * tyLeCoc;
+            var tienCocSauGiam = tienCocGoc;
+
+            // ── Áp dụng voucher nếu có ──────────────────────────
+            UserVoucher? uvDung = null;
+            if (!string.IsNullOrEmpty(userVoucherId))
+            {
+                uvDung = await _context.UserVouchers
+                    .Include(uv => uv.Voucher)
+                    .FirstOrDefaultAsync(uv => uv.MaSuDung == userVoucherId
+                                            && uv.UserId == userId
+                                            && !uv.IsUsed
+                                            && uv.NgayHetHan > DateTime.Now);
+
+                if (uvDung?.Voucher != null)
+                {
+                    var v = uvDung.Voucher;
+                    if (v.LoaiGiam == "PhanTram")
+                    {
+                        var giam = tienCocGoc * (v.GiaTriGiam / 100m);
+                        if (v.GiamToiDa.HasValue) giam = Math.Min(giam, v.GiamToiDa.Value);
+                        tienCocSauGiam = Math.Max(0, tienCocGoc - giam);
+                    }
+                    else // SoTien
+                    {
+                        tienCocSauGiam = Math.Max(0, tienCocGoc - v.GiaTriGiam);
+                    }
+                }
+            }
+
+            // Sinh mã xác nhận theo format XN-YYYYMMDD-XXXX
+            var maDatSan = $"XN-{DateTime.Now:yyyyMMdd}-{Guid.NewGuid().ToString()[..4].ToUpper()}";
+
+            // ✅ FIX 3: Tính tổng tiền dịch vụ để cộng vào TongTien
+            decimal tongTienDichVu = 0;
+            var dichVuList = new List<(int dvId, int sl, decimal gia)>();
             if (dichVuIds != null)
             {
                 for (int i = 0; i < dichVuIds.Count; i++)
                 {
                     var sl = (soLuongs != null && i < soLuongs.Count) ? soLuongs[i] : 1;
                     if (sl <= 0) continue;
-
                     var dv = await _context.DichVus.FindAsync(dichVuIds[i]);
-                    if (dv == null || dv.TonKho < sl) continue;
-
-                    _context.DatSanDichVus.Add(new DatSanDichVu
-                    {
-                        DatSanId = datSan.Id,
-                        DichVuId = dichVuIds[i],
-                        SoLuong = sl
-                    });
-
-                    // Trừ tồn kho ngay khi đặt trước
-                    dv.TonKho -= sl;
+                    if (dv == null || !dv.IsActive) continue;
+                    tongTienDichVu += dv.Gia * sl;
+                    dichVuList.Add((dichVuIds[i], sl, dv.Gia));
                 }
+            }
+
+            // TongTien = tiền sân + dịch vụ (cọc tính % trên tiền sân)
+            var tongTienSan = khungGio.Gia + tongTienDichVu;
+
+            // Tính lại cọc nếu cần (cọc tính trên tiền sân, không tính dịch vụ)
+            // tienCocSauGiam đã tính đúng rồi
+
+            var datSan = new DatSan
+            {
+                UserId = userId!.Value,
+                KhungGioId = khungGioId,
+                NgayThiDau = ngayThiDau,
+                TienCoc = tienCocSauGiam,
+                TongTien = tongTienSan,   // ← FIX: bao gồm cả dịch vụ
+                MaXacNhan = maDatSan,
+                TrangThai = "ChoDuyet",
+                ThoiGianTao = DateTime.Now
+            };
+            await _datSanRepo.AddAsync(datSan);
+
+            // Thêm dịch vụ vào đơn (KHÔNG trừ kho — chỉ trừ khi Staff check-in)
+            foreach (var (dvId, sl, gia) in dichVuList)
+            {
+                _context.DatSanDichVus.Add(new DatSanDichVu
+                {
+                    DatSanId = datSan.Id,
+                    DichVuId = dvId,
+                    SoLuong = sl
+                });
+            }
+            if (dichVuList.Any()) await _context.SaveChangesAsync();
+
+            // ── Đánh dấu voucher đã dùng ────────────────────────
+            if (uvDung != null)
+            {
+                uvDung.IsUsed = true;
+                uvDung.NgaySuDung = DateTime.Now;
+                uvDung.DatSanId = datSan.Id;
                 await _context.SaveChangesAsync();
+
+                // Ghi log điểm (trừ điểm đã ghi khi đổi, ở đây chỉ ghi lại note dùng voucher)
             }
 
             // Khoá slot
@@ -157,7 +259,7 @@ namespace Web_Stadium.Controllers
             await _hub.Clients.Group($"san_{khungGio.SanBongId}")
                 .SendAsync("CapNhatKhungGio", new { khungGioId = khungGio.Id, trangThai = "DaDat" });
 
-            TempData["Success"] = $"Đặt sân thành công! Mã xác nhận: {maDatSan}";
+            TempData["Success"] = $"Đặt sân thành công! Mã xác nhận: {maDatSan}. Vui lòng chờ Owner xác nhận.";
             return RedirectToAction("MyBookings");
         }
 
@@ -181,37 +283,39 @@ namespace Web_Stadium.Controllers
                 .OrderByDescending(d => d.ThoiGianTao)
                 .ToListAsync();
 
-            // Kiểm tra đơn nào đã đánh giá
+            // Đơn nào đã có đánh giá
             var daDanhGiaIds = await _context.DanhGias
                 .Where(dg => dg.UserId == userId)
                 .Select(dg => dg.DatSanId)
                 .ToListAsync();
+            ViewBag.DaDanhGiaIds = daDanhGiaIds.ToHashSet();
 
-            ViewBag.DaDanhGiaIds = daDanhGiaIds;
-            ViewBag.TrangThai = trangThai;
-
-            // Lay cac DatSanId da co tin matchmaking dang tim
+            // Tin matchmaking đang tìm
             var datSanIds = list.Select(d => d.Id).ToList();
             var daTim = await _context.Matchmakings
                 .Where(m => m.TrangThai == "DangTim" && datSanIds.Contains(m.DatSanId))
                 .ToListAsync();
-
             ViewBag.DaTim = daTim.Select(m => m.DatSanId).ToHashSet();
+            ViewBag.MmIdMap = daTim.ToDictionary(m => m.DatSanId, m => m.Id);
 
-            // Map DatSanId -> MatchmakingId de nut Huy tin biet id nao can huy
-            var mmIdMap = daTim.ToDictionary(m => m.DatSanId, m => m.Id);
-            ViewBag.MmIdMap = mmIdMap;
-
+            ViewBag.TrangThai = trangThai;
             return View(list);
         }
 
         // ══════════════════════════════════════════════════════════
-        // POST /Booking/Huy — Huỷ đơn (chỉ ChoDuyet hoặc DaXacNhan)
+        // POST /Booking/Huy
         // ══════════════════════════════════════════════════════════
         [HttpPost]
         [YeuCauDangNhap]
-        public async Task<IActionResult> Huy(int id)
+        public async Task<IActionResult> Huy(int id, string? lyDoHuy)
         {
+            // ❌ FIX 4: Bắt buộc nhập lý do hủy
+            if (string.IsNullOrWhiteSpace(lyDoHuy))
+            {
+                TempData["Error"] = "Vui lòng nhập lý do hủy đặt sân!";
+                return RedirectToAction("MyBookings");
+            }
+
             var userId = TokenHelper.LayUserId(Request, _config);
             var datSan = await _context.DatSans
                 .Include(d => d.KhungGio)
@@ -226,40 +330,66 @@ namespace Web_Stadium.Controllers
                 return RedirectToAction("MyBookings");
             }
 
-            datSan.TrangThai = "DaHuy";
-            datSan.KhungGio.TrangThai = "Trong";
+            // ── Tính tiền hoàn theo đúng chính sách ─────────────
+            decimal phanTramHoan = 1.0m; // mặc định 100%
+            string thongBaoHoan;
 
-            // Hoàn tồn kho dịch vụ đặt trước khi hủy
-            foreach (var dv in datSan.DatSanDichVus)
+            if (datSan.TrangThai == "DaXacNhan")
             {
-                if (dv.DichVu != null)
-                    dv.DichVu.TonKho += dv.SoLuong;
+                // Đã được Owner xác nhận → tính theo thời gian còn lại
+                var gioBatDau = datSan.KhungGio?.GioBatDau.ToTimeSpan() ?? TimeSpan.Zero;
+                var gioDauTran = datSan.NgayThiDau.Date.Add(gioBatDau);
+                var conLai = gioDauTran - DateTime.Now;
+
+                if (conLai.TotalHours >= 24)
+                {
+                    phanTramHoan = 1.0m;   // trước 24h: hoàn 100%
+                    thongBaoHoan = "Hoàn 100% tiền cọc vì huỷ trước 24 giờ.";
+                }
+                else if (conLai.TotalHours >= 2)
+                {
+                    phanTramHoan = 0.5m;   // trong 24h: hoàn 50%
+                    thongBaoHoan = "Hoàn 50% tiền cọc vì huỷ trong vòng 24 giờ.";
+                }
+                else
+                {
+                    phanTramHoan = 0m;     // trong 2h: không hoàn
+                    thongBaoHoan = "Không hoàn cọc vì huỷ trong vòng 2 giờ trước trận.";
+                }
             }
+            else
+            {
+                // ChoDuyet → hoàn 100% (Owner chưa cam kết gì)
+                thongBaoHoan = "Hoàn 100% tiền cọc vì Owner chưa xác nhận.";
+            }
+
+            var soTienHoan = Math.Round(datSan.TienCoc * phanTramHoan, 0);
+            datSan.TrangThai = "DaHuy";
+            datSan.GhiChuSuCo = $"Lý do hủy: {lyDoHuy}";  // Lưu lý do hủy
+            datSan.KhungGio.TrangThai = "Trong";
 
             await _context.SaveChangesAsync();
             await _hub.Clients.Group($"san_{datSan.KhungGio.SanBongId}")
                 .SendAsync("CapNhatKhungGio", new { khungGioId = datSan.KhungGioId, trangThai = "Trong" });
 
-            TempData["Success"] = "Đã huỷ đặt sân thành công!";
+            TempData["Success"] = $"Đã huỷ đặt sân. {thongBaoHoan} Hoàn {soTienHoan:N0}đ trong 1–3 ngày làm việc.";
             return RedirectToAction("MyBookings");
         }
 
         // ══════════════════════════════════════════════════════════
-        // POST /Booking/GuiKhieuNai — User gửi khiếu nại
+        // POST /Booking/GuiKhieuNai
         // ══════════════════════════════════════════════════════════
         [HttpPost]
         [YeuCauDangNhap]
         public async Task<IActionResult> GuiKhieuNai(int datSanId, string lyDo)
         {
             var userId = TokenHelper.LayUserId(Request, _config);
-
             var don = await _context.DatSans
                 .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
             if (don == null) return NotFound();
 
-            // Kiểm tra đã có khiếu nại chưa
             var daCoKN = await _context.KhieuNais
-                .AnyAsync(k => k.DatSanId == datSanId && k.UserId == userId.Value);
+                .AnyAsync(k => k.DatSanId == datSanId && k.UserId == userId!.Value);
             if (daCoKN)
             {
                 TempData["Error"] = "Bạn đã gửi khiếu nại cho đơn này rồi!";
