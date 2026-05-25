@@ -19,7 +19,7 @@ namespace Web_Stadium.Controllers
             _config = config;
             _httpClientFactory = httpClientFactory;
         }
-
+        //test git
         // Helper lấy OwnerId từ JWT
         private int GetOwnerId()
         {
