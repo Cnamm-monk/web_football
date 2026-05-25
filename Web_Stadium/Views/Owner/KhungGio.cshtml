@@ -7,6 +7,7 @@
 }
 
 <style>
+    /* Giữ nguyên style như bạn đã có */
     :root {
         --db-bg: #f8fafc;
         --db-surface: #ffffff;
@@ -248,20 +249,19 @@
                 <tbody>
                     @foreach (var kg in Model)
                     {
-                        // SỬA LỖI HIỂN THỊ: dùng HH (24h) thay vì hh (12h)
                         var gioHienThi = kg.GioBatDau.ToString(@"HH\:mm") + " – " + kg.GioKetThuc.ToString(@"HH\:mm");
                         var statusClass = kg.TrangThai == "Trong" ? "badge-status" : (kg.TrangThai == "DaDat" ? "badge-booked" : "badge-hold");
                         var statusText = kg.TrangThai == "Trong" ? "Còn trống" : (kg.TrangThai == "DaDat" ? "Đã đặt" : "Đang giữ");
                         <tr>
                             <td><span class="fw-semibold">@gioHienThi</span></td>
-                            <td>@kg.LoaiNgay</td>
-                            <td>@kg.Gia.ToString("N0")đ</td>
-                            <td style="color: #f59e0b;">@kg.GiaGioVang.ToString("N0")đ</td>
-                            <td style="color: #3b82f6;">@kg.GiaCuoiTuan.ToString("N0")đ</td>
+                            <td>@(kg.LoaiNgay == "NgayThuong" ? "Thứ 2 – Thứ 6" : (kg.LoaiNgay == "CuoiTuan" ? "Thứ 7 – CN" : "Tất cả"))</td>
+                            <td>@(kg.Gia > 0 ? kg.Gia.ToString("N0") + "đ" : "—")</td>
+                            <td style="color: #f59e0b;">@(kg.GiaGioVang > 0 ? kg.GiaGioVang.ToString("N0") + "đ" : "—")</td>
+                            <td style="color: #3b82f6;">@(kg.GiaCuoiTuan > 0 ? kg.GiaCuoiTuan.ToString("N0") + "đ" : "—")</td>
                             <td><span class="@statusClass">@statusText</span></td>
                             <td>
                                 <div class="d-flex gap-2">
-                                    <button class="btn-outline-sm" onclick="moSuaKG(@kg.Id, @kg.Gia, @kg.GiaGioVang, @kg.GiaCuoiTuan)">
+                                    <button class="btn-outline-sm" onclick="moSuaKG(@kg.Id, '@kg.LoaiNgay', @kg.Gia, @kg.GiaGioVang, @kg.GiaCuoiTuan)">
                                         <i class="fas fa-edit"></i> Sửa giá
                                     </button>
                                     @if (kg.TrangThai == "Trong")
@@ -284,7 +284,7 @@
     }
 </div>
 
-<!-- Modal Thêm khung giờ (đã sửa lỗi time) -->
+<!-- Modal Thêm khung giờ -->
 <div class="modal fade" id="modalThemKG" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content modal-content-custom">
@@ -307,23 +307,24 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label">LOẠI NGÀY</label>
-                            <select name="loaiNgay" class="form-select-custom">
+                            <select name="loaiNgay" id="loaiNgayThem" class="form-select-custom" required>
                                 <option value="TatCa">Tất cả các ngày</option>
                                 <option value="NgayThuong">Thứ 2 – Thứ 6</option>
                                 <option value="CuoiTuan">Thứ 7 – Chủ nhật</option>
                             </select>
                         </div>
+                        <!-- 3 ô giá với id riêng -->
                         <div class="col-4">
                             <label class="form-label">GIÁ THƯỜNG (đ)</label>
-                            <input type="number" name="gia" class="form-control-custom" required min="0" step="1000" />
+                            <input type="number" name="gia" id="giaThuong" class="form-control-custom" step="1000" />
                         </div>
                         <div class="col-4">
                             <label class="form-label">GIỜ VÀNG (đ)</label>
-                            <input type="number" name="giaGioVang" class="form-control-custom" min="0" step="1000" value="0" />
+                            <input type="number" name="giaGioVang" id="giaGioVang" class="form-control-custom" step="1000" />
                         </div>
                         <div class="col-4">
-                            <label class="form-label">CUỐI TUẦN (đ)</label>
-                            <input type="number" name="giaCuoiTuan" class="form-control-custom" min="0" step="1000" value="0" />
+                            <label class="form-label">GIÁ CUỐI TUẦN (đ)</label>
+                            <input type="number" name="giaCuoiTuan" id="giaCuoiTuan" class="form-control-custom" step="1000" />
                         </div>
                     </div>
                 </div>
@@ -347,8 +348,13 @@
             <form method="post" action="/Owner/SuaKhungGio">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" id="suaKgId" />
+                <input type="hidden" name="loaiNgay" id="suaKgLoaiNgay" />
                 <div class="modal-body">
                     <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">LOẠI NGÀY</label>
+                            <div id="suaKgLoaiNgayText" class="form-control-custom" style="background: #e9ecef; padding: 8px;"></div>
+                        </div>
                         <div class="col-4">
                             <label class="form-label">GIÁ THƯỜNG (đ)</label>
                             <input type="number" name="gia" id="suaKgGia" class="form-control-custom" step="1000" />
@@ -358,7 +364,7 @@
                             <input type="number" name="giaGioVang" id="suaKgVang" class="form-control-custom" step="1000" />
                         </div>
                         <div class="col-4">
-                            <label class="form-label">CUỐI TUẦN (đ)</label>
+                            <label class="form-label">GIÁ CUỐI TUẦN (đ)</label>
                             <input type="number" name="giaCuoiTuan" id="suaKgCT" class="form-control-custom" step="1000" />
                         </div>
                     </div>
@@ -371,27 +377,99 @@
         </div>
     </div>
 </div>
-
 @section Scripts {
     <script>
-        function moSuaKG(id, gia, vang, ct) {
+        // Lấy các phần tử
+        const loaiNgaySelect = document.getElementById('loaiNgayThem');
+        const giaThuong = document.getElementById('giaThuong');
+        const giaGioVang = document.getElementById('giaGioVang');
+        const giaCuoiTuan = document.getElementById('giaCuoiTuan');
+
+        function updateInputStates() {
+            const val = loaiNgaySelect.value;
+            // Reset trạng thái: tất cả đều active (enable)
+            giaThuong.disabled = false;
+            giaGioVang.disabled = false;
+            giaCuoiTuan.disabled = false;
+
+            // Reset required (sẽ set lại sau)
+            giaThuong.required = false;
+            giaGioVang.required = false;
+            giaCuoiTuan.required = false;
+
+            if (val === 'NgayThuong') {
+                // Chỉ cho phép nhập giá thường và giờ vàng
+                giaCuoiTuan.disabled = true;
+                giaCuoiTuan.value = ''; // xóa giá trị nếu có
+                giaThuong.required = true;
+                giaGioVang.required = true;
+            } else if (val === 'CuoiTuan') {
+                // Chỉ cho phép nhập giá cuối tuần và giờ vàng
+                giaThuong.disabled = true;
+                giaThuong.value = '';
+                giaCuoiTuan.required = true;
+                giaGioVang.required = true;
+            } else { // TatCa
+                giaThuong.required = true;
+                giaGioVang.required = true;
+                giaCuoiTuan.required = true;
+            }
+        }
+
+        // Sự kiện change
+        if (loaiNgaySelect) {
+            loaiNgaySelect.addEventListener('change', updateInputStates);
+        }
+
+        // Khi modal mở, reset các ô và cập nhật trạng thái
+        const modalThem = document.getElementById('modalThemKG');
+        if (modalThem) {
+            modalThem.addEventListener('show.bs.modal', function () {
+                // Reset giá trị các ô
+                giaThuong.value = '';
+                giaGioVang.value = '';
+                giaCuoiTuan.value = '';
+                updateInputStates();
+            });
+        }
+
+        // --- Hàm mở modal sửa (giữ nguyên) ---
+        function moSuaKG(id, loaiNgay, gia, vang, ct) {
             document.getElementById('suaKgId').value = id;
+            document.getElementById('suaKgLoaiNgay').value = loaiNgay;
+            let loaiText = loaiNgay === 'NgayThuong' ? 'Thứ 2 – Thứ 6' :
+                           (loaiNgay === 'CuoiTuan' ? 'Thứ 7 – Chủ nhật' : 'Tất cả các ngày');
+            document.getElementById('suaKgLoaiNgayText').innerText = loaiText;
+    
+            // Gán giá trị
             document.getElementById('suaKgGia').value = gia;
             document.getElementById('suaKgVang').value = vang;
             document.getElementById('suaKgCT').value = ct;
+    
+            // Xử lý disabled theo loại ngày
+            const giaThuongInput = document.getElementById('suaKgGia');
+            const giaVangInput = document.getElementById('suaKgVang');
+            const giaCuoiTuanInput = document.getElementById('suaKgCT');
+    
+            // Reset trạng thái
+            giaThuongInput.disabled = false;
+            giaVangInput.disabled = false;
+            giaCuoiTuanInput.disabled = false;
+    
+            // Không yêu cầu required (vì là sửa)
+            giaThuongInput.required = false;
+            giaVangInput.required = false;
+            giaCuoiTuanInput.required = false;
+    
+            if (loaiNgay === 'NgayThuong') {
+                giaCuoiTuanInput.disabled = true;
+                giaCuoiTuanInput.value = ''; // xóa giá trị không cần thiết
+            } else if (loaiNgay === 'CuoiTuan') {
+                giaThuongInput.disabled = true;
+                giaThuongInput.value = '';
+            } // else 'TatCa': giữ nguyên cả 3
+    
             new bootstrap.Modal(document.getElementById('modalSuaKG')).show();
         }
-
-        // Kiểm tra nếu thời gian vẫn lệch, có thể do controller parse TimeSpan sai
-        // Hãy sửa action ThemKhungGio trong OwnerController như sau:
-        /*
-        [HttpPost]
-        public async Task<IActionResult> ThemKhungGio(int sanId, string gioBatDau, string gioKetThuc, ...)
-        {
-            var gioBD = TimeSpan.Parse(gioBatDau);
-            var gioKT = TimeSpan.Parse(gioKetThuc);
-            // hoặc dùng TimeOnly.Parse(gioBatDau)
-        }
-        */
     </script>
 }

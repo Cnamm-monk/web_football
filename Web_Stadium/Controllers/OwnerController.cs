@@ -21,7 +21,12 @@ namespace Web_Stadium.Controllers
         }
 
         // Helper lấy OwnerId từ JWT
-        private int GetOwnerId() => TokenHelper.LayUserId(Request, _config)!.Value;
+        private int GetOwnerId()
+        {
+            var id = TokenHelper.LayUserId(Request, _config);
+            if (id == null) throw new UnauthorizedAccessException("Token không hợp lệ hoặc đã hết hạn.");
+            return id.Value;
+        }
 
         // Helper: chỉ lấy sân thuộc Owner đang đăng nhập
         private IQueryable<SanBong> SanCuaToi() =>
@@ -330,41 +335,91 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
         }
 
         [HttpPost]
-        public async Task<IActionResult> ThemKhungGio(int sanId, TimeSpan gioBatDau,
-            TimeSpan gioKetThuc, decimal gia, decimal giaGioVang,
-            decimal giaCuoiTuan, string loaiNgay)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ThemKhungGio(
+            int sanId,
+            string gioBatDau,
+            string gioKetThuc,
+            string loaiNgay,
+            decimal? gia = null,
+            decimal? giaGioVang = null,
+            decimal? giaCuoiTuan = null)
         {
+            if (!TimeSpan.TryParse(gioBatDau, out var gioBD) || !TimeSpan.TryParse(gioKetThuc, out var gioKT))
+            {
+                TempData["Error"] = "Giờ không hợp lệ.";
+                return RedirectToAction("KhungGio", new { sanId });
+            }
+
             var san = await SanCuaToi().FirstOrDefaultAsync(s => s.Id == sanId);
             if (san == null) return NotFound();
+
+            var gioBDTime = TimeOnly.FromTimeSpan(gioBD);
+            var gioKTTime = TimeOnly.FromTimeSpan(gioKT);
+
+            // Kiểm tra trùng khung giờ (cùng loại ngày, cùng sân)
+            var conflict = await _context.KhungGios
+                .Where(k => k.SanBongId == sanId && k.LoaiNgay == loaiNgay)
+                .Where(k => (gioBDTime >= k.GioBatDau && gioBDTime < k.GioKetThuc) ||
+                            (gioKTTime > k.GioBatDau && gioKTTime <= k.GioKetThuc) ||
+                            (gioBDTime <= k.GioBatDau && gioKTTime >= k.GioKetThuc))
+                .AnyAsync();
+
+            if (conflict)
+            {
+                TempData["Error"] = "Khung giờ bị trùng với khung đã có!";
+                return RedirectToAction("KhungGio", new { sanId });
+            }
 
             var kg = new KhungGio
             {
                 SanBongId = sanId,
-                GioBatDau = TimeOnly.FromTimeSpan(gioBatDau),
-                GioKetThuc = TimeOnly.FromTimeSpan(gioKetThuc),
-                Gia = gia,
-                GiaGioVang = giaGioVang,
-                GiaCuoiTuan = giaCuoiTuan,
+                GioBatDau = gioBDTime,
+                GioKetThuc = gioKTTime,
                 LoaiNgay = loaiNgay,
                 TrangThai = "Trong"
             };
+
+            switch (loaiNgay)
+            {
+                case "NgayThuong":
+                    kg.Gia = gia ?? 0;
+                    kg.GiaGioVang = giaGioVang ?? 0;
+                    break;
+                case "CuoiTuan":
+                    kg.GiaCuoiTuan = giaCuoiTuan ?? 0;
+                    kg.GiaGioVang = giaGioVang ?? 0;
+                    break;
+                default: // "TatCa"
+                    kg.Gia = gia ?? 0;
+                    kg.GiaGioVang = giaGioVang ?? 0;
+                    kg.GiaCuoiTuan = giaCuoiTuan ?? 0;
+                    break;
+            }
+
             _context.KhungGios.Add(kg);
             await _context.SaveChangesAsync();
-            TempData["Success"] = $"Đã thêm khung giờ {gioBatDau:hh\\:mm}–{gioKetThuc:hh\\:mm}!";
+            TempData["Success"] = "Đã thêm khung giờ!";
             return RedirectToAction("KhungGio", new { sanId });
         }
-
         [HttpPost]
-        public async Task<IActionResult> SuaKhungGio(int id, decimal gia,
-            decimal giaGioVang, decimal giaCuoiTuan)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SuaKhungGio(int id, decimal? gia, decimal? giaGioVang, decimal? giaCuoiTuan)
         {
-            var kg = await _context.KhungGios
-                .Include(k => k.SanBong)
-                .FirstOrDefaultAsync(k => k.Id == id && k.SanBong.OwnerId == GetOwnerId());
+            var kg = await _context.KhungGios.FindAsync(id);
             if (kg == null) return NotFound();
-            kg.Gia = gia; kg.GiaGioVang = giaGioVang; kg.GiaCuoiTuan = giaCuoiTuan;
+
+            // Kiểm tra quyền (Owner của sân đó)
+            var san = await SanCuaToi().FirstOrDefaultAsync(s => s.Id == kg.SanBongId);
+            if (san == null) return Unauthorized();
+
+            // Cập nhật các giá trị (nếu có)
+            if (gia.HasValue) kg.Gia = gia.Value;
+            if (giaGioVang.HasValue) kg.GiaGioVang = giaGioVang.Value;
+            if (giaCuoiTuan.HasValue) kg.GiaCuoiTuan = giaCuoiTuan.Value;
+
             await _context.SaveChangesAsync();
-            TempData["Success"] = "Đã cập nhật bảng giá!";
+            TempData["Success"] = "Đã cập nhật giá khung giờ!";
             return RedirectToAction("KhungGio", new { sanId = kg.SanBongId });
         }
 
@@ -676,6 +731,73 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
             TempData["Success"] = "Đã gửi phản hồi đến khách hàng.";
             return RedirectToAction("DanhSachDanhGia", new { sanId = ViewBag.SelectedSanId, soSao = ViewBag.SelectedSoSao });
         }
+        [HttpPost]
+        public async Task<IActionResult> XemHopDongPreview(
+    string tenSan, string diaChi, string quan, string thanhPho,
+    string loaiSan, string loaiCo, string? moTa,
+    double latitude, double longitude, decimal tyLeCoc)
+        {
+            // Tra tỷ lệ hoa hồng theo quận
+            var danhMucQuan = await _context.DanhMucQuans
+                .Include(q => q.VungKhuVuc)
+                .FirstOrDefaultAsync(q => q.TenQuan == quan && q.IsActive);
+            var tyLeHH = danhMucQuan?.VungKhuVuc?.TyLeHoaHong ?? 0.10m;
+            var tenVung = danhMucQuan?.VungKhuVuc?.TenVung ?? "Chưa phân vùng";
+
+            // Tạo đối tượng SanBong tạm thời từ dữ liệu nhập
+            var san = new SanBong
+            {
+                Id = 0,  // đánh dấu là chưa có trong DB
+                TenSan = tenSan,
+                DiaChi = diaChi,
+                Quan = quan,
+                ThanhPho = thanhPho,
+                LoaiSan = loaiSan,
+                LoaiCo = loaiCo,
+                MoTa = moTa ?? "",
+                Latitude = latitude,
+                Longitude = longitude,
+                TyLeCoc = tyLeCoc,
+                OwnerId = GetOwnerId()
+            };
+
+            // Lưu tạm thông tin vào TempData để khi submit form xác nhận sẽ dùng lại
+            TempData["San_TenSan"] = tenSan;
+            TempData["San_DiaChi"] = diaChi;
+            TempData["San_Quan"] = quan;
+            TempData["San_ThanhPho"] = thanhPho;
+            TempData["San_LoaiSan"] = loaiSan;
+            TempData["San_LoaiCo"] = loaiCo;
+            TempData["San_MoTa"] = moTa ?? "";
+            TempData["San_Lat"] = latitude.ToString();
+            TempData["San_Lng"] = longitude.ToString();
+            TempData["San_TyLeCoc"] = tyLeCoc.ToString();
+            TempData["San_TyLeHH"] = tyLeHH.ToString();
+            TempData["San_TenVung"] = tenVung;
+
+            // Lấy thông tin chủ sân (hiện tại)
+            var owner = await _context.Users.FindAsync(GetOwnerId());
+            ViewBag.OwnerName = owner?.HoTen;
+            ViewBag.OwnerEmail = owner?.Email;
+            ViewBag.OwnerPhone = owner?.SoDienThoai;
+
+            ViewBag.TyLeHH = tyLeHH;
+            ViewBag.TenVung = tenVung;
+            ViewBag.IsPreview = true;   // đánh dấu đang ở chế độ xem trước
+
+            return View("XemHopDong", san);
+        }
+        // GET: /Owner/XemHopDong/{id}
+        public async Task<IActionResult> XemHopDong(int id)
+        {
+            var san = await SanCuaToi()
+                .Include(s => s.Owner)
+                .FirstOrDefaultAsync(s => s.Id == id);
+            if (san == null) return NotFound();
+
+            ViewBag.IsPreview = false;
+            return View(san);
+        }
         // ===================== QUẢN LÝ ĐƠN ĐẶT SÂN =====================
 
         // GET: /Owner/DanhSachDonDat
@@ -748,6 +870,251 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
             TempData["Success"] = $"Đã từ chối đơn đặt sân ngày {don.NgayThiDau:dd/MM/yyyy}.";
             return RedirectToAction("DanhSachDonDat", new { status = ViewBag.CurrentStatus ?? "ChoDuyet" });
         }
+
+        // ================================================================
+        // FILE: OwnerController_QuanLyAnh.cs
+        // Thay toàn bộ #region Quản lý ảnh sân trong OwnerController.cs
+        // bằng đoạn dưới đây. Xóa hết code cũ trong region đó đi.
+        // ================================================================
+
+        #region Quản lý ảnh sân
+
+        // GET /Owner/QuanLyAnh
+        public async Task<IActionResult> QuanLyAnh()
+        {
+            var dsSan = await SanCuaToi()
+                .Where(s => s.TrangThaiDuyet == "DaDuyet")
+                .OrderBy(s => s.TenSan)
+                .ToListAsync();
+
+            if (!dsSan.Any())
+                return Content("Chưa có sân nào được duyệt.");
+
+            var sanIds = dsSan.Select(s => s.Id).ToList();
+            var anhDaiDien = await _context.AnhSanBongs
+                .Where(a => sanIds.Contains(a.SanBongId) && a.IsActive)
+                .GroupBy(a => a.SanBongId)
+                .Select(g => new
+                {
+                    SanBongId = g.Key,
+                    DuongDan = g.OrderBy(a => a.ThuTu).First().DuongDan
+                })
+                .ToDictionaryAsync(k => k.SanBongId, v => v.DuongDan);
+
+            ViewBag.AnhDaiDien = anhDaiDien;
+            return View(dsSan);
+        }
+
+        // GET /Owner/QuanLyAnhChiTiet?sanId=...
+        public async Task<IActionResult> QuanLyAnhChiTiet(int sanId)
+        {
+            var san = await SanCuaToi().FirstOrDefaultAsync(s => s.Id == sanId);
+            if (san == null) return NotFound();
+
+            var dsAnh = await _context.AnhSanBongs
+                .Where(a => a.SanBongId == sanId && a.IsActive)
+                .OrderBy(a => a.ThuTu)
+                .ToListAsync();
+
+            ViewBag.San = san;
+            return View(dsAnh);
+        }
+
+       // ================================================================
+// Thêm action này vào OwnerController.cs
+// Đặt bên trong #region Quản lý ảnh sân, cạnh các action khác
+// ================================================================
+
+// POST /Owner/UploadAnhUrl
+// Nhận danh sách URL, lưu trực tiếp vào DB (không download file)
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
+{
+    int ownerId;
+    try { ownerId = GetOwnerId(); }
+    catch
+    {
+        TempData["Error"] = "Phiên đăng nhập hết hạn.";
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    var san = await _context.SanBongs
+        .FirstOrDefaultAsync(s => s.Id == sanId && s.OwnerId == ownerId);
+    if (san == null)
+    {
+        TempData["Error"] = "Sân không hợp lệ.";
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    if (urls == null || !urls.Any())
+    {
+        TempData["Error"] = "Vui lòng nhập ít nhất 1 URL.";
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    // Lọc các URL hợp lệ (không rỗng, bắt đầu bằng http)
+    var validUrls = urls
+        .Where(u => !string.IsNullOrWhiteSpace(u))
+        .Where(u => u.StartsWith("http://") || u.StartsWith("https://"))
+        .Select(u => u.Trim())
+        .Distinct()
+        .ToList();
+
+    if (!validUrls.Any())
+    {
+        TempData["Error"] = "Không có URL hợp lệ nào. URL phải bắt đầu bằng http:// hoặc https://";
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    int count = 0;
+    foreach (var url in validUrls)
+    {
+        // Kiểm tra URL chưa tồn tại trong DB
+        var exists = await _context.AnhSanBongs
+            .AnyAsync(a => a.SanBongId == sanId && a.DuongDan == url && a.IsActive);
+        if (exists) continue;
+
+        _context.AnhSanBongs.Add(new AnhSanBong
+        {
+            SanBongId = sanId,
+            DuongDan  = url,
+            LoaiAnh   = "Url",
+            ThuTu     = 0,
+            NgayThem  = DateTime.Now,
+            IsActive  = true
+        });
+        count++;
+    }
+
+    if (count == 0)
+    {
+        TempData["Error"] = "Tất cả URL đã tồn tại hoặc không hợp lệ.";
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    await _context.SaveChangesAsync();
+    await ReorderImages(sanId);
+
+    TempData["Success"] = $"Đã thêm {count} ảnh thành công!";
+    return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+}
+
+        // POST /Owner/XoaAnhForm
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> XoaAnhForm(int id, int sanId)
+        {
+            int ownerId;
+            try { ownerId = GetOwnerId(); }
+            catch
+            {
+                TempData["Error"] = "Phiên đăng nhập hết hạn.";
+                return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+            }
+
+            var anh = await _context.AnhSanBongs.FindAsync(id);
+            if (anh == null)
+            {
+                TempData["Error"] = "Không tìm thấy ảnh.";
+                return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+            }
+
+            var san = await _context.SanBongs
+                .FirstOrDefaultAsync(s => s.Id == anh.SanBongId && s.OwnerId == ownerId);
+            if (san == null)
+            {
+                TempData["Error"] = "Bạn không có quyền.";
+                return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+            }
+
+            var filePath = Path.Combine(
+                Directory.GetCurrentDirectory(), "wwwroot",
+                anh.DuongDan.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+            if (System.IO.File.Exists(filePath))
+                System.IO.File.Delete(filePath);
+
+            _context.AnhSanBongs.Remove(anh);
+            await _context.SaveChangesAsync();
+            await ReorderImages(anh.SanBongId);
+
+            TempData["Success"] = "Đã xóa ảnh.";
+            return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+        }
+
+        // POST /Owner/SetImagePrimaryForm
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetImagePrimaryForm(int imageId, int sanId)
+        {
+            int ownerId;
+            try { ownerId = GetOwnerId(); }
+            catch
+            {
+                TempData["Error"] = "Phiên đăng nhập hết hạn.";
+                return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+            }
+
+            var target = await _context.AnhSanBongs.FindAsync(imageId);
+            if (target == null)
+            {
+                TempData["Error"] = "Không tìm thấy ảnh.";
+                return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+            }
+
+            var san = await _context.SanBongs
+                .FirstOrDefaultAsync(s => s.Id == target.SanBongId && s.OwnerId == ownerId);
+            if (san == null)
+            {
+                TempData["Error"] = "Bạn không có quyền.";
+                return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+            }
+
+            if (target.ThuTu == 1)
+            {
+                TempData["Success"] = "Ảnh này đã là ảnh đại diện.";
+                return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+            }
+
+            var images = await _context.AnhSanBongs
+                .Where(a => a.SanBongId == target.SanBongId && a.IsActive)
+                .OrderBy(a => a.ThuTu)
+                .ToListAsync();
+
+            int oldOrder = target.ThuTu;
+            foreach (var img in images)
+            {
+                if (img.Id == imageId) img.ThuTu = 1;
+                else if (img.ThuTu < oldOrder) img.ThuTu++;
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Đã đặt làm ảnh đại diện!";
+            return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+        }
+
+        // HELPER
+        private async Task ReorderImages(int sanId)
+        {
+            var list = await _context.AnhSanBongs
+                .Where(a => a.SanBongId == sanId && a.IsActive)
+                .OrderBy(a => a.ThuTu)
+                .ToListAsync();
+            for (int i = 0; i < list.Count; i++)
+                list[i].ThuTu = i + 1;
+            await _context.SaveChangesAsync();
+        }
+
+        #endregion
+
+        // ================================================================
+        // REQUEST MODELS — đặt cuối class OwnerController (trước dấu } cuối)
+        // Xóa các class cũ XoaAnhRequest, SetPrimaryRequest, UploadBase64Request
+        // rồi thay bằng đoạn dưới
+        // ================================================================
+        public class XoaAnhRequest { public int Id { get; set; } }
+        public class SetPrimaryRequest { public int ImageId { get; set; } }
+
         // ══════════════════════════════════════════════════════════
         // 8. BÁO CÁO CHI NHÁNH
         // ══════════════════════════════════════════════════════════

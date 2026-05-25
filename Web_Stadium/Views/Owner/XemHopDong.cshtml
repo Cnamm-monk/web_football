@@ -1,88 +1,168 @@
-﻿@{
-    ViewData["Title"] = "Xem hợp đồng";
+﻿@model Web_Stadium.EFCore.SanBong
+@{
+    ViewData["Title"] = ViewBag.IsPreview == true ? "Xem trước hợp đồng" : "Hợp đồng điện tử";
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var hopDong = TempData["HopDong"]?.ToString() ?? "";
-    var tenVung = TempData["San_TenVung"]?.ToString();
-    var tyLeHH = TempData["San_TyLeHH"]?.ToString();
-    var tenSan = TempData["San_TenSan"]?.ToString();
-    // Giữ TempData cho action XacNhanDangKy
-    TempData.Keep();
+    var isPreview = ViewBag.IsPreview == true;
+    var tyLeHH = ViewBag.TyLeHH ?? (Model.Id > 0 ? ViewBag.TyLeHoaHong ?? 0.10m : 0.10m);
+    var tenVung = ViewBag.TenVung ?? "";
+    var ownerName = ViewBag.OwnerName ?? Model.Owner?.HoTen;
+    var ownerEmail = ViewBag.OwnerEmail ?? Model.Owner?.Email;
+    var ownerPhone = ViewBag.OwnerPhone ?? Model.Owner?.SoDienThoai;
 }
 
-<div style="background:var(--bg2);padding:100px 0 40px;border-bottom:1px solid var(--border)">
-    <div class="container">
-        <div class="section-label">Owner — Bước 2/2</div>
-        <h1 style="font-style:italic;line-height:0.9">HỢP ĐỒNG<br><span class="text-green">ĐIỆN TỬ</span></h1>
-        <p style="color:var(--muted)">Vui lòng đọc kỹ trước khi xác nhận đăng ký</p>
+<style>
+    /* Ẩn hoàn toàn các thành phần giao diện khi in */
+    @@media print {
+        /* Ẩn header, navbar, footer, sticky menu, button */
+        header, nav, footer, .sticky-nav, .page-header, .dashboard-header, .db-hero, .db-nav,
+        .navbar, .btn, button, .nav-btn, [class*="sticky"], [class*="navbar"], [class*="btn"],
+        .no-print, .print-hide, .action-buttons, .modal, .modal-backdrop {
+            display: none !important;
+        }
+
+        body {
+            background: white;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-size: 12pt;
+        }
+
+        .container {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .card {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .contract-content {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+            /* Tránh ngắt trang giữa các đoạn */
+            .contract-content p, .contract-content h3, .contract-content h5 {
+                page-break-inside: avoid;
+            }
+
+        h3, h5 {
+            page-break-after: avoid;
+        }
+    }
+</style>
+
+<div class="container py-5" style="max-width: 900px;">
+    <!-- Nút in và tiêu đề - chỉ hiển thị trên màn hình, không in -->
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <h2 class="fw-bold">📄 @(isPreview ? "Xem trước hợp đồng" : "Hợp đồng điện tử")</h2>
+        <button onclick="window.print()" class="btn btn-primary rounded-pill px-4">
+            🖨️ In hợp đồng
+        </button>
     </div>
-</div>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
+    <!-- Nội dung hợp đồng - phần này sẽ được in -->
+    <div class="card shadow-sm rounded-4 p-4 contract-content" style="background: white; color: #0f172a;">
+        <div style="font-size: 14px; text-align: center; margin-bottom: 24px;">
+            <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br />
+            Độc lập – Tự do – Hạnh phúc
+        </div>
 
-            <!-- Thông tin vùng -->
-            <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-radius:8px;background:rgba(22,196,127,0.06);border:1px solid rgba(22,196,127,0.3);margin-bottom:24px">
-                <div>
-                    <div style="font-size:11px;color:var(--muted)">KHU VỰC ÁP DỤNG</div>
-                    <div style="font-weight:600;color:var(--green)">@tenVung</div>
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h3 style="font-weight: 800;">HỢP ĐỒNG HỢP TÁC</h3>
+            <p>
+                <em>
+                    @if (!isPreview && Model.Id > 0 && Model.NgayKyHopDong.HasValue)
+                    {
+                        <text>Số: @($"PITCHHUB/{Model.Id}/{Model.NgayKyHopDong:yyyyMMdd}")</text>
+                    }
+                    else
+                    {
+                        <text>(số sẽ được cấp sau khi ký)</text>
+                    }
+                </em>
+            </p>
+        </div>
+
+        <div style="line-height: 1.6;">
+            <p><strong>Hôm nay, ngày @(isPreview ? DateTime.Now.ToString("dd/MM/yyyy") : (Model.NgayKyHopDong?.ToString("dd/MM/yyyy") ?? DateTime.Now.ToString("dd/MM/yyyy")))</strong>, chúng tôi gồm:</p>
+
+            <p>
+                <strong>BÊN A: CÔNG TY TNHH PITCHHUB VIỆT NAM</strong><br />
+                Địa chỉ: Tầng 5, Tòa nhà 123, phố X, quận Y, TP. Hà Nội<br />
+                Đại diện: Ông Nguyễn Văn A – Giám đốc
+            </p>
+
+            <p>
+                <strong>BÊN B: Ông/Bà @(ownerName ?? "Chủ sân")</strong><br />
+                Địa chỉ: (thông tin theo đăng ký)<br />
+                Điện thoại: @ownerPhone<br />
+                Email: @ownerEmail
+            </p>
+
+            <p>Sau khi thỏa thuận, hai bên thống nhất ký kết hợp đồng với các điều khoản sau:</p>
+
+            <h5 class="mt-4">Điều 1: Đối tượng hợp đồng</h5>
+            <p>Bên B đăng ký đưa cơ sở <strong>“@Model.TenSan”</strong> tại địa chỉ @Model.DiaChi, @Model.Quan, @Model.ThanhPho lên nền tảng PitchHub để khách hàng đặt sân trực tuyến. Loại sân: @Model.LoaiSan người, loại cỏ: @Model.LoaiCo.</p>
+
+            <h5>Điều 2: Hoa hồng và thanh toán</h5>
+            <p>Khu vực <strong>@Model.Quan</strong> thuộc vùng <strong>@tenVung</strong>, tỷ lệ hoa hồng áp dụng là <strong>@((tyLeHH * 100).ToString("F0"))%</strong> trên doanh thu thực phát sinh. Thanh toán hoa hồng định kỳ hàng tháng.</p>
+
+            <h5>Điều 3: Quyền và nghĩa vụ</h5>
+            <p>Bên B cung cấp thông tin chính xác, đảm bảo chất lượng dịch vụ, không tự ý hủy đơn. Bên A cung cấp nền tảng, hỗ trợ kỹ thuật, thanh toán đúng hạn.</p>
+
+            <h5>Điều 4: Hiệu lực và chấm dứt</h5>
+            <p>Hợp đồng có hiệu lực 12 tháng kể từ ngày ký, tự động gia hạn nếu không có thông báo chấm dứt trước 30 ngày.</p>
+
+            @if (!isPreview && Model.Id > 0 && Model.DaKyHopDong)
+            {
+
+            }
+            else
+            {
+                <div style="margin-top: 40px;">
+                    <p><strong>Hợp đồng sẽ được ký điện tử sau khi bạn xác nhận đồng ý.</strong></p>
                 </div>
-                <div style="margin-left:auto;text-align:right">
-                    <div style="font-size:11px;color:var(--muted)">TỶ LỆ HOA HỒNG</div>
-                    <div style="font-family:var(--ff-h);font-size:1.8rem;color:var(--green)">
-                        @((decimal.Parse(tyLeHH ?? "0.10") * 100).ToString("F0"))%
-                    </div>
+            }
+
+            <div style="display: flex; justify-content: space-between; margin-top: 50px;">
+                <div style="text-align: center;">
+                    <strong>BÊN A</strong><br />
+                    (Ký, ghi rõ họ tên)
+                </div>
+                <div style="text-align: center;">
+                    <strong>BÊN B</strong><br />
+                    @(ownerName ?? "Chủ sân")
                 </div>
             </div>
 
-            <!-- Nội dung hợp đồng -->
-            <div class="section-card p-0 overflow-hidden mb-4">
-                <div style="background:var(--bg2);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
-                    <span style="font-family:var(--ff-h);font-size:14px;color:var(--text)">📄 NỘI DUNG HỢP ĐỒNG</span>
-                    <span style="font-size:12px;color:var(--muted)">Sân: @tenSan</span>
-                </div>
-                <div style="padding:28px;max-height:500px;overflow-y:auto;font-family:'Courier New',monospace;font-size:13px;line-height:1.9;color:var(--text2);white-space:pre-wrap;background:var(--bg3)">@hopDong</div>
-            </div>
-
-            <!-- Form xác nhận -->
-            <form method="post" action="/Owner/XacNhanDangKy">
-                <div style="padding:20px;border:1px solid var(--border);border-radius:8px;margin-bottom:20px">
-                    <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">
-                        <input type="checkbox" name="daDocVaDongY" value="true" id="checkDongY"
-                               style="width:18px;height:18px;margin-top:2px;accent-color:var(--green)" required />
-                        <div>
-                            <div style="font-weight:600;margin-bottom:4px">Tôi đã đọc và đồng ý toàn bộ điều khoản hợp đồng</div>
-                            <div style="font-size:12px;color:var(--muted)">
-                                Bằng cách tick vào ô này, tôi xác nhận hợp đồng có hiệu lực pháp lý
-                                tương đương hợp đồng giấy ký tay. Tỷ lệ hoa hồng
-                                <strong style="color:var(--green)">@((decimal.Parse(tyLeHH ?? "0.10") * 100).ToString("F0"))%</strong>
-                                sẽ được áp dụng ngay khi Admin phê duyệt.
-                            </div>
-                        </div>
-                    </label>
-                </div>
-
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                    <a href="/Owner/DangKySan" class="btn btn-outline-secondary rounded-pill">
-                        ← Quay lại sửa thông tin
-                    </a>
-                    <button type="submit" id="btnXacNhan" class="btn btn-success rounded-pill px-5"
-                            style="opacity:0.5;pointer-events:none">
-                        ✅ Xác nhận & Gửi đăng ký
-                    </button>
-                </div>
-            </form>
 
         </div>
     </div>
-</div>
 
-@section Scripts {
-    <script>
-        document.getElementById('checkDongY').addEventListener('change', function() {
-            var btn = document.getElementById('btnXacNhan');
-            btn.style.opacity = this.checked ? '1' : '0.5';
-            btn.style.pointerEvents = this.checked ? 'auto' : 'none';
-        });
-    </script>
-}
+    @if (isPreview)
+    {
+        <div class="d-flex justify-content-between mt-4 no-print">
+            <form method="post" action="/Owner/XacNhanDangKy">
+                <input type="hidden" name="daDocVaDongY" value="true" />
+                <button type="submit" class="btn btn-success rounded-pill px-4"
+                        onclick="return confirm('Bạn đã đọc và đồng ý với các điều khoản hợp đồng?')">
+                    ✅ Đồng ý và gửi đăng ký
+                </button>
+            </form>
+            <a href="/Owner/DangKySan" class="btn btn-outline-secondary rounded-pill px-4">
+                ← Quay lại sửa thông tin
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="text-center mt-4 no-print">
+            <a href="/Owner/DanhSachSan" class="btn btn-outline-secondary rounded-pill">← Quay lại danh sách sân</a>
+        </div>
+    }
+</div>

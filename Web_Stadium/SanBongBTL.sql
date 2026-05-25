@@ -833,3 +833,457 @@ GO
 ALTER ROLE [db_datareader] ADD MEMBER [java_user];
 ALTER ROLE [db_datawriter] ADD MEMBER [java_user];
 GO
+
+-- ============================================================
+-- SeedData_Full.sql
+-- Thêm dữ liệu mẫu đầy đủ cho tất cả các bảng (nếu chưa có)
+-- Chạy sau khi đã tạo database và các bảng.
+-- ============================================================
+
+USE SanBongBTL;
+GO
+
+-- Hàm kiểm tra tồn tại bản ghi (dùng NOT EXISTS để tránh duplicate)
+-- Chúng ta sẽ dùng IF NOT EXISTS ... INSERT cho từng bảng.
+
+-- ============================================================
+-- 1. VungKhuVucs (nếu chưa có)
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM VungKhuVucs WHERE TenVung = N'Nội ô trung tâm')
+BEGIN
+    INSERT INTO VungKhuVucs (TenVung, MoTa, TyLeHoaHong, MauSac, Lat, Lng, DefaultZoom, ThuTu)
+    VALUES 
+        (N'Nội ô trung tâm', N'Quận Hoàn Kiếm, Ba Đình, Đống Đa, Hai Bà Trưng', 0.10, '#1ed760', 21.0285, 105.8542, 13, 1),
+        (N'Nội ô mở rộng', N'Cầu Giấy, Tây Hồ, Thanh Xuân, Bắc Từ Liêm', 0.08, '#6caee0', 21.0500, 105.7900, 12, 2),
+        (N'Vùng ngoại ô', N'Hà Đông, Long Biên, Hoàng Mai, Nam Từ Liêm', 0.06, '#f39c12', 20.9800, 105.8800, 11, 3),
+        (N'Vùng xa trung tâm', N'Sơn Tây, Ba Vì, Mỹ Đức', 0.05, '#e74c3c', 21.1200, 105.5000, 10, 4);
+END
+GO
+
+-- ============================================================
+-- 2. DanhMucQuan (bổ sung thêm nếu thiếu, gán VungKhuVucId)
+-- ============================================================
+-- Lấy ID các vùng đã insert
+DECLARE @v1 INT = (SELECT Id FROM VungKhuVucs WHERE TenVung = N'Nội ô trung tâm');
+DECLARE @v2 INT = (SELECT Id FROM VungKhuVucs WHERE TenVung = N'Nội ô mở rộng');
+DECLARE @v3 INT = (SELECT Id FROM VungKhuVucs WHERE TenVung = N'Vùng ngoại ô');
+DECLARE @v4 INT = (SELECT Id FROM VungKhuVucs WHERE TenVung = N'Vùng xa trung tâm');
+
+-- Chèn các quận nếu chưa có
+MERGE INTO DanhMucQuan AS target
+USING (VALUES
+    (N'Cầu Giấy',     N'Hà Nội', 1, @v2),
+    (N'Đống Đa',      N'Hà Nội', 2, @v1),
+    (N'Hoàng Mai',    N'Hà Nội', 3, @v3),
+    (N'Long Biên',    N'Hà Nội', 4, @v3),
+    (N'Nam Từ Liêm',  N'Hà Nội', 5, @v3),
+    (N'Bắc Từ Liêm',  N'Hà Nội', 6, @v2),
+    (N'Tây Hồ',       N'Hà Nội', 7, @v2),
+    (N'Ba Đình',      N'Hà Nội', 8, @v1),
+    (N'Hai Bà Trưng', N'Hà Nội', 9, @v1),
+    (N'Thanh Xuân',   N'Hà Nội',10, @v2),
+    (N'Hà Đông',      N'Hà Nội',11, @v3),
+    (N'Hoàn Kiếm',    N'Hà Nội',12, @v1)
+) AS source (TenQuan, ThanhPho, ThuTu, VungKhuVucId)
+ON target.TenQuan = source.TenQuan
+WHEN NOT MATCHED THEN
+    INSERT (TenQuan, ThanhPho, ThuTu, VungKhuVucId, IsActive)
+    VALUES (source.TenQuan, source.ThanhPho, source.ThuTu, source.VungKhuVucId, 1);
+GO
+
+-- ============================================================
+-- 3. DanhMucLoaiSan, DanhMucLoaiCo, DanhMucDichVu (nếu chưa có)
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM DanhMucLoaiSan WHERE MaLoai = '5')
+    INSERT INTO DanhMucLoaiSan (MaLoai, TenLoai) VALUES ('5', N'Sân 5 người');
+IF NOT EXISTS (SELECT 1 FROM DanhMucLoaiSan WHERE MaLoai = '7')
+    INSERT INTO DanhMucLoaiSan (MaLoai, TenLoai) VALUES ('7', N'Sân 7 người');
+IF NOT EXISTS (SELECT 1 FROM DanhMucLoaiSan WHERE MaLoai = '11')
+    INSERT INTO DanhMucLoaiSan (MaLoai, TenLoai) VALUES ('11', N'Sân 11 người');
+
+IF NOT EXISTS (SELECT 1 FROM DanhMucLoaiCo WHERE MaLoai = 'Nhan tao')
+    INSERT INTO DanhMucLoaiCo (MaLoai, TenLoai) VALUES ('Nhan tao', N'Cỏ nhân tạo');
+IF NOT EXISTS (SELECT 1 FROM DanhMucLoaiCo WHERE MaLoai = 'Tu nhien')
+    INSERT INTO DanhMucLoaiCo (MaLoai, TenLoai) VALUES ('Tu nhien', N'Cỏ tự nhiên');
+
+-- Danh mục dịch vụ
+MERGE INTO DanhMucDichVu AS target
+USING (VALUES
+    (N'Nước uống',     N'💧', N'Nước lọc / nước ngọt / tăng lực'),
+    (N'Thuê bóng',     N'⚽', N'Bóng thi đấu Size 4/5'),
+    (N'Thuê trọng tài',N'🟡', N'Trọng tài có kinh nghiệm'),
+    (N'Thuê áo đấu',   N'👕', N'Áo thi đấu có số, 2 màu')
+) AS source (TenDichVu, Icon, MoTa)
+ON target.TenDichVu = source.TenDichVu
+WHEN NOT MATCHED THEN
+    INSERT (TenDichVu, Icon, MoTa, IsActive)
+    VALUES (source.TenDichVu, source.Icon, source.MoTa, 1);
+GO
+
+-- Lấy ID các danh mục dịch vụ
+DECLARE @dmNuoc INT = (SELECT Id FROM DanhMucDichVu WHERE TenDichVu = N'Nước uống');
+DECLARE @dmBong INT = (SELECT Id FROM DanhMucDichVu WHERE TenDichVu = N'Thuê bóng');
+DECLARE @dmTai  INT = (SELECT Id FROM DanhMucDichVu WHERE TenDichVu = N'Thuê trọng tài');
+DECLARE @dmAo   INT = (SELECT Id FROM DanhMucDichVu WHERE TenDichVu = N'Thuê áo đấu');
+
+-- ============================================================
+-- 4. Users (Admin, Owner, User, Staff) — chỉ thêm nếu chưa tồn tại email
+--    Lưu ý: password đã được hash BCrypt (dùng mật khẩu thật: admin123, owner123, user123, staff123)
+-- ============================================================
+-- Admin
+IF NOT EXISTS (SELECT 1 FROM Users WHERE Email = 'admin@pitchhub.vn')
+BEGIN
+    INSERT INTO Users (HoTen, Email, MatKhau, SoDienThoai, VaiTro, IsActive)
+    VALUES (N'Admin PitchHub', 'admin@pitchhub.vn',
+            '$2a$11$f0tXD6o7XYAs7/tE0nx4Reiw1.84L2ItgL0tRwE1Bq.GZbE8MMuzS', -- admin123
+            '0901000001', 'Admin', 1);
+END
+
+-- Owner 1
+IF NOT EXISTS (SELECT 1 FROM Users WHERE Email = 'owner1@gmail.com')
+BEGIN
+    INSERT INTO Users (HoTen, Email, MatKhau, SoDienThoai, VaiTro, IsActive)
+    VALUES (N'Vũ Nguyễn Tuấn Kiệt', 'owner1@gmail.com',
+            '$2a$11$dZvxGdl0dNQWsvIM4IO2VuM4kGwP60qFmpbIOKvD0iLulA00/4cCW', -- owner123
+            '0901000002', 'Owner', 1);
+END
+
+-- Owner 2 (thêm Owner thứ hai để test nhiều chủ sân)
+IF NOT EXISTS (SELECT 1 FROM Users WHERE Email = 'owner2@gmail.com')
+BEGIN
+    INSERT INTO Users (HoTen, Email, MatKhau, SoDienThoai, VaiTro, IsActive)
+    VALUES (N'Lê Văn Sỹ', 'owner2@gmail.com',
+            '$2a$11$dZvxGdl0dNQWsvIM4IO2VuM4kGwP60qFmpbIOKvD0iLulA00/4cCW', -- owner123
+            '0901000005', 'Owner', 1);
+END
+
+-- User 1
+IF NOT EXISTS (SELECT 1 FROM Users WHERE Email = 'user1@gmail.com')
+BEGIN
+    INSERT INTO Users (HoTen, Email, MatKhau, SoDienThoai, VaiTro, IsActive)
+    VALUES (N'Nguyễn Công Nam', 'user1@gmail.com',
+            '$2a$11$wmJXgVs5/RBXU2y/vP4Bs.UcgtzPg0r4Iv2t3DgsZvDrOKD32vPzO', -- user123
+            '0901000003', 'User', 1);
+END
+
+-- User 2 (thêm user thứ hai)
+IF NOT EXISTS (SELECT 1 FROM Users WHERE Email = 'user2@gmail.com')
+BEGIN
+    INSERT INTO Users (HoTen, Email, MatKhau, SoDienThoai, VaiTro, IsActive)
+    VALUES (N'Trần Thị Bích', 'user2@gmail.com',
+            '$2a$11$wmJXgVs5/RBXU2y/vP4Bs.UcgtzPg0r4Iv2t3DgsZvDrOKD32vPzO', -- user123
+            '0901000006', 'User', 1);
+END
+
+-- Staff cho Owner1
+DECLARE @owner1Id INT = (SELECT Id FROM Users WHERE Email = 'owner1@gmail.com');
+IF @owner1Id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM Users WHERE Email = 'staff1@pitchhub.vn')
+BEGIN
+    INSERT INTO Users (HoTen, Email, MatKhau, SoDienThoai, VaiTro, IsActive, OwnerIdCuaStaff)
+    VALUES (N'Đào Việt Toàn', 'staff1@pitchhub.vn',
+            '$2a$11$oOUcIEMbESDcI5QECnfcBOzJtTAAsWbRM3ZX7KQhH3XIWWdmtfR1S', -- staff123
+            '0901000004', 'Staff', 1, @owner1Id);
+END
+
+-- Staff cho Owner2
+DECLARE @owner2Id INT = (SELECT Id FROM Users WHERE Email = 'owner2@gmail.com');
+IF @owner2Id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM Users WHERE Email = 'staff2@pitchhub.vn')
+BEGIN
+    INSERT INTO Users (HoTen, Email, MatKhau, SoDienThoai, VaiTro, IsActive, OwnerIdCuaStaff)
+    VALUES (N'Phạm Minh Đức', 'staff2@pitchhub.vn',
+            '$2a$11$oOUcIEMbESDcI5QECnfcBOzJtTAAsWbRM3ZX7KQhH3XIWWdmtfR1S', -- staff123
+            '0901000007', 'Staff', 1, @owner2Id);
+END
+
+-- Lấy các ID cần dùng
+DECLARE @adminId INT = (SELECT Id FROM Users WHERE Email = 'admin@pitchhub.vn');
+DECLARE @userId1 INT = (SELECT Id FROM Users WHERE Email = 'user1@gmail.com');
+DECLARE @userId2 INT = (SELECT Id FROM Users WHERE Email = 'user2@gmail.com');
+DECLARE @staff1Id INT = (SELECT Id FROM Users WHERE Email = 'staff1@pitchhub.vn');
+DECLARE @staff2Id INT = (SELECT Id FROM Users WHERE Email = 'staff2@pitchhub.vn');
+
+-- ============================================================
+-- 5. SanBongs (thêm sân cho Owner1 và Owner2)
+-- ============================================================
+-- Owner1: 5 sân (3 đã duyệt, 1 chờ duyệt, 1 từ chối, 1 ẩn)
+-- Owner2: 2 sân (đã duyệt)
+
+-- Insert các sân cho Owner1
+IF NOT EXISTS (SELECT 1 FROM SanBongs WHERE TenSan = N'Sân Cầu Giấy Sport')
+BEGIN
+    INSERT INTO SanBongs (TenSan, DiaChi, Quan, ThanhPho, LoaiSan, LoaiCo, MoTa, DanhGiaTrungBinh, Latitude, Longitude, TrangThaiDuyet, TyLeCoc, IsHidden, OwnerId, DaKyHopDong, NgayKyHopDong, NoiDungHopDong, ThoiGianGiuCho, ThoiGianHuyTruocGioDa, PhanTramHoanCocDungHan, PhanTramHoanCocTreHan)
+    VALUES 
+        (N'Sân Cầu Giấy Sport', N'12 Xuân Thủy', N'Cầu Giấy', N'Hà Nội', '5', 'Nhan tao', N'Sân cỏ nhân tạo chất lượng cao, đèn chiếu sáng.', 4.5, 21.0362, 105.7826, 'DaDuyet', 0.30, 0, @owner1Id, 1, GETDATE(), N'Hợp đồng điện tử mẫu', 15, 120, 1.00, 0.00),
+        (N'Sân Đống Đa Arena', N'45 Tây Sơn', N'Đống Đa', N'Hà Nội', '7', 'Nhan tao', N'Sân 7 người rộng rãi, có mái che.', 4.2, 21.0198, 105.8412, 'DaDuyet', 0.30, 0, @owner1Id, 1, GETDATE(), N'Hợp đồng điện tử mẫu', 15, 120, 1.00, 0.00),
+        (N'Sân Hoàng Mai FC', N'78 Giải Phóng', N'Hoàng Mai', N'Hà Nội', '5', 'Tu nhien', N'Sân cỏ tự nhiên thoáng mát.', 3.8, 20.9876, 105.8543, 'DaDuyet', 0.50, 0, @owner1Id, 1, GETDATE(), N'Hợp đồng điện tử mẫu', 20, 90, 0.80, 0.00),
+        (N'Sân Long Biên Star', N'23 Nguyễn Văn Cừ', N'Long Biên', N'Hà Nội', '11', 'Nhan tao', N'Sân 11 người tiêu chuẩn FIFA.', 4.7, 21.0465, 105.8923, 'DaDuyet', 0.30, 0, @owner1Id, 1, GETDATE(), N'Hợp đồng điện tử mẫu', 15, 120, 1.00, 0.00),
+        (N'Sân Chờ Duyệt', N'99 Test Street', N'Nam Từ Liêm', N'Hà Nội', '5', 'Nhan tao', N'Sân đang chờ Admin phê duyệt.', 0, 21.0100, 105.7500, 'ChoDuyet', 0.30, 0, @owner1Id, 0, NULL, NULL, 15, 120, 1.00, 0.00),
+        (N'Sân Bị Từ Chối', N'100 Fail St', N'Ba Đình', N'Hà Nội', '7', 'Tu nhien', N'Sân bị từ chối', 0, 21.0300, 105.8100, 'TuChoi', 0.30, 0, @owner1Id, 0, NULL, NULL, 15, 120, 1.00, 0.00),
+        (N'Sân Ẩn (Bảo trì)', N'200 Hidden St', N'Tây Hồ', N'Hà Nội', '7', 'Nhan tao', N'Sân đang bảo trì tạm ẩn', 4.0, 21.0700, 105.8200, 'DaDuyet', 0.30, 1, @owner1Id, 1, GETDATE(), N'Hợp đồng điện tử', 15, 120, 1.00, 0.00);
+END
+
+-- Sân cho Owner2
+IF NOT EXISTS (SELECT 1 FROM SanBongs WHERE TenSan = N'Sân Gò Vấp FC')
+BEGIN
+    INSERT INTO SanBongs (TenSan, DiaChi, Quan, ThanhPho, LoaiSan, LoaiCo, MoTa, DanhGiaTrungBinh, Latitude, Longitude, TrangThaiDuyet, TyLeCoc, IsHidden, OwnerId, DaKyHopDong, NgayKyHopDong, NoiDungHopDong, ThoiGianGiuCho, ThoiGianHuyTruocGioDa, PhanTramHoanCocDungHan, PhanTramHoanCocTreHan)
+    VALUES 
+        (N'Sân Gò Vấp FC', N'221 Quang Trung', N'Bắc Từ Liêm', N'Hà Nội', '11', 'Nhan tao', N'Sân 11 người full size, đèn LED', 4.5, 21.1000, 105.7000, 'DaDuyet', 0.30, 0, @owner2Id, 1, GETDATE(), N'Hợp đồng điện tử', 15, 120, 1.00, 0.00),
+        (N'Sân Tân Bình Arena', N'87 Trường Chinh', N'Thanh Xuân', N'Hà Nội', '7', 'Tu nhien', N'Sân cỏ tự nhiên rộng rãi', 4.8, 21.0100, 105.8000, 'DaDuyet', 0.40, 0, @owner2Id, 1, GETDATE(), N'Hợp đồng điện tử', 20, 90, 0.90, 0.10);
+END
+
+-- Lấy các ID sân (dùng sau)
+DECLARE @san1_1 INT = (SELECT Id FROM SanBongs WHERE TenSan = N'Sân Cầu Giấy Sport' AND OwnerId = @owner1Id);
+DECLARE @san1_2 INT = (SELECT Id FROM SanBongs WHERE TenSan = N'Sân Đống Đa Arena' AND OwnerId = @owner1Id);
+DECLARE @san1_3 INT = (SELECT Id FROM SanBongs WHERE TenSan = N'Sân Hoàng Mai FC' AND OwnerId = @owner1Id);
+DECLARE @san1_4 INT = (SELECT Id FROM SanBongs WHERE TenSan = N'Sân Long Biên Star' AND OwnerId = @owner1Id);
+DECLARE @san1_5 INT = (SELECT Id FROM SanBongs WHERE TenSan = N'Sân Chờ Duyệt' AND OwnerId = @owner1Id);
+DECLARE @san1_6 INT = (SELECT Id FROM SanBongs WHERE TenSan = N'Sân Bị Từ Chối' AND OwnerId = @owner1Id);
+DECLARE @san1_7 INT = (SELECT Id FROM SanBongs WHERE TenSan = N'Sân Ẩn (Bảo trì)' AND OwnerId = @owner1Id);
+DECLARE @san2_1 INT = (SELECT Id FROM SanBongs WHERE TenSan = N'Sân Gò Vấp FC' AND OwnerId = @owner2Id);
+DECLARE @san2_2 INT = (SELECT Id FROM SanBongs WHERE TenSan = N'Sân Tân Bình Arena' AND OwnerId = @owner2Id);
+
+-- ============================================================
+-- 6. StaffSanPhanCong (gán staff cho sân)
+-- ============================================================
+-- Staff1 (của Owner1) gán cho các sân của Owner1
+IF NOT EXISTS (SELECT 1 FROM StaffSanPhanCong WHERE StaffId = @staff1Id AND SanBongId = @san1_1)
+    INSERT INTO StaffSanPhanCong (StaffId, SanBongId) VALUES (@staff1Id, @san1_1);
+IF NOT EXISTS (SELECT 1 FROM StaffSanPhanCong WHERE StaffId = @staff1Id AND SanBongId = @san1_2)
+    INSERT INTO StaffSanPhanCong (StaffId, SanBongId) VALUES (@staff1Id, @san1_2);
+IF NOT EXISTS (SELECT 1 FROM StaffSanPhanCong WHERE StaffId = @staff1Id AND SanBongId = @san1_3)
+    INSERT INTO StaffSanPhanCong (StaffId, SanBongId) VALUES (@staff1Id, @san1_3);
+
+-- Staff2 (của Owner2) gán cho sân của Owner2
+IF NOT EXISTS (SELECT 1 FROM StaffSanPhanCong WHERE StaffId = @staff2Id AND SanBongId = @san2_1)
+    INSERT INTO StaffSanPhanCong (StaffId, SanBongId) VALUES (@staff2Id, @san2_1);
+IF NOT EXISTS (SELECT 1 FROM StaffSanPhanCong WHERE StaffId = @staff2Id AND SanBongId = @san2_2)
+    INSERT INTO StaffSanPhanCong (StaffId, SanBongId) VALUES (@staff2Id, @san2_2);
+
+-- ============================================================
+-- 7. KhungGios (thêm khung giờ cho các sân)
+-- ============================================================
+-- Hàm kiểm tra khung giờ đã tồn tại
+-- Chỉ thêm nếu chưa có (dùng IF NOT EXISTS)
+-- Sân Cầu Giấy Sport (@san1_1)
+IF NOT EXISTS (SELECT 1 FROM KhungGios WHERE SanBongId = @san1_1 AND GioBatDau = '06:00' AND LoaiNgay = 'TatCa')
+BEGIN
+    INSERT INTO KhungGios (SanBongId, GioBatDau, GioKetThuc, Gia, GiaGioVang, GiaCuoiTuan, LoaiNgay, TrangThai) VALUES
+        (@san1_1, '06:00', '07:30', 180000, 220000, 200000, 'TatCa', 'Trong'),
+        (@san1_1, '07:30', '09:00', 180000, 220000, 200000, 'TatCa', 'Trong'),
+        (@san1_1, '09:00', '10:30', 160000, 200000, 180000, 'TatCa', 'Trong'),
+        (@san1_1, '15:00', '16:30', 160000, 200000, 180000, 'TatCa', 'Trong'),
+        (@san1_1, '16:30', '18:00', 200000, 260000, 240000, 'TatCa', 'Trong'),
+        (@san1_1, '18:00', '19:30', 250000, 300000, 320000, 'TatCa', 'Trong'),
+        (@san1_1, '19:30', '21:00', 250000, 300000, 320000, 'TatCa', 'Trong');
+END
+
+-- Sân Đống Đa Arena (@san1_2)
+IF NOT EXISTS (SELECT 1 FROM KhungGios WHERE SanBongId = @san1_2 AND GioBatDau = '06:00')
+BEGIN
+    INSERT INTO KhungGios (SanBongId, GioBatDau, GioKetThuc, Gia, GiaGioVang, GiaCuoiTuan, LoaiNgay, TrangThai) VALUES
+        (@san1_2, '06:00', '07:30', 250000, 300000, 280000, 'TatCa', 'Trong'),
+        (@san1_2, '07:30', '09:00', 250000, 300000, 280000, 'TatCa', 'Trong'),
+        (@san1_2, '17:00', '18:30', 320000, 380000, 400000, 'TatCa', 'Trong'),
+        (@san1_2, '18:30', '20:00', 350000, 420000, 440000, 'TatCa', 'Trong'),
+        (@san1_2, '20:00', '21:30', 350000, 420000, 440000, 'TatCa', 'Trong');
+END
+
+-- Sân Hoàng Mai FC (@san1_3)
+IF NOT EXISTS (SELECT 1 FROM KhungGios WHERE SanBongId = @san1_3 AND GioBatDau = '05:30')
+BEGIN
+    INSERT INTO KhungGios (SanBongId, GioBatDau, GioKetThuc, Gia, GiaGioVang, GiaCuoiTuan, LoaiNgay, TrangThai) VALUES
+        (@san1_3, '05:30', '07:00', 150000, 180000, 170000, 'TatCa', 'Trong'),
+        (@san1_3, '07:00', '08:30', 150000, 180000, 170000, 'TatCa', 'Trong'),
+        (@san1_3, '16:00', '17:30', 180000, 220000, 200000, 'TatCa', 'Trong'),
+        (@san1_3, '17:30', '19:00', 200000, 250000, 230000, 'TatCa', 'Trong');
+END
+
+-- Sân Long Biên Star (@san1_4)
+IF NOT EXISTS (SELECT 1 FROM KhungGios WHERE SanBongId = @san1_4 AND GioBatDau = '06:00')
+BEGIN
+    INSERT INTO KhungGios (SanBongId, GioBatDau, GioKetThuc, Gia, GiaGioVang, GiaCuoiTuan, LoaiNgay, TrangThai) VALUES
+        (@san1_4, '06:00', '08:00', 500000, 600000, 580000, 'TatCa', 'Trong'),
+        (@san1_4, '08:00', '10:00', 500000, 600000, 580000, 'TatCa', 'Trong'),
+        (@san1_4, '15:00', '17:00', 550000, 650000, 620000, 'TatCa', 'Trong'),
+        (@san1_4, '17:00', '19:00', 650000, 780000, 750000, 'TatCa', 'Trong'),
+        (@san1_4, '19:00', '21:00', 650000, 780000, 750000, 'TatCa', 'Trong');
+END
+
+-- Sân Gò Vấp FC (@san2_1) - thêm vài khung giờ
+IF NOT EXISTS (SELECT 1 FROM KhungGios WHERE SanBongId = @san2_1 AND GioBatDau = '06:00')
+BEGIN
+    INSERT INTO KhungGios (SanBongId, GioBatDau, GioKetThuc, Gia, GiaGioVang, GiaCuoiTuan, LoaiNgay, TrangThai) VALUES
+        (@san2_1, '06:00', '08:00', 400000, 500000, 480000, 'TatCa', 'Trong'),
+        (@san2_1, '08:00', '10:00', 400000, 500000, 480000, 'TatCa', 'Trong'),
+        (@san2_1, '16:00', '18:00', 500000, 600000, 550000, 'TatCa', 'Trong'),
+        (@san2_1, '18:00', '20:00', 600000, 700000, 650000, 'TatCa', 'Trong'),
+        (@san2_1, '20:00', '22:00', 600000, 700000, 650000, 'TatCa', 'Trong');
+END
+
+-- Sân Tân Bình Arena (@san2_2)
+IF NOT EXISTS (SELECT 1 FROM KhungGios WHERE SanBongId = @san2_2 AND GioBatDau = '06:00')
+BEGIN
+    INSERT INTO KhungGios (SanBongId, GioBatDau, GioKetThuc, Gia, GiaGioVang, GiaCuoiTuan, LoaiNgay, TrangThai) VALUES
+        (@san2_2, '06:00', '07:30', 180000, 220000, 200000, 'ThuThuong', 'Trong'),
+        (@san2_2, '07:30', '09:00', 180000, 220000, 200000, 'ThuThuong', 'Trong'),
+        (@san2_2, '17:00', '18:30', 250000, 300000, 280000, 'ThuThuong', 'Trong'),
+        (@san2_2, '18:30', '20:00', 280000, 350000, 320000, 'ThuThuong', 'Trong');
+END
+
+-- Lấy một số khung giờ để đặt sân (đã có sẵn từ data cũ)
+DECLARE @kgSan1_1_1 INT = (SELECT Id FROM KhungGios WHERE SanBongId = @san1_1 AND GioBatDau = '18:00' AND LoaiNgay = 'TatCa');
+DECLARE @kgSan1_2_1 INT = (SELECT Id FROM KhungGios WHERE SanBongId = @san1_2 AND GioBatDau = '17:00' AND LoaiNgay = 'TatCa');
+DECLARE @kgSan2_1_1 INT = (SELECT Id FROM KhungGios WHERE SanBongId = @san2_1 AND GioBatDau = '18:00' AND LoaiNgay = 'TatCa');
+
+-- ============================================================
+-- 8. DichVus (dịch vụ cho từng sân)
+-- ============================================================
+-- Thêm dịch vụ cho sân Cầu Giấy Sport (@san1_1)
+IF NOT EXISTS (SELECT 1 FROM DichVus WHERE SanBongId = @san1_1 AND DanhMucDichVuId = @dmNuoc)
+    INSERT INTO DichVus (SanBongId, DanhMucDichVuId, TenDichVu, Gia, TonKho, IsActive) VALUES (@san1_1, @dmNuoc, N'Nước uống', 15000, 100, 1);
+IF NOT EXISTS (SELECT 1 FROM DichVus WHERE SanBongId = @san1_1 AND DanhMucDichVuId = @dmBong)
+    INSERT INTO DichVus (SanBongId, DanhMucDichVuId, TenDichVu, Gia, TonKho, IsActive) VALUES (@san1_1, @dmBong, N'Thuê bóng', 30000, 15, 1);
+IF NOT EXISTS (SELECT 1 FROM DichVus WHERE SanBongId = @san1_1 AND DanhMucDichVuId = @dmTai)
+    INSERT INTO DichVus (SanBongId, DanhMucDichVuId, TenDichVu, Gia, TonKho, IsActive) VALUES (@san1_1, @dmTai, N'Thuê trọng tài', 100000, 5, 1);
+IF NOT EXISTS (SELECT 1 FROM DichVus WHERE SanBongId = @san1_1 AND DanhMucDichVuId = @dmAo)
+    INSERT INTO DichVus (SanBongId, DanhMucDichVuId, TenDichVu, Gia, TonKho, IsActive) VALUES (@san1_1, @dmAo, N'Thuê áo đấu', 20000, 20, 1);
+
+-- Tương tự cho sân Đống Đa Arena
+IF NOT EXISTS (SELECT 1 FROM DichVus WHERE SanBongId = @san1_2 AND DanhMucDichVuId = @dmNuoc)
+    INSERT INTO DichVus (SanBongId, DanhMucDichVuId, TenDichVu, Gia, TonKho, IsActive) VALUES (@san1_2, @dmNuoc, N'Nước uống', 15000, 80, 1);
+IF NOT EXISTS (SELECT 1 FROM DichVus WHERE SanBongId = @san1_2 AND DanhMucDichVuId = @dmBong)
+    INSERT INTO DichVus (SanBongId, DanhMucDichVuId, TenDichVu, Gia, TonKho, IsActive) VALUES (@san1_2, @dmBong, N'Thuê bóng', 30000, 10, 1);
+
+-- Sân Gò Vấp FC
+IF NOT EXISTS (SELECT 1 FROM DichVus WHERE SanBongId = @san2_1 AND DanhMucDichVuId = @dmNuoc)
+    INSERT INTO DichVus (SanBongId, DanhMucDichVuId, TenDichVu, Gia, TonKho, IsActive) VALUES (@san2_1, @dmNuoc, N'Nước uống', 20000, 200, 1);
+IF NOT EXISTS (SELECT 1 FROM DichVus WHERE SanBongId = @san2_1 AND DanhMucDichVuId = @dmBong)
+    INSERT INTO DichVus (SanBongId, DanhMucDichVuId, TenDichVu, Gia, TonKho, IsActive) VALUES (@san2_1, @dmBong, N'Thuê bóng', 40000, 25, 1);
+IF NOT EXISTS (SELECT 1 FROM DichVus WHERE SanBongId = @san2_1 AND DanhMucDichVuId = @dmTai)
+    INSERT INTO DichVus (SanBongId, DanhMucDichVuId, TenDichVu, Gia, TonKho, IsActive) VALUES (@san2_1, @dmTai, N'Thuê trọng tài', 150000, 4, 1);
+IF NOT EXISTS (SELECT 1 FROM DichVus WHERE SanBongId = @san2_1 AND DanhMucDichVuId = @dmAo)
+    INSERT INTO DichVus (SanBongId, DanhMucDichVuId, TenDichVu, Gia, TonKho, IsActive) VALUES (@san2_1, @dmAo, N'Thuê áo đấu', 25000, 30, 1);
+
+-- Lấy ID các dịch vụ (dùng cho DatSan_DichVus)
+DECLARE @dv1_nuoc INT = (SELECT Id FROM DichVus WHERE SanBongId = @san1_1 AND DanhMucDichVuId = @dmNuoc);
+DECLARE @dv1_bong INT = (SELECT Id FROM DichVus WHERE SanBongId = @san1_1 AND DanhMucDichVuId = @dmBong);
+DECLARE @dv1_tai  INT = (SELECT Id FROM DichVus WHERE SanBongId = @san1_1 AND DanhMucDichVuId = @dmTai);
+
+-- ============================================================
+-- 9. DatSans (đơn đặt sân) — nhiều trạng thái khác nhau
+-- ============================================================
+-- 9.1. Đơn đã xác nhận (DaXacNhan) — ngày đá trong tương lai gần
+IF NOT EXISTS (SELECT 1 FROM DatSans WHERE MaXacNhan = 'ORDER001')
+BEGIN
+    INSERT INTO DatSans (UserId, KhungGioId, NgayThiDau, TienCoc, TongTien, MaXacNhan, TrangThai, ThoiGianTao)
+    VALUES (@userId1, @kgSan1_1_1, DATEADD(DAY, 2, GETDATE()), 75000, 250000, 'ORDER001', 'DaXacNhan', GETDATE());
+END
+
+-- 9.2. Đơn chờ xác nhận (ChoDuyet)
+IF NOT EXISTS (SELECT 1 FROM DatSans WHERE MaXacNhan = 'ORDER002')
+BEGIN
+    INSERT INTO DatSans (UserId, KhungGioId, NgayThiDau, TienCoc, TongTien, MaXacNhan, TrangThai, ThoiGianTao)
+    VALUES (@userId2, @kgSan1_2_1, DATEADD(DAY, 3, GETDATE()), 96000, 0, 'ORDER002', 'ChoDuyet', GETDATE());
+END
+
+-- 9.3. Đơn đang sử dụng (DangSuDung) — ngày đá là hôm nay, có check-in
+IF NOT EXISTS (SELECT 1 FROM DatSans WHERE MaXacNhan = 'ORDER003')
+BEGIN
+    INSERT INTO DatSans (UserId, KhungGioId, NgayThiDau, TienCoc, TongTien, MaXacNhan, TrangThai, StaffCheckInId, ThoiGianTao)
+    VALUES (@userId1, @kgSan2_1_1, GETDATE(), 120000, 600000, 'ORDER003', 'DangSuDung', @staff2Id, GETDATE());
+END
+
+-- 9.4. Đơn hoàn thành (HoanThanh) — đã check-out, có tổng tiền
+IF NOT EXISTS (SELECT 1 FROM DatSans WHERE MaXacNhan = 'ORDER004')
+BEGIN
+    INSERT INTO DatSans (UserId, KhungGioId, NgayThiDau, TienCoc, TongTien, MaXacNhan, TrangThai, StaffCheckInId, StaffCheckOutId, ThoiGianTao)
+    VALUES (@userId2, @kgSan1_1_1, DATEADD(DAY, -5, GETDATE()), 75000, 250000, 'ORDER004', 'HoanThanh', @staff1Id, @staff1Id, DATEADD(DAY, -5, GETDATE()));
+END
+
+-- 9.5. Đơn đã hủy (DaHuy) — có ghi chú lý do
+IF NOT EXISTS (SELECT 1 FROM DatSans WHERE MaXacNhan = 'ORDER005')
+BEGIN
+    INSERT INTO DatSans (UserId, KhungGioId, NgayThiDau, TienCoc, TongTien, MaXacNhan, TrangThai, GhiChuSuCo, ThoiGianTao)
+    VALUES (@userId1, @kgSan1_2_1, DATEADD(DAY, 10, GETDATE()), 96000, 0, 'ORDER005', 'DaHuy', N'Khách hủy do mưa bão', GETDATE());
+END
+
+-- Lấy ID các đơn đặt
+DECLARE @order1 INT = (SELECT Id FROM DatSans WHERE MaXacNhan = 'ORDER001');
+DECLARE @order2 INT = (SELECT Id FROM DatSans WHERE MaXacNhan = 'ORDER002');
+DECLARE @order3 INT = (SELECT Id FROM DatSans WHERE MaXacNhan = 'ORDER003');
+DECLARE @order4 INT = (SELECT Id FROM DatSans WHERE MaXacNhan = 'ORDER004');
+DECLARE @order5 INT = (SELECT Id FROM DatSans WHERE MaXacNhan = 'ORDER005');
+
+-- ============================================================
+-- 10. DatSan_DichVus (dịch vụ kèm theo đơn)
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM DatSan_DichVus WHERE DatSanId = @order1 AND DichVuId = @dv1_nuoc)
+    INSERT INTO DatSan_DichVus (DatSanId, DichVuId, SoLuong) VALUES (@order1, @dv1_nuoc, 5);
+IF NOT EXISTS (SELECT 1 FROM DatSan_DichVus WHERE DatSanId = @order1 AND DichVuId = @dv1_bong)
+    INSERT INTO DatSan_DichVus (DatSanId, DichVuId, SoLuong) VALUES (@order1, @dv1_bong, 2);
+IF NOT EXISTS (SELECT 1 FROM DatSan_DichVus WHERE DatSanId = @order4 AND DichVuId = @dv1_tai)
+    INSERT INTO DatSan_DichVus (DatSanId, DichVuId, SoLuong) VALUES (@order4, @dv1_tai, 1);
+
+-- ============================================================
+-- 11. DanhGias (đánh giá) — chỉ cho đơn hoàn thành
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM DanhGias WHERE DatSanId = @order4)
+    INSERT INTO DanhGias (SanBongId, UserId, DatSanId, SoSao, NhanXet, NgayDanhGia)
+    VALUES (@san1_1, @userId2, @order4, 5, N'Sân rất đẹp, dịch vụ tốt, sẽ quay lại!', GETDATE());
+
+-- Thêm đánh giá khác cho sân khác (giả sử có đơn hoàn thành khác)
+-- Ở đây thêm trực tiếp không cần đơn (demo)
+IF NOT EXISTS (SELECT 1 FROM DanhGias WHERE SanBongId = @san2_1 AND UserId = @userId1)
+    INSERT INTO DanhGias (SanBongId, UserId, DatSanId, SoSao, NhanXet, NgayDanhGia)
+    VALUES (@san2_1, @userId1, @order3, 4, N'Sân rộng, đèn sáng, nhưng hơi xa', GETDATE());
+
+-- Cập nhật điểm trung bình cho các sân (đã có sẵn từ dữ liệu mẫu, nhưng update lại theo đánh giá thực)
+UPDATE SanBongs SET DanhGiaTrungBinh = (SELECT AVG(SoSao) FROM DanhGias WHERE SanBongId = @san1_1) WHERE Id = @san1_1;
+UPDATE SanBongs SET DanhGiaTrungBinh = 4.5 WHERE Id = @san2_1;
+
+-- ============================================================
+-- 12. Matchmakings (tìm đối thủ) — cho đơn đã xác nhận hoặc đang chờ
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM Matchmakings WHERE DatSanId = @order1)
+    INSERT INTO Matchmakings (DatSanId, UserId, TieuDe, MoTa, SoNguoiCanThem, TrangThai, NgayDang)
+    VALUES (@order1, @userId1, N'Cần thêm 2 cầu thủ', N'Đội thiếu 2 tiền đạo, trình độ khá', 2, 'DangTim', GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM Matchmakings WHERE DatSanId = @order2)
+    INSERT INTO Matchmakings (DatSanId, UserId, TieuDe, MoTa, SoNguoiCanThem, TrangThai, NgayDang)
+    VALUES (@order2, @userId2, N'Tìm đội giao lưu', N'Nhóm 5 người, muốn đá giao hữu', 5, 'DangTim', GETDATE());
+
+-- ============================================================
+-- 13. KhieuNais (khiếu nại) — cho đơn đã hủy hoặc hoàn thành nhưng có vấn đề
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM KhieuNais WHERE DatSanId = @order5)
+    INSERT INTO KhieuNais (DatSanId, UserId, LyDo, TrangThai, NgayGui)
+    VALUES (@order5, @userId1, N'Sân không đúng như mô tả, cỏ xấu, đèn không sáng', 'ChoXuLy', GETDATE());
+
+-- ============================================================
+-- 14. AuditLogs (ghi log hành động)
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM AuditLogs WHERE HanhDong = 'PheDuyetSan' AND DoiTuongId = @san1_1)
+    INSERT INTO AuditLogs (UserId, VaiTro, HanhDong, DoiTuong, DoiTuongId, MoTa, ThoiGian)
+    VALUES (@adminId, 'Admin', 'PheDuyetSan', 'SanBong', @san1_1, N'Admin phê duyệt sân Cầu Giấy Sport', GETDATE());
+
+IF NOT EXISTS (SELECT 1 FROM AuditLogs WHERE HanhDong = 'DangNhap' AND UserId = @userId1)
+    INSERT INTO AuditLogs (UserId, VaiTro, HanhDong, DoiTuong, DoiTuongId, MoTa, ThoiGian)
+    VALUES (@userId1, 'User', 'DangNhap', 'Login', @userId1, N'Người dùng đăng nhập thành công', GETDATE());
+
+-- ============================================================
+-- 15. AnhSanBongs (ảnh sân)
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM AnhSanBongs WHERE SanBongId = @san1_1 AND ThuTu = 1)
+    INSERT INTO AnhSanBongs (SanBongId, DuongDan, LoaiAnh, ThuTu, MoTa) VALUES (@san1_1, 'https://example.com/san1_1.jpg', 'URL', 1, N'Ảnh sân chính');
+IF NOT EXISTS (SELECT 1 FROM AnhSanBongs WHERE SanBongId = @san1_2 AND ThuTu = 1)
+    INSERT INTO AnhSanBongs (SanBongId, DuongDan, LoaiAnh, ThuTu, MoTa) VALUES (@san1_2, 'https://example.com/san1_2.jpg', 'URL', 1, N'Ảnh sân Đống Đa');
+IF NOT EXISTS (SELECT 1 FROM AnhSanBongs WHERE SanBongId = @san2_1 AND ThuTu = 1)
+    INSERT INTO AnhSanBongs (SanBongId, DuongDan, LoaiAnh, ThuTu, MoTa) VALUES (@san2_1, 'https://example.com/san2_1.jpg', 'URL', 1, N'Sân Gò Vấp');
+
+-- ============================================================
+-- Kết thúc seed data
+-- ============================================================
+PRINT '================================================';
+PRINT N'✅ Seed data hoàn tất! Dữ liệu test đã được thêm.';
+PRINT '================================================';
+GO

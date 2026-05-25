@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Web_Stadium.EFCore;
@@ -9,9 +10,33 @@ namespace Web_Stadium
 {
     public class Program
     {
+
         public static void Main(string[] args)
         {
+            AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+            {
+                System.IO.File.WriteAllText(
+                    Path.Combine(Directory.GetCurrentDirectory(), "crash_log.txt"),
+                    e.ExceptionObject?.ToString() ?? "unknown error"
+                );
+            };
+            // Bắt lỗi trên Task/async (quan trọng!)
+            TaskScheduler.UnobservedTaskException += (sender, e) =>
+            {
+                System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "crash_log.txt"),
+                    "UnobservedTaskException:\n" + e.Exception?.ToString());
+                e.SetObserved();
+            };
+
             var builder = WebApplication.CreateBuilder(args);
+
+            // Thêm middleware bắt lỗi toàn bộ request
+            builder.Services.AddExceptionHandler(options =>
+            {
+                options.ExceptionHandlingPath = "/error";
+            });
+
+            
 
             // 1. Đăng ký DbContext - liên kết EFCore với SQL Server
             builder.Services.AddDbContext<SanBongContext>(options => options.UseSqlServer(
@@ -61,10 +86,42 @@ namespace Web_Stadium
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
-            builder.Services.AddHostedService<Web_Stadium.End.MatchmakingAutoCleanupService>();
+            //builder.Services.AddHostedService<Web_Stadium.End.MatchmakingAutoCleanupService>();
+            builder.Services.Configure<FormOptions>(options =>
+            {
+                options.MultipartBodyLengthLimit = 52428800;
+                options.ValueLengthLimit = int.MaxValue;
+                options.MultipartHeadersLengthLimit = int.MaxValue;
+            });
 
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.Limits.MaxRequestBodySize = 52428800;
+            });
+            // Thêm trước builder.Build()
+            builder.Services.Configure<FormOptions>(options =>
+            {
+                options.MultipartBodyLengthLimit = 52428800; // 50MB
+                options.ValueLengthLimit = int.MaxValue;
+                options.MultipartHeadersLengthLimit = int.MaxValue;
+            });
+
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.Limits.MaxRequestBodySize = 52428800; // 50MB
+            });
             var app = builder.Build();
-
+            // Thêm ngay sau var app = builder.Build();
+            app.Use(async (context, next) =>
+            {
+                try { await next(); }
+                catch (Exception ex)
+                {
+                    await System.IO.File.WriteAllTextAsync(@"D:\crash_log.txt",
+                        $"[{DateTime.Now}] {context.Request.Path}\n{ex}");
+                    throw;
+                }
+            });
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
             {
