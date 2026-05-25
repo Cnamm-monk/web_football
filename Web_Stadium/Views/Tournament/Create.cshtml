@@ -1,0 +1,378 @@
+﻿@{
+    ViewData["Title"] = "Tạo giải đấu";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var sanList = ViewBag.SanList as List<Web_Stadium.EFCore.SanBong> ?? new();
+}
+
+@section Styles {
+    <style>
+        .form-wrap {
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        .form-section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .form-section-title {
+            font-family: var(--ff-h);
+            font-size: 13px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--green);
+            margin-bottom: 22px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lbl {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 7px;
+            display: block;
+        }
+
+        .inp {
+            width: 100%;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: var(--r);
+            padding: 11px 14px;
+            font-size: 14px;
+            font-family: var(--ff-b);
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+            .inp:focus {
+                outline: none;
+                border-color: var(--green);
+                box-shadow: 0 0 0 3px rgba(14,168,106,.1);
+                background: var(--bg2);
+            }
+
+            .inp::placeholder {
+                color: var(--muted2);
+            }
+
+        .inp-hint {
+            font-size: 11px;
+            color: var(--muted2);
+            margin-top: 5px;
+        }
+
+        .radio-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .radio-card {
+            border: 1.5px solid var(--border);
+            border-radius: var(--r);
+            padding: 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: all .2s;
+            position: relative;
+        }
+
+            .radio-card:hover {
+                border-color: var(--green);
+                background: rgba(14,168,106,.04);
+            }
+
+            .radio-card input {
+                position: absolute;
+                opacity: 0;
+            }
+
+            .radio-card.checked {
+                border-color: var(--green);
+                background: rgba(14,168,106,.08);
+            }
+
+            .radio-card .rc-val {
+                font-family: var(--ff-h);
+                font-size: 1.6rem;
+                color: var(--green);
+            }
+
+            .radio-card .rc-lbl {
+                font-size: 11px;
+                color: var(--muted);
+                margin-top: 3px;
+            }
+
+        .fine-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+    </style>
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Owner — Giải đấu</div>
+        <h1 style="font-style:italic;line-height:.9;margin:0">
+            TẠO GIẢI<br><span class="text-green">ĐẤU MỚI</span>
+        </h1>
+    </div>
+</div>
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2 flex-wrap justify-content-center">
+        <a href="/Owner" class="btn btn-outline-success rounded-pill">📊 Tổng quan</a>
+        <a href="/Tournament" class="btn btn-outline-success rounded-pill">🏆 Giải đấu</a>
+        <a href="/Tournament/Create" class="btn btn-success rounded-pill">➕ Tạo giải mới</a>
+    </div>
+</div>
+
+<div class="container py-5">
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-4">
+            ❌ @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="form-wrap">
+        <form method="post" action="/Tournament/Create" id="mainForm">
+            @Html.AntiForgeryToken()
+
+            <!-- ① Thông tin cơ bản -->
+            <div class="form-section">
+                <div class="form-section-title">① THÔNG TIN GIẢI ĐẤU</div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="lbl">Tên giải đấu *</label>
+                        <input name="tenGiai" class="inp" required
+                               placeholder="VD: Giải Bóng Đá Mùa Hè 2026 – Cầu Giấy" maxlength="200" />
+                    </div>
+                    <div class="col-12">
+                        <label class="lbl">Sân tổ chức *</label>
+                        <select name="sanBongId" class="inp" required>
+                            <option value="">-- Chọn sân của bạn --</option>
+                            @foreach (var s in sanList)
+                            {
+                                <option value="@s.Id">@s.TenSan — @s.Quan (@s.LoaiSan người)</option>
+                            }
+                        </select>
+                        @if (!sanList.Any())
+                        {
+                            <div class="inp-hint" style="color:var(--danger)">
+                                ⚠️ Bạn chưa có sân được duyệt.
+                                <a href="/Owner/DangKySan">Đăng ký sân trước →</a>
+                            </div>
+                        }
+                    </div>
+                    <div class="col-12">
+                        <label class="lbl">Mô tả giải đấu</label>
+                        <textarea name="moTa" class="inp" rows="3"
+                                  placeholder="Điều lệ, thể thức, đối tượng tham dự..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ② Cấu hình đội -->
+            <div class="form-section">
+                <div class="form-section-title">② CẤU HÌNH ĐỘI & BẢNG ĐẤU</div>
+
+                <label class="lbl mb-2">Số đội tối đa *</label>
+                <div class="radio-grid mb-4" id="soDoiGrid">
+                    @foreach (var sd in new[] { 4, 8, 16, 32 })
+                    {
+                        <label class="radio-card @(sd == 8 ? "checked" : "")" id="rc-@sd">
+                            <input type="radio" name="soDoiToiDa" value="@sd"
+                                   @(sd == 8 ? "checked" : "")
+                                   onchange="onSoDoiChange(@sd)" />
+                            <div class="rc-val">@sd</div>
+                            <div class="rc-lbl">đội</div>
+                        </label>
+                    }
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="lbl">Số bảng đấu *</label>
+                        <select name="soBang" class="inp" id="soBangSelect" required>
+                            <option value="1">1 bảng</option>
+                            <option value="2" selected>2 bảng (A & B)</option>
+                            <option value="4">4 bảng (A, B, C, D)</option>
+                        </select>
+                        <div class="inp-hint">Hệ thống tự tạo bảng A, B, C... theo số lượng</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="lbl">Hạn đóng đăng ký</label>
+                        <input type="date" name="thoiGianDongStr" class="inp"
+                               id="thoiGianDong" />
+                        <div class="inp-hint">Để trống = 1 ngày trước ngày bắt đầu</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ③ Tài chính -->
+            <div class="form-section">
+                <div class="form-section-title">③ TÀI CHÍNH & LỆ PHÍ</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="lbl">Lệ phí đăng ký (đ/đội) *</label>
+                        <input type="number" name="lePhiGiai" class="inp" required
+                               min="0" step="50000" placeholder="500000"
+                               oninput="tinhTongThu()" id="lePhiInput" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="lbl">Tiền ký quỹ hành vi (đ/đội) *</label>
+                        <input type="number" name="tienKyQuy" class="inp" required
+                               min="0" step="50000" placeholder="200000" />
+                        <div class="inp-hint">Găm lại để trừ phạt thẻ cuối giải</div>
+                    </div>
+                    <div class="col-12">
+                        <div style="background:rgba(14,168,106,.06);border:1px solid rgba(14,168,106,.2);
+                                    border-radius:var(--r);padding:14px 18px;" id="tongThuBox"
+                             class="d-none">
+                            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">
+                                💰 Ước tính tổng thu (nếu đủ đội)
+                            </div>
+                            <div style="font-family:var(--ff-h);font-size:1.3rem;color:var(--green)"
+                                 id="tongThuVal">
+                                0đ
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ④ Chế tài thẻ phạt -->
+            <div class="form-section">
+                <div class="form-section-title">④ CHẾ TÀI THẺ PHẠT</div>
+                <div class="fine-grid">
+                    <div>
+                        <label class="lbl">💛 Tiền phạt thẻ vàng (đ)</label>
+                        <input type="number" name="tienPhatTheVang" class="inp"
+                               value="20000" min="0" step="10000" />
+                    </div>
+                    <div>
+                        <label class="lbl">🟥 Tiền phạt thẻ đỏ (đ)</label>
+                        <input type="number" name="tienPhatTheDo" class="inp"
+                               value="100000" min="0" step="10000" />
+                    </div>
+                    <div>
+                        <label class="lbl">🟥 Treo giò sau thẻ đỏ (trận)</label>
+                        <input type="number" name="soTranTreoGioTheDo" class="inp"
+                               value="1" min="1" max="3" />
+                        <div class="inp-hint">Cấm bao nhiêu trận kế tiếp</div>
+                    </div>
+                    <div>
+                        <label class="lbl">💛 Tích lũy vàng → treo giò</label>
+                        <input type="number" name="soTheVangTichLuy" class="inp"
+                               value="2" min="2" max="5" />
+                        <div class="inp-hint">Đủ N thẻ vàng ở trận khác → cấm 1 trận</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ⑤ Lịch giải -->
+            <div class="form-section">
+                <div class="form-section-title">⑤ THỜI GIAN TỔ CHỨC</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="lbl">Ngày bắt đầu *</label>
+                        <input type="date" name="ngayBatDauStr" class="inp" required
+                               id="ngayBD"
+                               min="@DateTime.Today.AddDays(3).ToString("yyyy-MM-dd")"
+                               onchange="capNhatNgayKT()" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="lbl">Ngày kết thúc *</label>
+                        <input type="date" name="ngayKetThucStr" class="inp" required
+                               id="ngayKT" />
+                    </div>
+                    <div class="col-12">
+                        <div style="background:rgba(14,165,233,.06);border:1px solid rgba(14,165,233,.2);
+                                    border-radius:var(--r);padding:14px 18px;">
+                            <div style="font-size:12px;color:var(--muted)">
+                                ℹ️ Sau khi bạn bấm <strong>Khởi tạo giải</strong>, hệ thống sẽ tự động
+                                khóa toàn bộ khung giờ của sân trong khoảng thời gian này (mỗi tuần 1 ngày thi đấu).
+                                Khách vãng lai sẽ thấy các ô giờ màu <strong style="color:var(--danger)">đỏ — Đã khóa cho Giải đấu</strong>.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="d-flex gap-3 justify-content-end">
+                <a href="/Tournament" class="btn-ghost-glow">Hủy</a>
+                <button type="submit" class="btn-primary-glow" id="submitBtn">
+                    🏆 Tạo giải đấu
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Highlight radio card số đội
+        function onSoDoiChange(val) {
+            document.querySelectorAll('.radio-card').forEach(c => c.classList.remove('checked'));
+            document.getElementById('rc-' + val).classList.add('checked');
+            tinhTongThu();
+        }
+
+        // Tính tổng thu ước tính
+        function tinhTongThu() {
+            var lePhi   = parseFloat(document.getElementById('lePhiInput').value) || 0;
+            var soDoi   = parseInt(document.querySelector('input[name="soDoiToiDa"]:checked')?.value) || 8;
+            var tongThu = lePhi * soDoi;
+            if (tongThu > 0) {
+                document.getElementById('tongThuBox').classList.remove('d-none');
+                document.getElementById('tongThuVal').textContent =
+                    tongThu.toLocaleString('vi-VN') + 'đ';
+            } else {
+                document.getElementById('tongThuBox').classList.add('d-none');
+            }
+        }
+
+        // Tự điền ngày kết thúc = bắt đầu + 7 tuần
+        function capNhatNgayKT() {
+            var bd = document.getElementById('ngayBD').value;
+            if (!bd) return;
+            var d = new Date(bd);
+            d.setDate(d.getDate() + 49); // 7 tuần
+            document.getElementById('ngayKT').value = d.toISOString().slice(0, 10);
+            document.getElementById('ngayKT').min = new Date(bd).toISOString().slice(0, 10);
+            // Hạn đóng = 2 ngày trước bắt đầu
+            var dong = new Date(bd);
+            dong.setDate(dong.getDate() - 2);
+            document.getElementById('thoiGianDong').value = dong.toISOString().slice(0, 10);
+        }
+
+        // Validate trước submit
+        document.getElementById('mainForm').addEventListener('submit', function(e) {
+            var san = document.querySelector('select[name="sanBongId"]').value;
+            if (!san) { e.preventDefault(); alert('Vui lòng chọn sân tổ chức!'); return; }
+            var bd  = document.getElementById('ngayBD').value;
+            var kt  = document.getElementById('ngayKT').value;
+            if (bd && kt && bd >= kt) {
+                e.preventDefault(); alert('Ngày kết thúc phải sau ngày bắt đầu!'); return;
+            }
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').textContent = '⏳ Đang tạo...';
+        });
+    </script>
+}

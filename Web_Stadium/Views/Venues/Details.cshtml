@@ -5,124 +5,123 @@
     var anhList = (ViewBag.AnhSanBongs as List<Web_Stadium.EFCore.AnhSanBong>)
                   ?? new List<Web_Stadium.EFCore.AnhSanBong>();
     var anhDau = anhList.FirstOrDefault();
-    <script>
-        // Canvas Image Viewer: Pan + Zoom
-        (function(){
-          var dataEl = document.getElementById('anhData');
-          if(!dataEl) return;
-          var srcs   = JSON.parse(dataEl.textContent.trim());
-          if(!srcs.length) return;
-
-          var canvas = document.getElementById('imgCanvas');
-          var wrap   = document.getElementById('imgViewerWrap');
-          var ctx    = canvas.getContext('2d');
-          var hint   = document.getElementById('viewerHint');
-          var zbadge = document.getElementById('zoomBadge');
-          var nbadge = document.getElementById('numBadge');
-
-          var imgs   = srcs.map(function(s){ var i=new Image(); i.crossOrigin='anonymous'; i.src=s; return i; });
-          var curIdx = 0;
-          var st     = {ox:0,oy:0,sc:1}, tgt={ox:0,oy:0,sc:1};
-          var SC_MIN=1.0, SC_MAX=5.0;
-          var drag=false, dsx=0,dsy=0,dox=0,doy=0, hinted=false;
-          var tc={sx:0,sy:0,sox:0,soy:0,p0:0,sp0:1};
-
-          function resize(){ canvas.width=wrap.offsetWidth; canvas.height=wrap.offsetHeight; }
-
-          function covScale(img){
-            return Math.max(canvas.width/img.naturalWidth, canvas.height/img.naturalHeight);
-          }
-
-          function draw(){
-            var img=imgs[curIdx];
-            if(!img.complete||!img.naturalWidth) return;
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            var sc0=covScale(img), sc=sc0*st.sc;
-            var dw=img.naturalWidth*sc, dh=img.naturalHeight*sc;
-            ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
-            ctx.drawImage(img,(canvas.width-dw)/2+st.ox,(canvas.height-dh)/2+st.oy,dw,dh);
-          }
-
-          function maxOff(){
-            var img=imgs[curIdx];
-            if(!img.complete||!img.naturalWidth) return {x:0,y:0};
-            var sc0=covScale(img);
-            return {
-              x:Math.max(0,(img.naturalWidth *sc0*tgt.sc-canvas.width )/2),
-              y:Math.max(0,(img.naturalHeight*sc0*tgt.sc-canvas.height)/2)
-            };
-          }
-          function clamp(){ var mo=maxOff(); tgt.ox=Math.max(-mo.x,Math.min(mo.x,tgt.ox)); tgt.oy=Math.max(-mo.y,Math.min(mo.y,tgt.oy)); }
-          function lerp(a,b,t){ return a+(b-a)*t; }
-          function hideHint(){ if(!hinted){ hinted=true; if(hint) hint.style.opacity='0'; } }
-
-          function loop(){
-            requestAnimationFrame(loop);
-            st.sc=lerp(st.sc,tgt.sc,0.12); st.ox=lerp(st.ox,tgt.ox,0.12); st.oy=lerp(st.oy,tgt.oy,0.12);
-            draw();
-            if(zbadge) zbadge.textContent=st.sc.toFixed(1)+'x';
-          }
-
-          window.switchImg = function(idx){
-            curIdx=idx; st={ox:0,oy:0,sc:1}; tgt={ox:0,oy:0,sc:1};
-            if(nbadge) nbadge.textContent=(idx+1)+' / '+srcs.length;
-            document.querySelectorAll('.thumb-item').forEach(function(el,i){
-              el.style.borderColor = i===idx?'var(--green)':'transparent';
-              el.style.opacity     = i===idx?'1':'0.6';
-            });
-          };
-
-          // Mouse drag
-          wrap.addEventListener('mousedown',function(e){ drag=true;dsx=e.clientX;dsy=e.clientY;dox=tgt.ox;doy=tgt.oy;e.preventDefault(); });
-          window.addEventListener('mouseup',function(){ drag=false; });
-          window.addEventListener('mousemove',function(e){
-            if(!drag) return; hideHint();
-            tgt.ox=dox+(e.clientX-dsx); tgt.oy=doy+(e.clientY-dsy); clamp();
-          });
-
-          // Touch drag + pinch zoom
-          wrap.addEventListener('touchstart',function(e){
-            if(e.touches.length===1){ tc.sx=e.touches[0].clientX;tc.sy=e.touches[0].clientY;tc.sox=tgt.ox;tc.soy=tgt.oy; }
-            if(e.touches.length===2){ tc.p0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);tc.sp0=tgt.sc; }
-          },{passive:true});
-          wrap.addEventListener('touchmove',function(e){
-            if(e.touches.length===1){ hideHint();tgt.ox=tc.sox+(e.touches[0].clientX-tc.sx);tgt.oy=tc.soy+(e.touches[0].clientY-tc.sy);clamp(); }
-            if(e.touches.length===2){ var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);tgt.sc=Math.max(SC_MIN,Math.min(SC_MAX,tc.sp0*(d/tc.p0)));clamp(); }
-          },{passive:true});
-
-          // Scroll zoom
-          wrap.addEventListener('wheel',function(e){
-            e.preventDefault(); hideHint();
-            var old=tgt.sc; tgt.sc=Math.max(SC_MIN,Math.min(SC_MAX,tgt.sc+(e.deltaY>0?-0.2:0.2)));
-            var r=tgt.sc/old, mx=e.offsetX-canvas.width/2, my=e.offsetY-canvas.height/2;
-            tgt.ox=mx+(tgt.ox-mx)*r; tgt.oy=my+(tgt.oy-my)*r; clamp();
-          },{passive:false});
-
-          // Double click zoom
-          wrap.addEventListener('dblclick',function(e){
-            hideHint();
-            if(tgt.sc<2.0){
-              var newSc=2.5,r=newSc/tgt.sc,mx=e.offsetX-canvas.width/2,my=e.offsetY-canvas.height/2;
-              tgt.sc=newSc;tgt.ox=mx+(tgt.ox-mx)*r;tgt.oy=my+(tgt.oy-my)*r;clamp();
-            } else { tgt.sc=1.0;tgt.ox=0;tgt.oy=0; }
-          });
-
-          // Keyboard nav
-          document.addEventListener('keydown',function(e){
-            if(e.key==='ArrowLeft')  switchImg((curIdx-1+srcs.length)%srcs.length);
-            if(e.key==='ArrowRight') switchImg((curIdx+1)%srcs.length);
-          });
-
-          // Preload
-          imgs.forEach(function(img,i){ img.onload=function(){ if(i===curIdx)draw(); }; });
-
-          resize();
-          window.addEventListener('resize',resize);
-          loop();
-        })();
-    </script>
-
 }
+<script>
+    // Canvas Image Viewer: Pan + Zoom
+    (function(){
+      var dataEl = document.getElementById('anhData');
+      if(!dataEl) return;
+      var srcs   = JSON.parse(dataEl.textContent.trim());
+      if(!srcs.length) return;
+
+      var canvas = document.getElementById('imgCanvas');
+      var wrap   = document.getElementById('imgViewerWrap');
+      var ctx    = canvas.getContext('2d');
+      var hint   = document.getElementById('viewerHint');
+      var zbadge = document.getElementById('zoomBadge');
+      var nbadge = document.getElementById('numBadge');
+
+      var imgs   = srcs.map(function(s){ var i=new Image(); i.crossOrigin='anonymous'; i.src=s; return i; });
+      var curIdx = 0;
+      var st     = {ox:0,oy:0,sc:1}, tgt={ox:0,oy:0,sc:1};
+      var SC_MIN=1.0, SC_MAX=5.0;
+      var drag=false, dsx=0,dsy=0,dox=0,doy=0, hinted=false;
+      var tc={sx:0,sy:0,sox:0,soy:0,p0:0,sp0:1};
+
+      function resize(){ canvas.width=wrap.offsetWidth; canvas.height=wrap.offsetHeight; }
+
+      function covScale(img){
+        return Math.max(canvas.width/img.naturalWidth, canvas.height/img.naturalHeight);
+      }
+
+      function draw(){
+        var img=imgs[curIdx];
+        if(!img.complete||!img.naturalWidth) return;
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        var sc0=covScale(img), sc=sc0*st.sc;
+        var dw=img.naturalWidth*sc, dh=img.naturalHeight*sc;
+        ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+        ctx.drawImage(img,(canvas.width-dw)/2+st.ox,(canvas.height-dh)/2+st.oy,dw,dh);
+      }
+
+      function maxOff(){
+        var img=imgs[curIdx];
+        if(!img.complete||!img.naturalWidth) return {x:0,y:0};
+        var sc0=covScale(img);
+        return {
+          x:Math.max(0,(img.naturalWidth *sc0*tgt.sc-canvas.width )/2),
+          y:Math.max(0,(img.naturalHeight*sc0*tgt.sc-canvas.height)/2)
+        };
+      }
+      function clamp(){ var mo=maxOff(); tgt.ox=Math.max(-mo.x,Math.min(mo.x,tgt.ox)); tgt.oy=Math.max(-mo.y,Math.min(mo.y,tgt.oy)); }
+      function lerp(a,b,t){ return a+(b-a)*t; }
+      function hideHint(){ if(!hinted){ hinted=true; if(hint) hint.style.opacity='0'; } }
+
+      function loop(){
+        requestAnimationFrame(loop);
+        st.sc=lerp(st.sc,tgt.sc,0.12); st.ox=lerp(st.ox,tgt.ox,0.12); st.oy=lerp(st.oy,tgt.oy,0.12);
+        draw();
+        if(zbadge) zbadge.textContent=st.sc.toFixed(1)+'x';
+      }
+
+      window.switchImg = function(idx){
+        curIdx=idx; st={ox:0,oy:0,sc:1}; tgt={ox:0,oy:0,sc:1};
+        if(nbadge) nbadge.textContent=(idx+1)+' / '+srcs.length;
+        document.querySelectorAll('.thumb-item').forEach(function(el,i){
+          el.style.borderColor = i===idx?'var(--green)':'transparent';
+          el.style.opacity     = i===idx?'1':'0.6';
+        });
+      };
+
+      // Mouse drag
+      wrap.addEventListener('mousedown',function(e){ drag=true;dsx=e.clientX;dsy=e.clientY;dox=tgt.ox;doy=tgt.oy;e.preventDefault(); });
+      window.addEventListener('mouseup',function(){ drag=false; });
+      window.addEventListener('mousemove',function(e){
+        if(!drag) return; hideHint();
+        tgt.ox=dox+(e.clientX-dsx); tgt.oy=doy+(e.clientY-dsy); clamp();
+      });
+
+      // Touch drag + pinch zoom
+      wrap.addEventListener('touchstart',function(e){
+        if(e.touches.length===1){ tc.sx=e.touches[0].clientX;tc.sy=e.touches[0].clientY;tc.sox=tgt.ox;tc.soy=tgt.oy; }
+        if(e.touches.length===2){ tc.p0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);tc.sp0=tgt.sc; }
+      },{passive:true});
+      wrap.addEventListener('touchmove',function(e){
+        if(e.touches.length===1){ hideHint();tgt.ox=tc.sox+(e.touches[0].clientX-tc.sx);tgt.oy=tc.soy+(e.touches[0].clientY-tc.sy);clamp(); }
+        if(e.touches.length===2){ var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);tgt.sc=Math.max(SC_MIN,Math.min(SC_MAX,tc.sp0*(d/tc.p0)));clamp(); }
+      },{passive:true});
+
+      // Scroll zoom
+      wrap.addEventListener('wheel',function(e){
+        e.preventDefault(); hideHint();
+        var old=tgt.sc; tgt.sc=Math.max(SC_MIN,Math.min(SC_MAX,tgt.sc+(e.deltaY>0?-0.2:0.2)));
+        var r=tgt.sc/old, mx=e.offsetX-canvas.width/2, my=e.offsetY-canvas.height/2;
+        tgt.ox=mx+(tgt.ox-mx)*r; tgt.oy=my+(tgt.oy-my)*r; clamp();
+      },{passive:false});
+
+      // Double click zoom
+      wrap.addEventListener('dblclick',function(e){
+        hideHint();
+        if(tgt.sc<2.0){
+          var newSc=2.5,r=newSc/tgt.sc,mx=e.offsetX-canvas.width/2,my=e.offsetY-canvas.height/2;
+          tgt.sc=newSc;tgt.ox=mx+(tgt.ox-mx)*r;tgt.oy=my+(tgt.oy-my)*r;clamp();
+        } else { tgt.sc=1.0;tgt.ox=0;tgt.oy=0; }
+      });
+
+      // Keyboard nav
+      document.addEventListener('keydown',function(e){
+        if(e.key==='ArrowLeft')  switchImg((curIdx-1+srcs.length)%srcs.length);
+        if(e.key==='ArrowRight') switchImg((curIdx+1)%srcs.length);
+      });
+
+      // Preload
+      imgs.forEach(function(img,i){ img.onload=function(){ if(i===curIdx)draw(); }; });
+
+      resize();
+      window.addEventListener('resize',resize);
+      loop();
+    })();
+</script>
 
 @section Styles {
     <link rel="stylesheet" href="~/css/venues-details.css" />
@@ -141,8 +140,10 @@
         <!-- Title row -->
         <div class="header-title-row">
             <h1 style="font-family:'Segoe UI',Arial,sans-serif;font-weight:800;font-style:normal;font-size:clamp(28px,4vw,44px);letter-spacing:-0.5px;line-height:1.05;margin:0;">@Model.TenSan</h1>
-            <div class="header-rating-badge">
-                ★ @Model.DanhGiaTrungBinh.ToString("F1")
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div class="header-rating-badge">
+                    ★ @Model.DanhGiaTrungBinh.ToString("F1")
+                </div>
                 <span style="font-size:12px;opacity:0.65;font-weight:400;">/ 5.0</span>
             </div>
         </div>
@@ -171,7 +172,7 @@
                     @if (anhList.Any())
                     {
                         <span style="margin-left:auto;font-size:11px;color:var(--muted);
-                                                     font-weight:400;letter-spacing:0;text-transform:none;">
+                                                                         font-weight:400;letter-spacing:0;text-transform:none;">
                             @anhList.Count ảnh · Bấm để xem to · Scroll để zoom
                         </span>
                     }
@@ -191,14 +192,14 @@
                     <!-- VIEWER -->
                     <div id="imgViewerWrap"
                          style="
-                                position:relative;
-                                overflow:hidden;
-                                background:#0b1220;
-                                cursor:grab;
-                                height:480px;
-                                border-bottom:1px solid var(--border);
-                                border-radius:0 0 22px 22px;
-                             ">
+                                                    position:relative;
+                                                    overflow:hidden;
+                                                    background:#0b1220;
+                                                    cursor:grab;
+                                                    height:480px;
+                                                    border-bottom:1px solid var(--border);
+                                                    border-radius:0 0 22px 22px;
+                                                 ">
 
                         <canvas id="imgCanvas"
                                 style="display:block;width:100%;height:100%;">
@@ -211,57 +212,57 @@
                         <!-- HINT -->
                         <div id="viewerHint"
                              style="
-                                    position:absolute;
-                                    bottom:14px;
-                                    left:50%;
-                                    transform:translateX(-50%);
-                                    background:rgba(0,0,0,.45);
-                                    backdrop-filter:blur(12px);
-                                    color:rgba(255,255,255,.82);
-                                    font-size:9px;
-                                    letter-spacing:1.2px;
-                                    text-transform:uppercase;
-                                    padding:3px 9px;
-                                    border-radius:999px;
-                                    pointer-events:none;
-                                    z-index:10;
-                                 ">
+                                                        position:absolute;
+                                                        bottom:14px;
+                                                        left:50%;
+                                                        transform:translateX(-50%);
+                                                        background:rgba(0,0,0,.45);
+                                                        backdrop-filter:blur(12px);
+                                                        color:rgba(255,255,255,.82);
+                                                        font-size:9px;
+                                                        letter-spacing:1.2px;
+                                                        text-transform:uppercase;
+                                                        padding:3px 9px;
+                                                        border-radius:999px;
+                                                        pointer-events:none;
+                                                        z-index:10;
+                                                     ">
                             Kéo di chuyển · Scroll zoom · Dbl-click phóng to
                         </div>
 
                         <!-- ZOOM -->
                         <div id="zoomBadge"
                              style="
-                                    position:absolute;
-                                    top:14px;
-                                    right:14px;
-                                    background:rgba(0,0,0,.45);
-                                    backdrop-filter:blur(12px);
-                                    color:#fff;
-                                    font-size:11px;
-                                    font-weight:700;
-                                    padding:6px 14px;
-                                    border-radius:999px;
-                                    z-index:10;
-                                 ">
+                                                        position:absolute;
+                                                        top:14px;
+                                                        right:14px;
+                                                        background:rgba(0,0,0,.45);
+                                                        backdrop-filter:blur(12px);
+                                                        color:#fff;
+                                                        font-size:11px;
+                                                        font-weight:700;
+                                                        padding:6px 14px;
+                                                        border-radius:999px;
+                                                        z-index:10;
+                                                     ">
                             1.0x
                         </div>
 
                         <!-- COUNT -->
                         <div id="numBadge"
                              style="
-                                    position:absolute;
-                                    top:14px;
-                                    left:14px;
-                                    background:rgba(0,0,0,.45);
-                                    backdrop-filter:blur(12px);
-                                    color:#fff;
-                                    font-size:11px;
-                                    font-weight:700;
-                                    padding:6px 14px;
-                                    border-radius:999px;
-                                    z-index:10;
-                                 ">
+                                                        position:absolute;
+                                                        top:14px;
+                                                        left:14px;
+                                                        background:rgba(0,0,0,.45);
+                                                        backdrop-filter:blur(12px);
+                                                        color:#fff;
+                                                        font-size:11px;
+                                                        font-weight:700;
+                                                        padding:6px 14px;
+                                                        border-radius:999px;
+                                                        z-index:10;
+                                                     ">
                             1 / @anhList.Count
                         </div>
 
@@ -269,12 +270,12 @@
 
                     <!-- THUMBNAILS -->
                     <div style="
-                            display:flex;
-                            gap:10px;
-                            padding:14px 16px;
-                            overflow-x:auto;
-                            background:#fff;
-                        ">
+                                                display:flex;
+                                                gap:10px;
+                                                padding:14px 16px;
+                                                overflow-x:auto;
+                                                background:#fff;
+                                            ">
                         @for (int i = 0; i < anhList.Count; i++)
                         {
                             <img src="@anhList[i].DuongDan"
@@ -282,16 +283,16 @@
                                  class="thumb-item"
                                  onclick="switchImg(@i)"
                                  style="
-                                                            width:88px;
-                                                            height:62px;
-                                                            object-fit:cover;
-                                                            border-radius:12px;
-                                                            cursor:pointer;
-                                                            flex-shrink:0;
-                                                            border:2px solid @(i == 0 ? "var(--green)" : "transparent");
-                                                            opacity:@(i == 0 ? "1" : ".55");
-                                                            transition:.25s;
-                                                         "
+                                                                                                    width:88px;
+                                                                                                    height:62px;
+                                                                                                    object-fit:cover;
+                                                                                                    border-radius:12px;
+                                                                                                    cursor:pointer;
+                                                                                                    flex-shrink:0;
+                                                                                                    border:2px solid @(i == 0 ? "var(--green)" : "transparent");
+                                                                                                    opacity:@(i == 0 ? "1" : ".55");
+                                                                                                    transition:.25s;
+                                                                                                 "
                                  onerror="this.style.display='none'" />
                         }
                     </div>
@@ -300,7 +301,7 @@
                     <script id="anhData" type="application/json">
                         @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                             anhList.Select(a => a.DuongDan)
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ))
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ))
                 </script>
 
                 <script>
@@ -484,7 +485,6 @@
                     loadImg(0);
 
                 </script>
-                                }
                 }
             </div>
 
@@ -504,11 +504,11 @@
                                  data-id="@kg.Id"
                                  data-status="@kg.TrangThai"
                                  data-gia="@kg.Gia"
-                                 data-batdau="@kg.GioBatDau.ToString(@"hh\:mm")"
-                                 data-ketthuc="@kg.GioKetThuc.ToString(@"hh\:mm")"
+                                 data-batdau="@kg.GioBatDau.ToString("HH:mm")"
+                                 data-ketthuc="@kg.GioKetThuc.ToString("HH:mm")"
                                  onclick="chonKhungGio(this)">
                                 <div class="gio-time" style="font-family:'Segoe UI',Arial,sans-serif;font-style:normal;">
-                                    @kg.GioBatDau.ToString(@"hh\:mm") – @kg.GioKetThuc.ToString(@"hh\:mm")
+                                    @kg.GioBatDau.ToString("HH:mm") – @kg.GioKetThuc.ToString("HH:mm")
                                 </div>
                                 <div class="gio-price">@kg.Gia.ToString("N0")đ</div>
                                 <div class="gio-status @(kg.TrangThai == "Trong" ? "s-trong" : kg.TrangThai == "DaDat" ? "s-dadat" : "s-giucho")">
@@ -538,7 +538,7 @@
                                         {"Nuoc uong","💧"},{"Thue bong","⚽"},
                                         {"Thue trong tai","🟡"},{"Thue ao","👕"}
                                         };
-                        foreach (var dv in (IEnumerable<Web_Stadium.EFCore.DichVu>)ViewBag.DichVus)
+                        @foreach (var dv in (IEnumerable<Web_Stadium.EFCore.DichVu>)ViewBag.DichVus)
                         {
                             var icon = icons.ContainsKey(dv.TenDichVu ?? "") ? icons[dv.TenDichVu!] : "🎁";
                             <div class="dv-item">
@@ -553,6 +553,8 @@
                                     <button type="button" class="qty-btn" onclick="thayDoiSoLuong(@dv.Id,1)">+</button>
                                 </div>
                             </div>
+
+                            @* registerDichVu gọi trong @section Scripts bên dưới *@
                         }
                     }
                     else
@@ -565,11 +567,96 @@
             </div>
 
             <!-- ĐÁNH GIÁ -->
-            <div class="section-card">
+            <div class="section-card" id="danh-gia">
                 <div class="section-card-header">
                     ⭐ <span>Đánh giá từ người dùng</span>
+                    @if (Model.DanhGia.Any())
+                    {
+                        <span style="margin-left:auto;font-size:.82rem;color:#888;">
+                            @Model.DanhGiaTrungBinh.ToString("0.0") / 5 &nbsp;·&nbsp; @Model.DanhGia.Count đánh giá
+                        </span>
+                    }
                 </div>
                 <div class="section-card-body">
+
+                    @* Form đánh giá 3 tiêu chí *@
+                    @{
+                        var donDG = ViewBag.DonChoGiaDanhGia as Web_Stadium.EFCore.DatSan;
+                        var daDG = (bool)(ViewBag.DaDanhGia ?? false);
+                    }
+                    @if (donDG != null)
+                    {
+                        <div style="background:rgba(30,215,96,.06);border:1px solid rgba(30,215,96,.25);
+                                                        border-radius:14px;padding:20px;margin-bottom:24px;">
+                            <div style="font-weight:700;color:#fff;margin-bottom:4px;font-size:.95rem;">
+                                🎉 Trận đấu đã hoàn thành — Hãy đánh giá sân!
+                            </div>
+                            <div style="color:#aaa;font-size:.8rem;margin-bottom:16px;">
+                                Mã đơn: <span style="font-family:monospace;color:var(--green);">@donDG.MaXacNhan</span>
+                                &nbsp;·&nbsp; Đánh giá để nhận <strong style="color:#ffc107;">+5 điểm ⭐</strong>
+                            </div>
+                            <form method="post" action="/Venues/DanhGiaSan">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="sanBongId" value="@Model.Id" />
+                                <input type="hidden" name="datSanId" value="@donDG.Id" />
+                                <div style="display:flex;flex-direction:column;gap:14px;">
+                                    <div>
+                                        <div style="color:#ccc;font-size:.84rem;margin-bottom:6px;">🌿 Chất lượng mặt cỏ</div>
+                                        <div class="star-picker" id="sp-co">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                <span class="star active" data-val="@i">★</span>
+                                            }
+                                        </div>
+                                        <input type="hidden" name="soSaoCo" id="soSaoCo" value="5" />
+                                    </div>
+                                    <div>
+                                        <div style="color:#ccc;font-size:.84rem;margin-bottom:6px;">🏟 Cơ sở vật chất</div>
+                                        <div class="star-picker" id="sp-csvc">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                <span class="star active" data-val="@i">★</span>
+                                            }
+                                        </div>
+                                        <input type="hidden" name="soSaoCoSoVatChat" id="soSaoCoSoVatChat" value="5" />
+                                    </div>
+                                    <div>
+                                        <div style="color:#ccc;font-size:.84rem;margin-bottom:6px;">👤 Thái độ nhân viên</div>
+                                        <div class="star-picker" id="sp-nv">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                <span class="star active" data-val="@i">★</span>
+                                            }
+                                        </div>
+                                        <input type="hidden" name="soSaoNhanVien" id="soSaoNhanVien" value="5" />
+                                    </div>
+                                    <div>
+                                        <div style="color:#ccc;font-size:.84rem;margin-bottom:6px;">💬 Nhận xét (tuỳ chọn)</div>
+                                        <textarea name="nhanXet" rows="3"
+                                              style="width:100%;background:rgba(255,255,255,.07);
+                                                         border:1px solid rgba(255,255,255,.12);color:#fff;
+                                                         border-radius:10px;padding:10px 14px;font-size:.88rem;resize:vertical;"
+                                              placeholder="Chia sẻ trải nghiệm..."></textarea>
+                                    </div>
+                                    <button type="submit"
+                                            style="background:var(--green);color:#000;border:none;
+                                                                       border-radius:10px;padding:10px 24px;font-weight:700;
+                                                                       font-size:.9rem;cursor:pointer;align-self:flex-start;">
+                                        Gửi đánh giá &nbsp;+5⭐
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    }
+                    else if (daDG)
+                    {
+                        <div style="background:rgba(255,255,255,.04);border-radius:12px;
+                                                        padding:14px 18px;margin-bottom:20px;font-size:.85rem;color:#888;">
+                            ✅ Bạn đã đánh giá sân này rồi.
+                        </div>
+                    }
+
+                    @* Danh sách đánh giá *@
                     @if (Model.DanhGia != null && Model.DanhGia.Any())
                     {
                         foreach (var dg in Model.DanhGia.OrderByDescending(d => d.NgayDanhGia).Take(5))
@@ -577,18 +664,30 @@
                             <div class="review-item">
                                 <div class="review-header">
                                     <span class="review-author">@dg.User?.HoTen</span>
-                                    <span class="review-stars">
-                                        @string.Concat(Enumerable.Repeat("★", dg.SoSao))@string.Concat(Enumerable.Repeat("☆", 5 - dg.SoSao))
-                                    </span>
+                                    <span style="color:#888;font-size:.78rem;">@dg.NgayDanhGia.ToString("dd/MM/yyyy")</span>
                                 </div>
-                                <div class="review-text">@dg.NhanXet</div>
+                                <div style="display:flex;gap:14px;font-size:.8rem;margin:4px 0;flex-wrap:wrap;">
+                                    <span style="color:#ffc107;">🌿 @string.Concat(Enumerable.Repeat("★", dg.SoSao))@string.Concat(Enumerable.Repeat("☆", 5 - dg.SoSao))</span>
+                                    @if (dg.SoSaoCoSoVatChat.HasValue)
+                                    {
+                                        <span style="color:#ffc107;">🏟 @string.Concat(Enumerable.Repeat("★", dg.SoSaoCoSoVatChat.Value))@string.Concat(Enumerable.Repeat("☆", 5 - dg.SoSaoCoSoVatChat.Value))</span>
+                                    }
+                                    @if (dg.SoSaoNhanVien.HasValue)
+                                    {
+                                        <span style="color:#ffc107;">👤 @string.Concat(Enumerable.Repeat("★", dg.SoSaoNhanVien.Value))@string.Concat(Enumerable.Repeat("☆", 5 - dg.SoSaoNhanVien.Value))</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrEmpty(dg.NhanXet))
+                                {
+                                    <div class="review-text">"@dg.NhanXet"</div>
+                                }
                             </div>
                         }
                     }
                     else
                     {
                         <p style="color:var(--muted);font-size:15px;text-align:center;padding:24px 0">
-                            Chưa có đánh giá nào.
+                            Chưa có đánh giá nào. Hãy là người đầu tiên!
                         </p>
                     }
                 </div>
@@ -645,13 +744,19 @@
                             <span class="val" id="priceGia">—</span>
                         </div>
                         <div class="price-row">
-                            <span>Tiền cọc (30%)</span>
+                            <span id="lblCoc">Tiền cọc (30%)</span>
                             <span class="val" id="priceCoc">—</span>
                         </div>
-                        <div class="price-row" id="priceServiceRow" style="display:none">
-                            <span>Dịch vụ kèm</span>
-                            <span class="val" id="priceService">—</span>
+
+                        <!-- Dịch vụ kèm -->
+                        <div id="priceServiceRow" style="display:none;">
+                            <div class="dv-row-top">
+                                <span class="dv-label">Dịch vụ kèm: </span>
+                                <span id="priceServiceValue" style="font-size:14px;font-weight:700;color:var(--text2);text-align:right;"></span>
+                            </div>
+                            <div id="dvComboList" style="margin-top:10px;display:flex;flex-direction:column;gap:4px;"></div>
                         </div>
+
                         <div class="price-row total">
                             <span>Thanh toán ngay</span>
                             <span class="val" id="priceTotal">—</span>
@@ -661,7 +766,11 @@
                     <!-- Form -->
                     <form method="post" action="/Booking/Create" id="bookingForm">
                         <input type="hidden" id="khungGioInput" name="khungGioId" value="" />
-                        <input type="hidden" id="ngayInput" name="ngayThiDau" value="" />
+                        @{
+                            var _tyLe = Model.TyLeCoc > 0 ? (double)Model.TyLeCoc : 0.3;
+                        }
+                        <input type="hidden" id="tyLeCocInput" value="@_tyLe.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" />
+                        <input type="hidden" id="ngayInput" name="ngayThiDauStr" value="" />
                         <div id="dichVuInputs"></div>
                         <button type="submit" class="btn-primary-glow" id="btnDatSan">
                             XÁC NHẬN ĐẶT SÂN
@@ -699,17 +808,90 @@
     </div>
 </div>
 
+
+<style>
+    .star-picker {
+        display: flex;
+        gap: 6px;
+        cursor: pointer;
+        margin-top: 4px;
+    }
+
+        .star-picker .star {
+            font-size: 1.8rem;
+            color: #444;
+            transition: color .15s;
+            user-select: none;
+        }
+
+            .star-picker .star.active {
+                color: #ffc107;
+            }
+
+            .star-picker .star:hover {
+                color: #ffd54f;
+            }
+</style>
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
-    <script src="~/js/venues-details.js"></script>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/pannellum/build/pannellum.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/pannellum/build/pannellum.js"></script>
+    <script src="~/js/venues-details.js?v=@DateTime.Now.Ticks"></script>
     <script>
-        initVenuesDetails(@Model.Id, '@Model.TenSan');
+        @* Đăng ký dịch vụ TRƯỚC — để _dichVuMap có data khi initVenuesDetails chạy *@
         @if (ViewBag.DichVus != null)
         {
-                                foreach (var dv in (IEnumerable<Web_Stadium.EFCore.DichVu>)ViewBag.DichVus)
-                                {
-                                                        <text>registerDichVu(@dv.Id, @dv.Gia);</text>
-                                }
+                        foreach (var dv in (IEnumerable<Web_Stadium.EFCore.DichVu>)ViewBag.DichVus)
+                        {
+                                        <text>registerDichVu(@dv.Id, @((double)dv.Gia));</text>
+                        }
+        }
+        @* Khởi tạo sau khi đã có đủ dữ liệu dịch vụ *@
+        initVenuesDetails(@Model.Id, '@Model.TenSan.Replace("'", "\'")');
+    </script>
+
+    <script>
+        // Star picker cho form đánh giá
+        document.querySelectorAll('.star-picker').forEach(function(picker) {
+            var targets = { 'sp-co': 'soSaoCo', 'sp-csvc': 'soSaoCoSoVatChat', 'sp-nv': 'soSaoNhanVien' };
+            var name   = targets[picker.id] || picker.id;
+            var hidden = document.getElementById(name);
+            var stars  = picker.querySelectorAll('.star');
+            var cur    = 5;
+
+            stars.forEach(function(star, idx) {
+                star.addEventListener('mouseover', function() {
+                    stars.forEach(function(s,i){ s.classList.toggle('active', i<=idx); });
+                });
+                star.addEventListener('click', function() {
+                    cur = parseInt(star.dataset.val);
+                    if (hidden) hidden.value = cur;
+                    stars.forEach(function(s,i){ s.classList.toggle('active', i<=idx); });
+                });
+            });
+            picker.addEventListener('mouseleave', function() {
+                stars.forEach(function(s,i){ s.classList.toggle('active', i < cur); });
+            });
+        });
+
+        // Nút tim trên Details
+        async function toggleTimDetails(sanId, btn) {
+            var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            try {
+                var res = await fetch('/User/ToggleYeuThich', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'sanBongId=' + sanId + '&__RequestVerificationToken=' + encodeURIComponent(token)
+                });
+                if (res.ok) {
+                    var data = await res.json();
+                    btn.textContent = data.liked ? '❤️' : '🤍';
+                    btn.title = data.liked ? 'Bỏ yêu thích' : 'Thêm yêu thích';
+                    if (window.reloadHeartDD) window.reloadHeartDD();
+                }
+            } catch(e) { console.error(e); }
         }
     </script>
 }

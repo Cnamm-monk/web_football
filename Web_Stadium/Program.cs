@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Web_Stadium.EFCore;
-using Web_Stadium.EFCore;
 using Web_Stadium.Hubs;
 
 namespace Web_Stadium
@@ -62,6 +61,15 @@ namespace Web_Stadium
             builder.Services.AddControllersWithViews();
 
             builder.Services.AddHostedService<Web_Stadium.End.MatchmakingAutoCleanupService>();
+            builder.Services.AddHostedService<Web_Stadium.End.TournamentBackgroundService>();
+            builder.Services.AddScoped<Web_Stadium.Services.EmailService>();
+            builder.Services.AddScoped<Web_Stadium.Services.ScheduleService>();
+            builder.Services.AddScoped<Web_Stadium.Services.StandingService>();
+            builder.Services.AddScoped<Web_Stadium.Services.SuspensionService>();
+            builder.Services.AddScoped<Web_Stadium.Services.TournamentNotificationService>();
+            builder.Services.AddScoped<Web_Stadium.Services.TournamentExcelService>();
+            builder.Services.AddScoped<Web_Stadium.Services.TournamentService>();
+
 
             var app = builder.Build();
 
@@ -83,6 +91,7 @@ namespace Web_Stadium
 
             //Map SignalR Hub
             app.MapHub<SanBongHub>("/sanBongHub");
+            app.MapHub<Web_Stadium.Hubs.TournamentHub>("/tournamentHub");
 
             app.MapControllerRoute(
                 name: "default",

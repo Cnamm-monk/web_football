@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
+using Web_Stadium.Services;
 
 namespace Web_Stadium.Controllers
 {
@@ -10,11 +11,13 @@ namespace Web_Stadium.Controllers
     {
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
+        private readonly EmailService _emailService;
 
-        public OwnerController(SanBongContext context, IConfiguration config)
+        public OwnerController(SanBongContext context, IConfiguration config, EmailService emailService)
         {
             _context = context;
             _config = config;
+            _emailService = emailService;
         }
 
         // Helper lấy OwnerId từ JWT
@@ -112,6 +115,12 @@ namespace Web_Stadium.Controllers
                 bieu.Add(new { thang = t.ToString("MM/yyyy"), dt = (double)(dt - hh), soLuot = rows.Count });
             }
             ViewBag.Bieu6Thang = bieu;
+
+            // Đếm tổng đơn ChoDuyet mọi ngày (không chỉ hôm nay) — dùng cho badge navbar
+            ViewBag.SoDonChoDuyet = await _context.DatSans
+                .Include(d => d.KhungGio)
+                .CountAsync(d => sanIds.Contains(d.KhungGio.SanBongId)
+                              && d.TrangThai == "ChoDuyet");
 
             return View();
         }
@@ -401,6 +410,19 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
             san.TyLeCoc = tyLeCoc;
             san.IsHidden = isHidden;
             await _context.SaveChangesAsync();
+
+            // AuditLog hành động nhạy cảm
+            _context.AuditLogs.Add(new Web_Stadium.EFCore.AuditLog
+            {
+                UserId = GetOwnerId(),
+                VaiTro = "Owner",
+                HanhDong = "SuaSan",
+                DoiTuong = "SanBong",
+                DoiTuongId = sanId,
+                MoTa = $"Sửa sân {san.TenSan} — IsHidden:{isHidden}, TyLeCoc:{tyLeCoc:P0}"
+            });
+            await _context.SaveChangesAsync();
+
             TempData["Success"] = $"Đã cập nhật thông tin \"{san.TenSan}\"!";
             return RedirectToAction("DanhSachSan");
         }
@@ -451,8 +473,21 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
                 .Include(k => k.SanBong)
                 .FirstOrDefaultAsync(k => k.Id == id && k.SanBong.OwnerId == GetOwnerId());
             if (kg == null) return NotFound();
+            var giaOld = kg.Gia;
             kg.Gia = gia; kg.GiaGioVang = giaGioVang; kg.GiaCuoiTuan = giaCuoiTuan;
             await _context.SaveChangesAsync();
+
+            _context.AuditLogs.Add(new Web_Stadium.EFCore.AuditLog
+            {
+                UserId = GetOwnerId(),
+                VaiTro = "Owner",
+                HanhDong = "SuaGia",
+                DoiTuong = "KhungGio",
+                DoiTuongId = id,
+                MoTa = $"Sửa giá KhungGio #{id}: {giaOld:N0} → {gia:N0}đ"
+            });
+            await _context.SaveChangesAsync();
+
             TempData["Success"] = "Đã cập nhật bảng giá!";
             return RedirectToAction("KhungGio", new { sanId = kg.SanBongId });
         }
@@ -614,6 +649,18 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
             if (dv == null) return NotFound();
             dv.Gia = gia; dv.TonKho = tonKho; dv.IsActive = isActive;
             await _context.SaveChangesAsync();
+
+            _context.AuditLogs.Add(new Web_Stadium.EFCore.AuditLog
+            {
+                UserId = GetOwnerId(),
+                VaiTro = "Owner",
+                HanhDong = "CapNhatDichVu",
+                DoiTuong = "DichVu",
+                DoiTuongId = dichVuId,
+                MoTa = $"Cập nhật {dv.TenDichVu}: Giá={gia:N0}, TonKho={tonKho}, Active={isActive}"
+            });
+            await _context.SaveChangesAsync();
+
             TempData["Success"] = "Đã cập nhật dịch vụ!";
             return RedirectToAction("KhoDichVu", new { sanId = dv.SanBongId });
         }
@@ -920,7 +967,291 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
             await _context.SaveChangesAsync();
             return Ok(new { success = true });
         }
+        // ══════════════════════════════════════════════════════════
+        // 9. DUYỆT ĐƠN ĐẶT SÂN — điểm nối quan trọng nhất với User
+        // ══════════════════════════════════════════════════════════
 
+        // GET /Owner/DuyetDon — danh sách đơn chờ duyệt
+        public async Task<IActionResult> DuyetDon()
+        {
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
 
+            // Đơn chờ duyệt
+            ViewBag.DonChoDuyet = await _context.DatSans
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
+                .Where(d => sanIds.Contains(d.KhungGio.SanBongId)
+                         && d.TrangThai == "ChoDuyet")
+                .OrderBy(d => d.ThoiGianTao)
+                .ToListAsync();
+
+            // Đơn đã xử lý gần đây (7 ngày)
+            ViewBag.DonDaXuLy = await _context.DatSans
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Where(d => sanIds.Contains(d.KhungGio.SanBongId)
+                         && (d.TrangThai == "DaXacNhan" || d.TrangThai == "DaHuy")
+                         && d.ThoiGianTao >= DateTime.Now.AddDays(-7))
+                .OrderByDescending(d => d.ThoiGianTao)
+                .Take(20)
+                .ToListAsync();
+
+            return View();
+        }
+
+        // POST /Owner/XacNhanDon — Duyệt đơn → gửi email + QR cho khách
+        [HttpPost]
+        public async Task<IActionResult> XacNhanDon(int datSanId)
+        {
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+            var don = await _context.DatSans
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .FirstOrDefaultAsync(d => d.Id == datSanId
+                                       && sanIds.Contains(d.KhungGio.SanBongId)
+                                       && d.TrangThai == "ChoDuyet");
+
+            if (don == null)
+            {
+                TempData["Error"] = "Không tìm thấy đơn hoặc đơn không ở trạng thái Chờ duyệt!";
+                return RedirectToAction("DuyetDon");
+            }
+
+            don.TrangThai = "DaXacNhan";
+            await _context.SaveChangesAsync();
+
+            // ✅ Gửi email xác nhận + QR Code cho khách ngay lập tức
+            if (don.User != null && don.KhungGio?.SanBong != null)
+            {
+                var tenSan = don.KhungGio.SanBong.TenSan;
+                var diaChi = don.KhungGio.SanBong.DiaChi + ", " + don.KhungGio.SanBong.Quan;
+                var khungGio = $"{don.KhungGio.GioBatDau:HH:mm} – {don.KhungGio.GioKetThuc:HH:mm}";
+
+                await _emailService.GuiEmailXacNhanDatSan(
+                    don.User.Email,
+                    don.User.HoTen,
+                    tenSan, diaChi, khungGio,
+                    don.NgayThiDau.ToString("dd/MM/yyyy"),
+                    don.MaXacNhan,
+                    don.TienCoc);
+            }
+
+            // Ghi AuditLog
+            _context.AuditLogs.Add(new AuditLog
+            {
+                UserId = GetOwnerId(),
+                VaiTro = "Owner",
+                HanhDong = "DuyetDon",
+                DoiTuong = "DatSan",
+                DoiTuongId = datSanId,
+                MoTa = $"Duyệt đơn {don.MaXacNhan} — {don.User?.HoTen}"
+            });
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"✅ Đã duyệt đơn {don.MaXacNhan}! Email xác nhận + QR đã gửi đến khách.";
+            return RedirectToAction("DuyetDon");
+        }
+
+        // POST /Owner/TuChoiDon — Từ chối đơn → hoàn 100% cọc
+        [HttpPost]
+        public async Task<IActionResult> TuChoiDon(int datSanId, string lyDo)
+        {
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+            var don = await _context.DatSans
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
+                .FirstOrDefaultAsync(d => d.Id == datSanId
+                                       && sanIds.Contains(d.KhungGio.SanBongId)
+                                       && d.TrangThai == "ChoDuyet");
+
+            if (don == null)
+            {
+                TempData["Error"] = "Không tìm thấy đơn!";
+                return RedirectToAction("DuyetDon");
+            }
+
+            don.TrangThai = "DaHuy";
+
+            // Giải phóng slot
+            if (don.KhungGio != null)
+                don.KhungGio.TrangThai = "Trong";
+
+            // Hoàn kho dịch vụ đặt trước (chưa trừ kho vì chưa check-in)
+            foreach (var dv in don.DatSanDichVus)
+                if (dv.DichVu != null) dv.DichVu.TonKho += dv.SoLuong;
+
+            await _context.SaveChangesAsync();
+
+            // Gửi email thông báo từ chối + hoàn tiền cho khách
+            if (don.User != null)
+            {
+                await _emailService.GuiEmailHuyDon(
+                    don.User.Email,
+                    don.User.HoTen,
+                    don.KhungGio?.SanBong?.TenSan ?? "",
+                    don.NgayThiDau.ToString("dd/MM/yyyy"),
+                    lyDo: $"Owner từ chối: {lyDo}",
+                    soTienHoan: don.TienCoc); // hoàn 100%
+            }
+
+            // Ghi AuditLog
+            _context.AuditLogs.Add(new AuditLog
+            {
+                UserId = GetOwnerId(),
+                VaiTro = "Owner",
+                HanhDong = "TuChoiDon",
+                DoiTuong = "DatSan",
+                DoiTuongId = datSanId,
+                MoTa = $"Từ chối đơn {don.MaXacNhan} — Lý do: {lyDo}"
+            });
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"Đã từ chối đơn {don.MaXacNhan}. Khách sẽ được hoàn 100% tiền cọc ({don.TienCoc:N0}đ).";
+            return RedirectToAction("DuyetDon");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 10. HOÀN CỌC CHỦ ĐỘNG — Khi sân có sự cố (ngập, mất điện...)
+        // Chỉ áp dụng cho đơn DaXacNhan — không áp dụng cho đơn hệ thống đã tự xử lý
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> HoanCoc()
+        {
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+
+            // Đơn DaXacNhan sắp diễn ra — có thể hủy chủ động
+            ViewBag.DonCoThe = await _context.DatSans
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Where(d => sanIds.Contains(d.KhungGio.SanBongId)
+                         && d.TrangThai == "DaXacNhan"
+                         && d.NgayThiDau >= DateTime.Today)
+                .OrderBy(d => d.NgayThiDau)
+                .ToListAsync();
+
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ThucHienHoanCoc(int datSanId, string lyDo)
+        {
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+            var don = await _context.DatSans
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
+                .FirstOrDefaultAsync(d => d.Id == datSanId
+                                       && sanIds.Contains(d.KhungGio.SanBongId)
+                                       && d.TrangThai == "DaXacNhan");
+
+            if (don == null)
+            {
+                TempData["Error"] = "Chỉ hoàn cọc được đơn đang ở trạng thái Đã xác nhận!";
+                return RedirectToAction("HoanCoc");
+            }
+
+            don.TrangThai = "DaHuy";
+            if (don.KhungGio != null) don.KhungGio.TrangThai = "Trong";
+
+            // Hoàn kho (đơn DaXacNhan kho chưa bị trừ — chỉ trừ khi check-in)
+            foreach (var dv in don.DatSanDichVus)
+                if (dv.DichVu != null) dv.DichVu.TonKho += dv.SoLuong;
+
+            // Ghi AuditLog
+            _context.AuditLogs.Add(new AuditLog
+            {
+                UserId = GetOwnerId(),
+                VaiTro = "Owner",
+                HanhDong = "HoanCocChuDong",
+                DoiTuong = "DatSan",
+                DoiTuongId = datSanId,
+                MoTa = $"Hoàn cọc chủ động đơn {don.MaXacNhan} — Lý do: {lyDo}"
+            });
+
+            await _context.SaveChangesAsync();
+
+            // Gửi email thông báo cho khách
+            if (don.User != null)
+            {
+                await _emailService.GuiEmailHuyDon(
+                    don.User.Email,
+                    don.User.HoTen,
+                    don.KhungGio?.SanBong?.TenSan ?? "",
+                    don.NgayThiDau.ToString("dd/MM/yyyy"),
+                    lyDo: $"Sân có sự cố: {lyDo}",
+                    soTienHoan: don.TienCoc);
+            }
+
+            TempData["Success"] = $"Đã hủy đơn {don.MaXacNhan} và hoàn 100% cọc ({don.TienCoc:N0}đ) cho khách.";
+            return RedirectToAction("HoanCoc");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // HO SO
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> HoSo(string tab = "tongquan")
+        {
+            var ownerId = GetOwnerId();
+            var user = await _context.Users.FindAsync(ownerId);
+            var sanList = await SanCuaToi().ToListAsync();
+            var sanIds = sanList.Select(s => s.Id).ToList();
+
+            // Doanh thu thực từ DB
+            var allDon = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.User)
+                .Where(d => sanIds.Contains(d.KhungGio.SanBongId)
+                         && (d.TrangThai == "HoanThanh" || d.TrangThai == "DaHuy"
+                          || d.TrangThai == "DaXacNhan" || d.TrangThai == "DangSuDung"))
+                .ToListAsync();
+
+            decimal tongDT = allDon.Sum(d => d.TongTien > 0 ? d.TongTien : d.TienCoc);
+            decimal tongPhi = 0; // Tính theo tỷ lệ hoa hồng nếu cần
+
+            // Lấp đầy sân
+            var lapDayData = sanList.Select(s => new {
+                TenSan = s.TenSan,
+                Tong = s.KhungGios?.Count ?? 0,
+                DaDat = s.KhungGios?.Count(k => k.TrangThai == "DaDat") ?? 0
+            }).Cast<dynamic>().ToList();
+
+            // Kho cảnh báo
+            var khoCanhBao = await _context.DichVus
+                .Include(d => d.SanBong)
+                .Where(d => sanIds.Contains(d.SanBongId)
+                         && d.IsActive && d.TonKho < 20)
+                .OrderBy(d => d.TonKho).ToListAsync();
+
+            // Đơn chờ duyệt
+            var donChoDuyet = await _context.DatSans
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Where(d => sanIds.Contains(d.KhungGio.SanBongId)
+                         && d.TrangThai == "ChoDuyet")
+                .OrderBy(d => d.ThoiGianTao).ToListAsync();
+
+            var donGanDay = await _context.DatSans
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Where(d => sanIds.Contains(d.KhungGio.SanBongId)
+                         && d.ThoiGianTao >= DateTime.Now.AddDays(-7))
+                .OrderByDescending(d => d.ThoiGianTao).Take(20).ToListAsync();
+
+            ViewBag.SanList = sanList;
+            ViewBag.StaffList = await _context.Users
+                .Where(u => u.OwnerIdCuaStaff == ownerId).ToListAsync();
+            ViewBag.DonChoDuyet = donChoDuyet;
+            ViewBag.DonGanDay = donGanDay;
+            ViewBag.LapDayData = lapDayData;
+            ViewBag.KhoCanhBao = khoCanhBao;
+            ViewBag.SoSan = sanList.Count;
+            ViewBag.SoSanDaDuyet = sanList.Count(s => s.TrangThaiDuyet == "DaDuyet");
+            ViewBag.SoStaff = await _context.Users.CountAsync(u => u.OwnerIdCuaStaff == ownerId);
+            ViewBag.TongDoanhThu = (double)tongDT;
+            ViewBag.TongPhiHoaHong = (double)tongPhi;
+            ViewBag.Tab = tab;
+            return View(user);
+        }
     }
 }

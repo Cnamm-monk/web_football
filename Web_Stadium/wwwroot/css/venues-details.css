@@ -481,16 +481,14 @@
     margin-bottom: 8px;
 }
 
-/* PRICE BREAKDOWN */
+/* =========================
+   PRICE BREAKDOWN (FIXED)
+========================= */
+
 .price-breakdown {
     display: none;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 18px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 18px;
+    gap: 12px;
 }
 
     .price-breakdown.show {
@@ -498,34 +496,50 @@
         animation: slideIn .25s ease;
     }
 
+/* IMPORTANT FIX: layout ổn định */
 .price-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    font-size: 15px;
-    color: var(--muted);
+    align-items: center; /* Căn giữa theo chiều dọc để không bị lệch dòng */
+    gap: 12px;
+    position: relative; /* Tạo context cho mobile nếu cần */
+    width: 100%;
 }
-
-    .price-row .val {
-        color: var(--text2);
-        font-weight: 600;
+    /* label bên trái luôn wrap */
+    .price-row span:first-child {
+        flex: 1;
+        min-width: 0;
+        word-break: break-word;
     }
 
+    /* value bên phải không bị vỡ */
+    .price-row .val {
+        flex-shrink: 0;
+        text-align: right;
+        color: var(--text2);
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    /* total row */
     .price-row.total {
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--text);
         border-top: 1px solid var(--border);
         padding-top: 12px;
         margin-top: 4px;
+        font-weight: 700;
+        color: var(--text);
     }
 
         .price-row.total .val {
             color: var(--green);
-            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
             font-size: 20px;
             font-weight: 800;
         }
+
+    .price-row .label {
+        color: #666;
+        font-size: 14px;
+    }
 
 /* CONFIRM BUTTON */
 #btnDatSan {
@@ -666,5 +680,164 @@
 
     .gio-grid {
         grid-template-columns: repeat(2,1fr);
+    }
+}
+
+/* VALUE BOX SAFE AREA */
+.value-box {
+    position: relative;
+    display: inline-block;
+}
+
+/* CLICK AREA */
+.value-click {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    text-align: right;
+}
+
+    .value-click .arrow {
+        font-size: 10px;
+        color: #888;
+        transition: transform 0.2s ease;
+    }
+
+/* =========================
+   DỊCH VỤ KÈM — đơn giản, không conflict
+========================= */
+
+#priceServiceRow {
+    width: 100%;
+}
+
+/* Hàng label + số tiền */
+.dv-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+    .dv-row-top .dv-label {
+        font-size: 14px;
+        color: var(--muted);
+        font-weight: 400;
+    }
+
+.dv-trigger {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text2);
+    white-space: nowrap;
+    user-select: none;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+    .dv-trigger:hover {
+        color: var(--green);
+    }
+
+.dv-arrow {
+    font-size: 9px;
+    color: #999;
+    transition: transform 0.25s;
+    display: inline-block;
+}
+
+/* Danh sách expand — ẩn mặc định */
+.dv-combo {
+    display: none;
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: var(--bg3, #f5f7fa);
+    border-radius: 8px;
+    border: 1px solid var(--border, #e2e8f0);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+    .dv-combo.open {
+        display: block;
+    }
+
+/* item trong dropdown */
+#dvComboList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dv-title {
+    font-weight: 700;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ITEM LIST */
+.dv-combo .item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    padding: 6px 0;
+    color: #333;
+    border-bottom: 1px dashed #f0f0f0;
+}
+
+    .dv-combo .item:last-child {
+        border-bottom: none;
+    }
+
+/* =========================
+   ANIMATION SAFE
+========================= */
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================
+   MOBILE FIX (QUAN TRỌNG)
+========================= */
+
+@media (max-width: 640px) {
+
+    .price-row {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+        .price-row .val {
+            font-size: 14px;
+        }
+
+    .dv-combo {
+        right: 0;
+        left: auto;
+        width: 92vw;
     }
 }

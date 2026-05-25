@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
-using Web_Stadium.End;
 using Web_Stadium.Filters;
 
 namespace Web_Stadium.Controllers
@@ -23,7 +22,7 @@ namespace Web_Stadium.Controllers
         }
 
         // ══════════════════════════════════════════════════════════
-        // GET: /Venues — Tìm kiếm sân (dùng Master Data từ DB)
+        // GET: /Venues
         // ══════════════════════════════════════════════════════════
         public async Task<IActionResult> Index(
             string? quan, string? loaiSan,
@@ -31,7 +30,6 @@ namespace Web_Stadium.Controllers
             decimal? giaTu, decimal? giaDen,
             string? sapXep)
         {
-            // FIX 1: Chỉ hiển thị sân DaDuyet + không bị ẩn (IsHidden=false)
             var query = _context.SanBongs
                 .Where(s => s.TrangThaiDuyet == "DaDuyet" && !s.IsHidden);
 
@@ -46,7 +44,6 @@ namespace Web_Stadium.Controllers
                                       || s.DiaChi.Contains(tuKhoa)
                                       || s.Quan.Contains(tuKhoa));
 
-            // Sắp xếp
             query = sapXep switch
             {
                 "gia_tang" => query.OrderBy(s => s.KhungGios.Min(k => k.Gia)),
@@ -59,19 +56,31 @@ namespace Web_Stadium.Controllers
                 .Include(s => s.KhungGios)
                 .ToListAsync();
 
-            // FIX 2: Dùng Master Data từ DB thay vì hardcode
-            ViewBag.DanhSachQuan = await _context.DanhMucQuans
-                .Where(q => q.IsActive).OrderBy(q => q.ThuTu).ToListAsync();
-            ViewBag.DanhSachLoaiSan = await _context.DanhMucLoaiSans
-                .Where(l => l.IsActive).ToListAsync();
-            ViewBag.DanhSachLoaiCo = await _context.DanhMucLoaiCos
-                .Where(l => l.IsActive).ToListAsync();
+            // Kiểm tra sân nào user đã bookmark (để hiện tim đỏ)
+            var userId = TokenHelper.LayUserId(Request, _config);
+            if (userId.HasValue)
+            {
+                var yeuThichIds = await _context.SanYeuThichs
+                    .Where(s => s.UserId == userId.Value)
+                    .Select(s => s.SanBongId)
+                    .ToListAsync();
+                ViewBag.YeuThichIds = yeuThichIds.ToHashSet();
+            }
+            else
+            {
+                ViewBag.YeuThichIds = new HashSet<int>();
+            }
+
+            ViewBag.DanhSachQuan = await _context.DanhMucQuans.Where(q => q.IsActive).OrderBy(q => q.ThuTu).ToListAsync();
+            ViewBag.DanhSachLoaiSan = await _context.DanhMucLoaiSans.Where(l => l.IsActive).ToListAsync();
+            ViewBag.DanhSachLoaiCo = await _context.DanhMucLoaiCos.Where(l => l.IsActive).ToListAsync();
 
             ViewBag.Quan = quan;
             ViewBag.LoaiSan = loaiSan;
             ViewBag.LoaiCo = loaiCo;
             ViewBag.TuKhoa = tuKhoa;
             ViewBag.SapXep = sapXep;
+            ViewBag.UserId = userId;
 
             return View(danhSach);
         }
@@ -84,7 +93,6 @@ namespace Web_Stadium.Controllers
             var sanBong = await _context.SanBongs
                 .Include(s => s.KhungGios)
                 .Include(s => s.DanhGia).ThenInclude(d => d.User)
-                // FIX 3: Dịch vụ gắn với sân cụ thể (không lấy tất cả)
                 .Include(s => s.DichVus).ThenInclude(d => d.DanhMucDichVu)
                 .FirstOrDefaultAsync(s => s.Id == id
                                        && s.TrangThaiDuyet == "DaDuyet"
@@ -99,90 +107,108 @@ namespace Web_Stadium.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // Anh san do Owner upload
+            // Ảnh sân
             var anhSanBongs = await _context.AnhSanBongs
                 .Where(a => a.SanBongId == id && a.IsActive)
                 .OrderBy(a => a.ThuTu)
                 .ToListAsync();
             ViewBag.AnhSanBongs = anhSanBongs;
 
-            // FIX 3: Chỉ lấy dịch vụ còn tồn kho của sân này
             ViewBag.DichVus = sanBong.DichVus
                 .Where(d => d.IsActive && d.TonKho > 0)
                 .ToList();
 
-            // Kiểm tra User đã đăng nhập chưa để hiển thị form đánh giá
             var userId = TokenHelper.LayUserId(Request, _config);
             if (userId.HasValue)
             {
-                // FIX 4: Kiểm tra User có đơn HoanThanh tại sân này không
-                var coDonHoanThanh = await _context.DatSans
+                // Tìm đơn HoanThanh tại sân này chưa được đánh giá
+                // (để biết datSanId cụ thể gắn vào đánh giá)
+                var donChoGiaDanhGia = await _context.DatSans
                     .Include(d => d.KhungGio)
-                    .AnyAsync(d => d.UserId == userId.Value
-                               && d.KhungGio.SanBongId == id
-                               && d.TrangThai == "HoanThanh");
+                    .Where(d => d.UserId == userId.Value
+                             && d.KhungGio.SanBongId == id
+                             && d.TrangThai == "HoanThanh"
+                             && !_context.DanhGias.Any(dg => dg.DatSanId == d.Id))
+                    .FirstOrDefaultAsync();
 
-                // Kiểm tra đã đánh giá chưa (theo đơn, không chỉ theo sân)
-                var daDanhGia = await _context.DanhGias
-                    .AnyAsync(dg => dg.UserId == userId.Value
-                                 && dg.SanBongId == id);
-
-                ViewBag.CoDonHoanThanh = coDonHoanThanh;
-                ViewBag.DaDanhGia = daDanhGia;
+                ViewBag.DonChoGiaDanhGia = donChoGiaDanhGia; // null = không có đơn cần đánh giá
+                ViewBag.DaDanhGia = donChoGiaDanhGia == null && await _context.DanhGias
+                    .AnyAsync(dg => dg.UserId == userId.Value && dg.SanBongId == id);
                 ViewBag.UserId = userId.Value;
+
+                // Sân đã bookmark chưa
+                ViewBag.DaYeuThich = await _context.SanYeuThichs
+                    .AnyAsync(s => s.UserId == userId.Value && s.SanBongId == id);
+
+                // Voucher user đang có (dùng ở Booking/Create)
+                ViewBag.CoVoucher = await _context.UserVouchers
+                    .AnyAsync(uv => uv.UserId == userId.Value
+                                 && !uv.IsUsed
+                                 && uv.NgayHetHan > DateTime.Now);
             }
 
             return View(sanBong);
         }
 
         // ══════════════════════════════════════════════════════════
-        // POST: Đánh giá sân — FIX 4: ràng buộc phải có đơn HoanThanh
+        // POST: /Venues/DanhGiaSan
+        // Đánh giá 3 tiêu chí + cộng +5 điểm thưởng
         // ══════════════════════════════════════════════════════════
         [HttpPost]
         [YeuCauDangNhap]
         public async Task<IActionResult> DanhGiaSan(
-            int sanBongId, int soSao, string? nhanXet)
+            int sanBongId,
+            int datSanId,       // ← bắt buộc, lấy từ hidden field trong form
+            int soSaoCo,        // tiêu chí 1: chất lượng mặt cỏ
+            int soSaoCoSoVatChat, // tiêu chí 2
+            int soSaoNhanVien,    // tiêu chí 3
+            string? nhanXet)
         {
             var userId = TokenHelper.LayUserId(Request, _config);
             if (userId == null) return RedirectToAction("Login", "Auth");
 
-            // FIX 4a: Phải có đơn HoanThanh tại sân này
-            var donHoanThanh = await _context.DatSans
+            // Kiểm tra đơn thuộc về user + trạng thái HoanThanh
+            var don = await _context.DatSans
                 .Include(d => d.KhungGio)
-                .FirstOrDefaultAsync(d => d.UserId == userId.Value
+                .FirstOrDefaultAsync(d => d.Id == datSanId
+                                       && d.UserId == userId.Value
                                        && d.KhungGio.SanBongId == sanBongId
                                        && d.TrangThai == "HoanThanh");
 
-            if (donHoanThanh == null)
+            if (don == null)
             {
-                TempData["Error"] = "Bạn chỉ có thể đánh giá sau khi đã đến sân và hoàn thành trận đấu!";
+                TempData["Error"] = "Bạn chỉ có thể đánh giá sau khi đã hoàn thành trận đấu!";
                 return RedirectToAction("Details", new { id = sanBongId });
             }
 
-            // FIX 4b: Mỗi User chỉ đánh giá 1 lần tại 1 sân
-            var daDanhGia = await _context.DanhGias
-                .AnyAsync(dg => dg.UserId == userId.Value && dg.SanBongId == sanBongId);
-            if (daDanhGia)
+            // Mỗi đơn chỉ đánh giá 1 lần (ràng buộc UNIQUE trong DB)
+            var daCoRoi = await _context.DanhGias
+                .AnyAsync(dg => dg.DatSanId == datSanId);
+            if (daCoRoi)
             {
-                TempData["Error"] = "Bạn đã đánh giá sân này rồi!";
+                TempData["Error"] = "Đơn này đã được đánh giá rồi!";
                 return RedirectToAction("Details", new { id = sanBongId });
             }
+
+            // Tính điểm tổng = trung bình 3 tiêu chí
+            var soSaoTrungBinh = (int)Math.Round((soSaoCo + soSaoCoSoVatChat + soSaoNhanVien) / 3.0);
 
             var danhGia = new DanhGia
             {
                 UserId = userId.Value,
                 SanBongId = sanBongId,
-                DatSanId = donHoanThanh.Id,   // gắn với đơn cụ thể
-                SoSao = Math.Clamp(soSao, 1, 5),
-                NhanXet = nhanXet,
+                DatSanId = datSanId,
+                SoSao = Math.Clamp(soSaoTrungBinh, 1, 5),
+                SoSaoCoSoVatChat = Math.Clamp(soSaoCoSoVatChat, 1, 5),
+                SoSaoNhanVien = Math.Clamp(soSaoNhanVien, 1, 5),
+                NhanXet = nhanXet?.Trim(),
                 NgayDanhGia = DateTime.Now
             };
             _context.DanhGias.Add(danhGia);
-
-            // Cập nhật điểm TB ngay
             await _context.SaveChangesAsync();
-            var allDG = await _context.DanhGias
-                .Where(d => d.SanBongId == sanBongId).ToListAsync();
+
+            // Cập nhật điểm TB sân
+            var allDG = await _context.DanhGias.Where(d => d.SanBongId == sanBongId).ToListAsync();
             var san = await _context.SanBongs.FindAsync(sanBongId);
             if (san != null)
             {
@@ -190,7 +216,17 @@ namespace Web_Stadium.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            TempData["Success"] = "Cảm ơn bạn đã đánh giá!";
+            // ✅ Cộng +5 điểm thưởng cho user
+            await UserController.CongDiem(
+                _context,
+                userId.Value,
+                soDiem: 5,
+                loaiSuKien: "DanhGia",
+                ghiChu: $"Đánh giá sân: {san?.TenSan}",
+                datSanId: datSanId
+            );
+
+            TempData["Success"] = "Cảm ơn bạn đã đánh giá! Bạn nhận được +5 điểm thưởng ⭐";
             return RedirectToAction("Details", new { id = sanBongId });
         }
     }

@@ -77,7 +77,7 @@
                         <div>
                             <div style="font-family:var(--ff-h);font-size:16px">@ketQua.KhungGio?.SanBong?.TenSan</div>
                             <div style="font-size:13px;color:var(--muted)">
-                                @ketQua.KhungGio?.GioBatDau.ToString(@"hh\:mm") – @ketQua.KhungGio?.GioKetThuc.ToString(@"hh\:mm")
+                                @ketQua.KhungGio?.GioBatDau.ToString("HH:mm") – @ketQua.KhungGio?.GioKetThuc.ToString("HH:mm")
                                 | @ketQua.NgayThiDau.ToString("dd/MM/yyyy")
                             </div>
                         </div>
@@ -114,6 +114,7 @@
                         @if (ketQua.TrangThai == "DaXacNhan")
                         {
                             <form method="post" action="/Staff/ThucHienCheckIn">
+                                @Html.AntiForgeryToken()
                                 <input type="hidden" name="datSanId" value="@ketQua.Id" />
                                 <button type="submit" class="btn btn-success w-100 rounded-pill"
                                         style="font-size:14px;padding:10px"
@@ -129,10 +130,31 @@
                                 <a href="/Staff/CheckOut/@ketQua.Id" class="btn btn-success rounded-pill flex-fill">✓ Check-out</a>
                             </div>
                         }
+                        else if (ketQua.TrangThai == "ChoDuyet")
+                        {
+                            <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);
+                                                border-radius:10px;padding:14px;text-align:center;">
+                                <div style="color:#f59e0b;font-weight:700;margin-bottom:6px;">
+                                    ⏳ Đơn đang chờ Owner xác nhận
+                                </div>
+                                <div style="color:#aaa;font-size:13px;line-height:1.6;">
+                                    Khách đã thanh toán cọc nhưng Owner chưa duyệt.<br>
+                                    Hướng dẫn khách liên hệ trực tiếp với Owner để được duyệt nhanh.<br>
+                                    <strong style="color:#f59e0b;">Staff không có quyền tự duyệt thay Owner.</strong>
+                                </div>
+                            </div>
+                        }
+                        else if (ketQua.TrangThai == "DaHuy")
+                        {
+                            <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);
+                                                border-radius:10px;padding:14px;text-align:center;color:#ef4444;">
+                                ❌ Đơn này đã bị hủy — không thể check-in
+                            </div>
+                        }
                         else
                         {
-                            <div style="text-align:center;color:var(--muted);font-size:13px">
-                                Đơn này ở trạng thái <strong>@ketQua.TrangThai</strong> — không thể thao tác
+                            <div style="text-align:center;color:var(--muted);font-size:13px;padding:10px;">
+                                Đơn ở trạng thái <strong>@ketQua.TrangThai</strong> — không thể thao tác
                             </div>
                         }
                     </div>
