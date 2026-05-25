@@ -15,16 +15,28 @@ namespace Web_Stadium
         {
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
-                System.IO.File.WriteAllText(
-                    Path.Combine(Directory.GetCurrentDirectory(), "crash_log.txt"),
-                    e.ExceptionObject?.ToString() ?? "unknown error"
-                );
+                try
+                {
+                    System.IO.File.AppendAllText(
+                        Path.Combine(Directory.GetCurrentDirectory(), "crash_log.txt"),
+                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] AppDomain UnhandledException\n"
+                        + (e.ExceptionObject?.ToString() ?? "unknown error") + "\n\n"
+                    );
+                }
+                catch { /* ignore log failure */ }
             };
-            // Bắt lỗi trên Task/async (quan trọng!)
+            // Bắt lỗi trên Task/async (quan trọng!) — gọi SetObserved để KHÔNG làm app crash
             TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
-                System.IO.File.WriteAllText(Path.Combine(Directory.GetCurrentDirectory(), "crash_log.txt"),
-                    "UnobservedTaskException:\n" + e.Exception?.ToString());
+                try
+                {
+                    System.IO.File.AppendAllText(
+                        Path.Combine(Directory.GetCurrentDirectory(), "crash_log.txt"),
+                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] UnobservedTaskException\n"
+                        + (e.Exception?.ToString() ?? "unknown") + "\n\n"
+                    );
+                }
+                catch { /* ignore log failure */ }
                 e.SetObserved();
             };
 
@@ -111,15 +123,49 @@ namespace Web_Stadium
                 options.Limits.MaxRequestBodySize = 52428800; // 50MB
             });
             var app = builder.Build();
-            // Thêm ngay sau var app = builder.Build();
+
+            // === TRACE LIFECYCLE: log mọi lần app start/stop để biết app có bị shutdown sạch không ===
+            string logPath = Path.Combine(Directory.GetCurrentDirectory(), "app_lifecycle.log");
+            void Trace(string msg)
+            {
+                try
+                {
+                    System.IO.File.AppendAllText(logPath,
+                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {msg}\n");
+                }
+                catch { }
+            }
+            Trace($"=== APP START === CWD={Directory.GetCurrentDirectory()} PID={Environment.ProcessId}");
+
+            var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+            lifetime.ApplicationStopping.Register(() =>
+                Trace("ApplicationStopping (someone called shutdown) — stack:\n" + Environment.StackTrace));
+            lifetime.ApplicationStopped.Register(() => Trace("ApplicationStopped (process exiting)"));
+
+            AppDomain.CurrentDomain.ProcessExit += (_, __) => Trace("ProcessExit");
+
+            // Log exception trong pipeline, KHÔNG re-throw để không kill process khi client ngắt kết nối.
             app.Use(async (context, next) =>
             {
                 try { await next(); }
                 catch (Exception ex)
                 {
-                    await System.IO.File.WriteAllTextAsync(@"D:\crash_log.txt",
-                        $"[{DateTime.Now}] {context.Request.Path}\n{ex}");
-                    throw;
+                    Trace($"PIPELINE EXCEPTION at {context.Request.Path}: {ex.GetType().Name} {ex.Message}");
+                    try
+                    {
+                        await System.IO.File.AppendAllTextAsync(
+                            Path.Combine(Directory.GetCurrentDirectory(), "crash_log.txt"),
+                            $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {context.Request.Path}\n{ex}\n\n"
+                        );
+                    }
+                    catch { /* ignore log failure */ }
+
+                    // Nếu response chưa bắt đầu thì trả 500, còn rồi thì thôi.
+                    if (!context.Response.HasStarted)
+                    {
+                        context.Response.StatusCode = 500;
+                        await context.Response.WriteAsync("Internal Server Error");
+                    }
                 }
             });
             // Configure the HTTP request pipeline.

@@ -2,7 +2,9 @@
 using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
-
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Net.Http.Json;
 namespace Web_Stadium.Controllers
 {
     [YeuCauDangNhap("Owner")]
@@ -785,6 +787,32 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
             ViewBag.TenVung = tenVung;
             ViewBag.IsPreview = true;   // đánh dấu đang ở chế độ xem trước
 
+            // Lưu plain text hợp đồng để khi user xác nhận sẽ lưu vào DB (NoiDungHopDong).
+            var ngayKy = DateTime.Now;
+            TempData["HopDong"] = $@"HỢP ĐỒNG HỢP TÁC KINH DOANH PITCHHUB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Ngày lập: {ngayKy:dd/MM/yyyy HH:mm}
+
+BÊN A: Công ty TNHH PitchHub Việt Nam
+BÊN B: {owner?.HoTen} — {owner?.Email} — {owner?.SoDienThoai}
+
+ĐIỀU 1 — ĐỐI TƯỢNG HỢP ĐỒNG
+Bên B đăng ký đưa cơ sở ""{tenSan}"" tại {diaChi}, {quan}, {thanhPho}
+lên nền tảng PitchHub. Loại sân: {loaiSan} người | Loại cỏ: {loaiCo}
+Khu vực phân vùng: {tenVung}
+
+ĐIỀU 2 — PHÍ HOA HỒNG
+Tỷ lệ hoa hồng áp dụng: {tyLeHH:P0} doanh thu thực phát sinh.
+- Khách hủy sân: Hoa hồng = Tiền cọc × {tyLeHH:P0}
+- Khách đến đá đủ: Hoa hồng = Tổng tiền × {tyLeHH:P0}
+Thanh toán định kỳ hàng tháng, chậm nhất ngày 10 tháng kế tiếp.
+
+ĐIỀU 3 — THỜI HẠN
+Hợp đồng có hiệu lực 12 tháng kể từ ngày Admin phê duyệt.
+
+ĐIỀU 4 — XÁC NHẬN
+Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ điều khoản.";
+
             return View("XemHopDong", san);
         }
         // GET: /Owner/XemHopDong/{id}
@@ -1118,33 +1146,17 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
         // ══════════════════════════════════════════════════════════
         // 8. BÁO CÁO CHI NHÁNH
         // ══════════════════════════════════════════════════════════
-        public async Task<IActionResult> BaoCao(
-    string loai = "thang", int? nam = null, int? thang = null, int? sanId = null)
+        // Helper dùng chung cho action BaoCao (render view) và XuatBaoCaoPDF (gửi sang Java)
+        private async Task<(List<dynamic> Data, string TieuDe, double TongThuThuan, double TongDT, double TongHoaHong, int TongLuot, List<int> SanIds)>
+            BuildBaoCaoDataAsync(string loai, int nam, int thang, int? sanId, List<SanBong> dsSan)
         {
-            var now = DateTime.Now;
-            nam ??= now.Year;
-            thang ??= now.Month;
-            ViewBag.Loai = loai; ViewBag.Nam = nam; ViewBag.Thang = thang; ViewBag.SanId = sanId;
-
-            var ownerId = GetOwnerId();
-            var dsSan = await SanCuaToi().Where(s => s.TrangThaiDuyet == "DaDuyet").ToListAsync();
-            ViewBag.DanhSachSan = dsSan;
-
-            // Nếu có sanId, chỉ lấy sân đó; nếu không thì lấy tất cả
             var sanIds = sanId.HasValue && sanId.Value > 0
                 ? new List<int> { sanId.Value }
                 : dsSan.Select(s => s.Id).ToList();
 
+            var data = new List<dynamic>();
             if (!sanIds.Any())
-            {
-                ViewBag.Data = new List<object>();
-                ViewBag.TongThuThuan = 0;
-                ViewBag.TongLuot = 0;
-                ViewBag.TyLeLapDay = new List<object>();
-                ViewBag.HieuSuatStaff = new List<object>();
-                ViewBag.TieuDe = "Không có sân nào được chọn";
-                return View();
-            }
+                return (data, "Không có sân nào được chọn", 0, 0, 0, 0, sanIds);
 
             IQueryable<DatSan> baseQ = _context.DatSans
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
@@ -1155,28 +1167,24 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
                           || d.TrangThai == "DangSuDung" || d.TrangThai == "DaHuy"));
 
             var tyLeMap = await LayTyLeMapAsync();
-
-            DateTime batDau, ketThuc;
-            var data = new List<object>();
+            var now = DateTime.Now;
             string tieuDe;
 
             switch (loai)
             {
                 case "ngay":
-                    batDau = new DateTime(nam.Value, thang.Value, 1);
-                    ketThuc = batDau.AddMonths(1);
                     tieuDe = $"Theo ngày — Tháng {thang}/{nam}";
-                    for (int ng = 1; ng <= DateTime.DaysInMonth(nam.Value, thang.Value); ng++)
+                    for (int ng = 1; ng <= DateTime.DaysInMonth(nam, thang); ng++)
                     {
-                        var bd = new DateTime(nam.Value, thang.Value, ng);
+                        var bd = new DateTime(nam, thang, ng);
                         var rows = await baseQ.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < bd.AddDays(1)).ToListAsync();
                         data.Add(BuildOwnerPoint($"{ng}/{thang}", rows, tyLeMap));
                     }
                     break;
                 case "tuan":
-                    batDau = new DateTime(nam.Value, thang.Value, 1);
-                    ketThuc = batDau.AddMonths(1);
                     tieuDe = $"Theo tuần — Tháng {thang}/{nam}";
+                    var batDau = new DateTime(nam, thang, 1);
+                    var ketThuc = batDau.AddMonths(1);
                     int t = 1; var cur = batDau;
                     while (cur < ketThuc)
                     {
@@ -1187,19 +1195,15 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
                     }
                     break;
                 case "quy":
-                    batDau = new DateTime(nam.Value, 1, 1);
-                    ketThuc = new DateTime(nam.Value + 1, 1, 1);
                     tieuDe = $"Theo quý — Năm {nam}";
                     for (int q = 1; q <= 4; q++)
                     {
-                        var bd = new DateTime(nam.Value, (q - 1) * 3 + 1, 1);
+                        var bd = new DateTime(nam, (q - 1) * 3 + 1, 1);
                         var rows = await baseQ.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < bd.AddMonths(3)).ToListAsync();
                         data.Add(BuildOwnerPoint($"Q{q}/{nam}", rows, tyLeMap));
                     }
                     break;
                 case "nam":
-                    batDau = new DateTime(now.Year - 4, 1, 1);
-                    ketThuc = new DateTime(now.Year + 1, 1, 1);
                     tieuDe = "Theo năm — 5 năm gần nhất";
                     for (int y = now.Year - 4; y <= now.Year; y++)
                     {
@@ -1209,22 +1213,53 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
                     }
                     break;
                 default: // thang
-                    batDau = new DateTime(nam.Value, 1, 1);
-                    ketThuc = new DateTime(nam.Value + 1, 1, 1);
                     tieuDe = $"Theo tháng — Năm {nam}";
                     for (int m = 1; m <= 12; m++)
                     {
-                        var bd = new DateTime(nam.Value, m, 1);
+                        var bd = new DateTime(nam, m, 1);
                         var rows = await baseQ.Where(d => d.ThoiGianTao >= bd && d.ThoiGianTao < bd.AddMonths(1)).ToListAsync();
                         data.Add(BuildOwnerPoint($"T{m}", rows, tyLeMap));
                     }
                     break;
             }
 
+            double tongThuThuan = data.Sum(d => (double)d.thuThuan);
+            double tongDT = data.Sum(d => (double)d.tongDT);
+            double tongHoaHong = data.Sum(d => (double)d.hoaHong);
+            int tongLuot = data.Sum(d => (int)d.soLuot);
+
+            return (data, tieuDe, tongThuThuan, tongDT, tongHoaHong, tongLuot, sanIds);
+        }
+
+        public async Task<IActionResult> BaoCao(
+    string loai = "thang", int? nam = null, int? thang = null, int? sanId = null)
+        {
+            var now = DateTime.Now;
+            nam ??= now.Year;
+            thang ??= now.Month;
+            ViewBag.Loai = loai; ViewBag.Nam = nam; ViewBag.Thang = thang; ViewBag.SanId = sanId;
+
+            var dsSan = await SanCuaToi().Where(s => s.TrangThaiDuyet == "DaDuyet").ToListAsync();
+            ViewBag.DanhSachSan = dsSan;
+
+            var (data, tieuDe, tongThuThuan, tongDT, tongHoaHong, tongLuot, sanIds) =
+                await BuildBaoCaoDataAsync(loai, nam.Value, thang.Value, sanId, dsSan);
+
+            if (!sanIds.Any())
+            {
+                ViewBag.Data = new List<object>();
+                ViewBag.TongThuThuan = 0;
+                ViewBag.TongLuot = 0;
+                ViewBag.TyLeLapDay = new List<object>();
+                ViewBag.HieuSuatStaff = new List<object>();
+                ViewBag.TieuDe = tieuDe;
+                return View();
+            }
+
             ViewBag.Data = data;
             ViewBag.TieuDe = tieuDe;
-            ViewBag.TongThuThuan = data.Sum(d => (double)((dynamic)d).thuThuan);
-            ViewBag.TongLuot = data.Sum(d => (int)((dynamic)d).soLuot);
+            ViewBag.TongThuThuan = tongThuThuan;
+            ViewBag.TongLuot = tongLuot;
 
             // Tỷ lệ lấp đầy: nếu có sanId thì chỉ tính cho sân đó, còn không thì tính cho tất cả
             var queryLapDay = SanCuaToi()
@@ -1242,7 +1277,13 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
                 }).ToListAsync();
 
             // Hiệu suất Staff (cũng lọc theo sanId nếu có)
-            var allRows = await baseQ.ToListAsync();
+            var allRows = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.StaffCheckIn)
+                .Where(d => sanIds.Contains(d.KhungGio.SanBongId)
+                         && (d.TrangThai == "DaXacNhan" || d.TrangThai == "HoanThanh"
+                          || d.TrangThai == "DangSuDung" || d.TrangThai == "DaHuy"))
+                .ToListAsync();
             ViewBag.HieuSuatStaff = allRows
                 .GroupBy(d => d.StaffCheckIn?.HoTen ?? "Chưa check-in")
                 .Select(g => new
@@ -1255,7 +1296,87 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
 
             return View();
         }
+        [HttpGet]
+        public async Task<IActionResult> XuatBaoCaoPDF(string loai = "thang", int? nam = null, int? thang = null, int? sanId = null)
+        {
+            string traceFile = Path.Combine(Directory.GetCurrentDirectory(), "app_lifecycle.log");
+            void T(string m) { try { System.IO.File.AppendAllText(traceFile, $"[{DateTime.Now:HH:mm:ss.fff}] PDF: {m}\n"); } catch { } }
 
+            T($"START loai={loai} nam={nam} thang={thang} sanId={sanId}");
+            var now = DateTime.Now;
+            nam ??= now.Year;
+            thang ??= now.Month;
+
+            var dsSan = await SanCuaToi().Where(s => s.TrangThaiDuyet == "DaDuyet").ToListAsync();
+            var (data, tieuDe, tongThuThuan, tongDT, tongHoaHong, tongLuot, sanIds) =
+                await BuildBaoCaoDataAsync(loai, nam.Value, thang.Value, sanId, dsSan);
+            T($"Data built: {data.Count} rows, tongDT={tongDT}, tongLuot={tongLuot}");
+
+            string tenSan = sanId.HasValue && sanId.Value > 0
+                ? (await _context.SanBongs.FindAsync(sanId.Value))?.TenSan ?? "Tất cả sân"
+                : "Tất cả sân";
+
+            string period = loai switch
+            {
+                "nam"  => $"5 năm gần nhất (đến {now.Year})",
+                "quy"  => $"Năm {nam}",
+                "thang" => $"Năm {nam}",
+                "tuan" => $"Tháng {thang}/{nam}",
+                "ngay" => $"Tháng {thang}/{nam}",
+                _ => $"{thang}/{nam}"
+            };
+
+            var reportData = new
+            {
+                title = "Báo cáo doanh thu PitchHub",
+                stadiumName = tenSan,
+                period = $"{tieuDe} — {period}",
+                summary = new
+                {
+                    totalRevenue = tongDT,
+                    totalBookings = tongLuot,
+                    avgPerBooking = tongLuot > 0 ? tongDT / tongLuot : 0,
+                    commission = tongHoaHong,
+                    netRevenue = tongThuThuan
+                },
+                details = data.Select(d => new
+                {
+                    label = (string)d.nhan,
+                    totalRevenue = (double)d.tongDT,
+                    bookings = (int)d.soLuot,
+                    netRevenue = (double)d.thuThuan
+                }).ToList()
+            };
+
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.BaseAddress = new Uri("http://localhost:8080/");
+                T("Calling Java service...");
+                var response = await client.PostAsJsonAsync("api/report/pdf", reportData);
+                T($"Java responded: {(int)response.StatusCode}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var pdfBytes = await response.Content.ReadAsByteArrayAsync();
+                    T($"Read {pdfBytes.Length} bytes from Java");
+                    string fileName = $"BaoCao_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+                    T($"Returning File to client: {fileName}");
+                    return File(pdfBytes, "application/pdf", fileName);
+                }
+                var body = await response.Content.ReadAsStringAsync();
+                T($"Java error body: {body}");
+                TempData["Error"] = $"Lỗi khi sinh PDF: {(int)response.StatusCode} {response.StatusCode}. {body}";
+            }
+            catch (Exception ex)
+            {
+                T($"EXCEPTION: {ex.GetType().Name} {ex.Message}");
+                TempData["Error"] = "Không kết nối được tới service Java (http://localhost:8080). " + ex.Message;
+            }
+
+            T("Redirect to BaoCao");
+            return RedirectToAction("BaoCao", new { loai, nam, thang, sanId });
+        }
         private object BuildOwnerPoint(string nhan, List<DatSan> rows,
             Dictionary<string, decimal> tyLeMap)
         {

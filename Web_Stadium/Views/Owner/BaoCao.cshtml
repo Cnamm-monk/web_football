@@ -292,7 +292,19 @@
                 <a href="/Owner/BaoCao" class="filter-select">🔄 Xóa lọc</a>
             }
         </form>
+
+        <button type="button" id="btnXuatPDF"
+                class="btn btn-primary btn-sm rounded-pill"
+                data-url="@Url.Action("XuatBaoCaoPDF", "Owner", new { loai, nam, thang, sanId = selectedSanId })"
+                style="margin-left: auto;">
+            <i class="fas fa-file-pdf"></i> Xuất PDF
+        </button>
     </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
+    }
 
     <!-- 4 KPI -->
     <div class="kpi-grid">
@@ -385,6 +397,43 @@
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        // Tải PDF bằng fetch+blob để KHÔNG navigate page — tránh VS Browser Link mất kết nối khiến debug bị stop.
+        (function () {
+            const btn = document.getElementById('btnXuatPDF');
+            if (!btn) return;
+            btn.addEventListener('click', async () => {
+                const url = btn.dataset.url;
+                const originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo PDF...';
+                try {
+                    const res = await fetch(url, { credentials: 'same-origin' });
+                    if (!res.ok) {
+                        alert('Lỗi xuất PDF: ' + res.status + ' ' + res.statusText);
+                        return;
+                    }
+                    const blob = await res.blob();
+                    const cd = res.headers.get('Content-Disposition') || '';
+                    const m = cd.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+                    const filename = m ? decodeURIComponent(m[1]) : ('BaoCao_' + Date.now() + '.pdf');
+                    const objUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = objUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
+                } catch (err) {
+                    alert('Không gọi được API xuất PDF: ' + err.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
+            });
+        })();
+    </script>
     <script>
         @{
             var labels = System.Text.Json.JsonSerializer.Serialize(data.Select(d => (string)d.nhan));
