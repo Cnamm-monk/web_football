@@ -28,7 +28,7 @@ namespace Web_Stadium.Controllers
             _config = config;
             _hub = hub;
         }
-
+//
         // ══════════════════════════════════════════════════════════
         // GET /Booking/Create?khungGioId=1&ngay=2024-04-15
         // ══════════════════════════════════════════════════════════
