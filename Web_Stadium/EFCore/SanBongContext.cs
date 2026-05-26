@@ -49,6 +49,20 @@ public partial class SanBongContext : DbContext
 
     public virtual DbSet<AnhSanBong> AnhSanBongs { get; set; }
 
+    // ── v5: Bảng mới ──────────────────────────────────────────
+    public virtual DbSet<DiemThuongLog> DiemThuongLogs { get; set; }
+    public virtual DbSet<OtpCode> OtpCodes { get; set; }
+    public virtual DbSet<SanYeuThich> SanYeuThichs { get; set; }
+    public virtual DbSet<UserVoucher> UserVouchers { get; set; }
+    public virtual DbSet<Voucher> Vouchers { get; set; }
+
+    // - V6: 6 bang moi 
+    public virtual DbSet<BangDau> BangDaus { get; set; }
+    public virtual DbSet<DoiBong> DoiBongs { get; set; }
+    public virtual DbSet<GiaiDau> GiaiDaus { get; set; }
+    public virtual DbSet<SuKienTran> SuKienTrans { get; set; }
+    public virtual DbSet<ThanhVienDoi> ThanhVienDois { get; set; }
+    public virtual DbSet<TranDau> TranDaus { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -470,6 +484,183 @@ public partial class SanBongContext : DbContext
             entity.Property(e => e.TyLeHoaHong)
                 .HasDefaultValue(0.10m)
                 .HasColumnType("decimal(3, 2)");
+        });
+
+        // ── v5: Config bảng mới ───────────────────────────────
+        modelBuilder.Entity<DiemThuongLog>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__DiemThuo__3214EC07082AC8BB");
+            entity.HasIndex(e => e.ThoiGian, "IX_DiemLog_ThoiGian").IsDescending();
+            entity.HasIndex(e => e.UserId, "IX_DiemLog_UserId");
+            entity.Property(e => e.GhiChu).HasMaxLength(200);
+            entity.Property(e => e.LoaiSuKien).HasMaxLength(50);
+            entity.Property(e => e.SoDuSauGd).HasColumnName("SoDuSauGD");
+            entity.Property(e => e.ThoiGian)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.HasOne(d => d.DatSan).WithMany(p => p.DiemThuongLogs)
+                .HasForeignKey(d => d.DatSanId)
+                .HasConstraintName("FK_DiemLog_DatSan");
+            entity.HasOne(d => d.User).WithMany(p => p.DiemThuongLogs)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_DiemLog_User");
+        });
+
+        modelBuilder.Entity<OtpCode>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__OtpCodes__3214EC072CAD03AF");
+            entity.HasIndex(e => e.NgayHetHan, "IX_OtpCodes_HetHan");
+            entity.HasIndex(e => e.UserId, "IX_OtpCodes_UserId");
+            entity.Property(e => e.MaOtp).HasMaxLength(10);
+            entity.Property(e => e.NgayHetHan)
+                .HasDefaultValueSql("(dateadd(minute,(5),getdate()))")
+                .HasColumnType("datetime");
+            entity.Property(e => e.NgayTao)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.SoDienThoai).HasMaxLength(20);
+            entity.HasOne(d => d.User).WithMany(p => p.OtpCodes)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_OtpCodes_User");
+        });
+
+        modelBuilder.Entity<SanYeuThich>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__SanYeuTh__3214EC07643721CD");
+            entity.HasIndex(e => e.SanBongId, "IX_SanYeuThich_SanBongId");
+            entity.HasIndex(e => e.UserId, "IX_SanYeuThich_UserId");
+            entity.HasIndex(e => new { e.UserId, e.SanBongId }, "UQ_SanYeuThich").IsUnique();
+            entity.Property(e => e.NgayThem)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.HasOne(d => d.SanBong).WithMany(p => p.SanYeuThiches)
+                .HasForeignKey(d => d.SanBongId)
+                .HasConstraintName("FK_SanYeuThich_SanBong");
+            entity.HasOne(d => d.User).WithMany(p => p.SanYeuThiches)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_SanYeuThich_User");
+        });
+
+        modelBuilder.Entity<UserVoucher>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__UserVouc__3214EC0796E42189");
+            entity.HasIndex(e => e.NgayHetHan, "IX_UserVoucher_HetHan");
+            entity.HasIndex(e => e.IsUsed, "IX_UserVoucher_IsUsed");
+            entity.HasIndex(e => e.UserId, "IX_UserVoucher_UserId");
+            entity.HasIndex(e => e.MaSuDung, "UQ__UserVouc__73EF96E8102BBE1E").IsUnique();
+            entity.Property(e => e.MaSuDung).HasMaxLength(50);
+            entity.Property(e => e.NgayDoi)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.NgayHetHan).HasColumnType("datetime");
+            entity.Property(e => e.NgaySuDung).HasColumnType("datetime");
+            entity.HasOne(d => d.DatSan).WithMany(p => p.UserVouchers)
+                .HasForeignKey(d => d.DatSanId)
+                .HasConstraintName("FK_UserVoucher_DatSan");
+            entity.HasOne(d => d.User).WithMany(p => p.UserVouchers)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_UserVoucher_User");
+            entity.HasOne(d => d.Voucher).WithMany(p => p.UserVouchers)
+                .HasForeignKey(d => d.VoucherId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_UserVoucher_Voucher");
+        });
+
+        modelBuilder.Entity<Voucher>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Vouchers__3214EC07092807B4");
+            entity.HasIndex(e => e.MaVoucher, "UQ__Vouchers__0AAC5B1029A0D8F8").IsUnique();
+            entity.Property(e => e.GiaTriGiam).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.GiamToiDa).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.LoaiGiam)
+                .HasMaxLength(20)
+                .HasDefaultValue("PhanTram");
+            entity.Property(e => e.MaVoucher).HasMaxLength(50);
+            entity.Property(e => e.MoTa).HasMaxLength(500);
+            entity.Property(e => e.NgayTao)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.SoNgayHieuLuc).HasDefaultValue(30);
+            entity.Property(e => e.TenVoucher).HasMaxLength(200);
+        });
+
+        // ngày 22/5/2026   : Config 6 bảng mới của V6
+        modelBuilder.Entity<GiaiDau>(entity => {
+            entity.HasOne(d => d.SanBong).WithMany()
+                .HasForeignKey(d => d.SanBongId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.Owner).WithMany()
+                .HasForeignKey(d => d.OwnerId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<BangDau>(entity => {
+            entity.HasOne(d => d.GiaiDau)
+                .WithMany(g => g.BangDaus)
+                .HasForeignKey(d => d.GiaiDauId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DoiBong>(entity => {
+            entity.HasOne(d => d.GiaiDau)
+                .WithMany(g => g.DoiBongs)
+                .HasForeignKey(d => d.GiaiDauId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.Bang).WithMany(b => b.DoiBongs)
+                .HasForeignKey(d => d.BangId);
+            entity.HasOne(d => d.DoiTruong).WithMany()
+                .HasForeignKey(d => d.DoiTruongId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ThanhVienDoi>(entity => {
+            entity.HasOne(d => d.Doi)
+                .WithMany(d => d.ThanhViens)
+                .HasForeignKey(d => d.DoiId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(d => new { d.DoiId, d.SoAo }).IsUnique();
+        });
+
+        modelBuilder.Entity<TranDau>(entity => {
+            entity.HasOne(d => d.GiaiDau)
+                .WithMany(g => g.TranDaus)
+                .HasForeignKey(d => d.GiaiDauId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.BangDau)
+                .WithMany(b => b.TranDaus)
+                .HasForeignKey(d => d.BangId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.DoiNha)
+                .WithMany(d => d.TranDauDoiNhas)
+                .HasForeignKey(d => d.DoiNhaId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.DoiKhach)
+                .WithMany(d => d.TranDauDoiKhachs)
+                .HasForeignKey(d => d.DoiKhachId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.KhungGio).WithMany()
+                .HasForeignKey(d => d.KhungGioId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.StaffPhuTrach).WithMany()
+                .HasForeignKey(d => d.StaffPhuTrachId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<SuKienTran>(entity => {
+            entity.HasOne(d => d.TranDau)
+                .WithMany(t => t.SuKiens)
+                .HasForeignKey(d => d.TranDauId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.ThanhVien).WithMany()
+                .HasForeignKey(d => d.ThanhVienId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.Doi).WithMany()
+                .HasForeignKey(d => d.DoiId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         OnModelCreatingPartial(modelBuilder);

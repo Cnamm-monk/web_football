@@ -160,11 +160,11 @@
             @if (sapToi != null && sanSap != null)
             {
                 <div style="background:rgba(255,255,255,0.92);border:1px solid rgba(14,168,106,0.22);
-                                        border-radius:14px;padding:14px 16px;">
+                                                border-radius:14px;padding:14px 16px;">
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
                         <div style="width:40px;height:40px;background:#0EA86A;border-radius:10px;
-                                                display:flex;align-items:center;justify-content:center;
-                                                font-size:20px;flex-shrink:0;box-shadow:0 3px 10px rgba(14,168,106,0.28);">
+                                                        display:flex;align-items:center;justify-content:center;
+                                                        font-size:20px;flex-shrink:0;box-shadow:0 3px 10px rgba(14,168,106,0.28);">
                             &#9917;
                         </div>
                         <div>
@@ -183,7 +183,7 @@
                             @(sapToi.TrangThai == "DaXacNhan" ? "Đã xác nhận" : "Chờ duyệt")
                         </span>
                         <span style="font-size:15px;padding:4px 10px;background:#F0F4F8;
-                                                 border-radius:999px;color:var(--muted);">
+                                                         border-radius:999px;color:var(--muted);">
                             Sân @sanSap.LoaiSan người
                         </span>
                     </div>
@@ -192,12 +192,12 @@
             else
             {
                 <div style="background:rgba(255,255,255,0.70);border:1px dashed rgba(15,23,42,0.14);
-                                        border-radius:14px;padding:18px 16px;text-align:center;">
+                                                border-radius:14px;padding:18px 16px;text-align:center;">
                     <div style="font-size:24px;margin-bottom:10px;opacity:.4;">&#128197;</div>
                     <div style="font-size:14px;color:var(--muted);margin-bottom:10px;">Chưa có lịch sắp tới</div>
                     <a href="/Venues" style="font-family:var(--ff-h);font-size:15px;font-weight:700;
-                                   letter-spacing:1.5px;text-transform:uppercase;color:var(--green);text-decoration:none;
-                                   border:1px solid rgba(14,168,106,0.35);padding:5px 14px;border-radius:999px;display:inline-block;">
+                                           letter-spacing:1.5px;text-transform:uppercase;color:var(--green);text-decoration:none;
+                                           border:1px solid rgba(14,168,106,0.35);padding:5px 14px;border-radius:999px;display:inline-block;">
                         Tìm sân ngay
                     </a>
                 </div>
@@ -232,12 +232,12 @@
     @if (dangKyTim)
     {
         <div style="background:rgba(14,168,106,0.07);border:1px solid rgba(14,168,106,0.22);
-                        border-radius:14px;padding:16px 20px;margin-bottom:20px;
-                        display:flex;align-items:center;gap:14px;">
+                                border-radius:14px;padding:16px 20px;margin-bottom:20px;
+                                display:flex;align-items:center;gap:14px;">
             <div style="font-size:28px;flex-shrink:0;">👆</div>
             <div>
                 <div style="font-size:13px;font-weight:700;letter-spacing:1.5px;
-                                text-transform:uppercase;color:var(--green);margin-bottom:4px;">
+                                        text-transform:uppercase;color:var(--green);margin-bottom:4px;">
                     Chọn đơn để tìm đội
                 </div>
                 <div style="font-size:14px;color:var(--muted);line-height:1.5;">
@@ -247,7 +247,7 @@
             </div>
             <button onclick="this.closest('div').style.display='none'"
                     style="margin-left:auto;background:none;border:none;font-size:20px;
-                               cursor:pointer;color:var(--muted);flex-shrink:0;">
+                                       cursor:pointer;color:var(--muted);flex-shrink:0;">
                 ✕
             </button>
         </div>
@@ -278,15 +278,18 @@
             {
                 "ChoDuyet" => "st-cho",
                 "DaXacNhan" => "st-xn",
+                "DangSuDung" => "st-dang",
+                "HoanThanh" => "st-ht",
                 "DaHuy" => "st-huy",
                 _ => "st-ht"
             };
             var stText = ds.TrangThai switch
             {
-                "ChoDuyet" => "Chờ duyệt",
-                "DaXacNhan" => "Đã xác nhận",
-                "DaHuy" => "Đã hủy",
-                "HoanThanh" => "Hoàn thành",
+                "ChoDuyet" => "⏳ Chờ duyệt",
+                "DaXacNhan" => "✅ Đã xác nhận",
+                "DangSuDung" => "⚽ Đang đá",
+                "HoanThanh" => "🏁 Hoàn thành",
+                "DaHuy" => "❌ Đã hủy",
                 _ => ds.TrangThai
             };
             <div class="booking-card">
@@ -338,30 +341,53 @@
                         }
                     </div>
                     <div class="bc-footer-actions">
+                        @{
+                            var daDGSet = ViewBag.DaDanhGiaIds as System.Collections.Generic.HashSet<int>
+                            ?? new System.Collections.Generic.HashSet<int>();
+                        }
+
+                        @* Nút đánh giá — HoanThanh chưa đánh giá *@
+                        @if (ds.TrangThai == "HoanThanh")
+                        {
+                            var sanIdDG = ds.KhungGio?.SanBong?.Id ?? 0;
+                            if (!daDGSet.Contains(ds.Id) && sanIdDG > 0)
+                            {
+                                <a href="/Venues/Details/@sanIdDG"
+                                   style="display:inline-flex;align-items:center;gap:5px;
+                                                                          padding:7px 14px;border-radius:999px;font-size:14px;
+                                                                          background:rgba(255,193,7,.12);color:#ffc107;
+                                                                          border:1px solid rgba(255,193,7,.35);text-decoration:none;font-weight:600;">
+                                    ⭐ Đánh giá <span style="font-size:.7rem;opacity:.7;">+5đ</span>
+                                </a>
+                            }
+                            else
+                            {
+                                <span style="font-size:13px;color:#888;padding:7px 0;">✅ Đã đánh giá</span>
+                            }
+                        }
+
+                        @* Nút tìm đối thủ — ChoDuyet hoặc DaXacNhan *@
                         @if (ds.TrangThai is "ChoDuyet" or "DaXacNhan")
                         {
                             @if (daTim.Contains(ds.Id))
                             {
                                 <span style="display:inline-flex;align-items:center;gap:5px;
-                                                             padding:7px 14px;font-size:14px;border-radius:999px;
-                                                             background:rgba(14,168,106,0.10);
-                                                             border:1px solid rgba(14,168,106,0.25);
-                                                             color:var(--green);font-weight:600;">
+                                                                             padding:7px 14px;font-size:14px;border-radius:999px;
+                                                                             background:rgba(14,168,106,0.10);
+                                                                             border:1px solid rgba(14,168,106,0.25);
+                                                                             color:var(--green);font-weight:600;">
                                     ✅ Đã đăng tin
                                 </span>
                                 @if (mmIdMap.ContainsKey(ds.Id))
                                 {
-                                    <form method="post" action="/Matchmaking/Dong"
-                                          style="display:inline">
-                                        <input type="hidden" name="id"
-                                               value="@mmIdMap[ds.Id]" />
+                                    <form method="post" action="/Matchmaking/Dong" style="display:inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@mmIdMap[ds.Id]" />
                                         <button type="submit"
-                                                style="padding:7px 14px;font-size:14px;
-                                                                           border-radius:999px;
-                                                                           border:1px solid rgba(239,68,68,0.3);
-                                                                           background:rgba(239,68,68,0.07);
-                                                                           color:#EF4444;cursor:pointer;
-                                                                           font-weight:600;"
+                                                style="padding:7px 14px;font-size:14px;border-radius:999px;
+                                                                                               border:1px solid rgba(239,68,68,0.3);
+                                                                                               background:rgba(239,68,68,0.07);
+                                                                                               color:#EF4444;cursor:pointer;font-weight:600;"
                                                 onclick="return confirm('Hủy tin tìm đội này?')">
                                             ✕ Hủy tin
                                         </button>
@@ -372,22 +398,20 @@
                             {
                                 <a href="/Matchmaking/Create?datSanId=@ds.Id"
                                    class="btn-outline-green"
-                                   style="padding:7px 14px;font-size:14px;
-                                                          @(dangKyTim ? "background:var(--green);color:#fff;border-color:var(--green);" : "")">
+                                   style="padding:7px 14px;font-size:14px;">
                                     🔍 Tìm đối thủ
                                 </a>
                             }
                         }
-                        @if (ds.TrangThai == "ChoDuyet")
+
+                        @* Nút hủy — ChoDuyet hoặc DaXacNhan *@
+                        @if (ds.TrangThai is "ChoDuyet" or "DaXacNhan")
                         {
-                            <form method="post" action="/Booking/Huy" style="display:inline">
-                                <input type="hidden" name="id" value="@ds.Id" />
-                                <button type="submit" class="btn-danger"
-                                        style="padding:7px 14px;font-size:14px"
-                                        onclick="return confirm('Bạn chắc chắn muốn hủy?')">
-                                    Hủy đặt
-                                </button>
-                            </form>
+                            <button type="button" class="btn-danger"
+                                    style="padding:7px 14px;font-size:14px;"
+                                    onclick="moHopHuy(@ds.Id, '@ds.KhungGio?.GioBatDau.ToString("HH\\:mm")', '@ds.NgayThiDau.ToString("dd/MM/yyyy")')">
+                                Hủy đặt
+                            </button>
                         }
                     </div>
                 </div>
@@ -396,146 +420,244 @@
     }
 </div>
 
+<!-- ── MODAL HỦY ĐẶT SÂN ───────────────────────────────── -->
+<div id="modalHuy" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+     z-index:9999;display:none;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:28px;max-width:440px;width:90%;
+                box-shadow:0 20px 60px rgba(0,0,0,.3);">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:6px;">
+            ⚠️ Xác nhận hủy đặt sân
+        </div>
+        <div style="font-size:.85rem;color:var(--muted);margin-bottom:18px;" id="huyInfo"></div>
+
+        <form method="post" action="/Booking/Huy" id="formHuy">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="huyId" />
+            <div style="margin-bottom:14px;">
+                <label style="font-size:.82rem;color:var(--text);font-weight:600;display:block;margin-bottom:6px;">
+                    Lý do hủy <span style="color:var(--danger);">*</span>
+                </label>
+                <select name="lyDoHuy" id="lyDoHuySelect"
+                        style="width:100%;border:1px solid var(--border);border-radius:8px;
+                               padding:9px 12px;font-size:.88rem;color:var(--text);background:#f8fafc;"
+                        onchange="kiemTraLyDo()">
+                    <option value="">-- Chọn lý do --</option>
+                    <option value="Thay đổi kế hoạch">Thay đổi kế hoạch</option>
+                    <option value="Không đủ người chơi">Không đủ người chơi</option>
+                    <option value="Sân không phù hợp">Sân không phù hợp</option>
+                    <option value="Đặt nhầm giờ">Đặt nhầm giờ/ngày</option>
+                    <option value="Lý do cá nhân">Lý do cá nhân khác</option>
+                </select>
+                <input type="text" name="lyDoHuyText" id="lyDoHuyText"
+                       placeholder="Nhập lý do cụ thể..."
+                       style="width:100%;border:1px solid var(--border);border-radius:8px;
+                              padding:9px 12px;font-size:.88rem;margin-top:8px;display:none;
+                              box-sizing:border-box;" />
+            </div>
+            <div style="font-size:.78rem;color:var(--danger);margin-bottom:14px;" id="huyChinhSach"></div>
+            <div style="display:flex;gap:10px;">
+                <button type="submit" id="btnXacNhanHuy"
+                        style="flex:1;padding:10px;background:var(--danger);color:#fff;border:none;
+                               border-radius:10px;font-weight:700;cursor:pointer;" disabled>
+                    Xác nhận hủy
+                </button>
+                <button type="button" onclick="dongModalHuy()"
+                        style="flex:1;padding:10px;background:#f0f4f8;color:var(--text);border:none;
+                               border-radius:10px;font-weight:600;cursor:pointer;">
+                    Giữ lại
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 @section Scripts {
     <script>
-        (function(){
-          var BOOKINGS = JSON.parse(document.getElementById('bookings-data').textContent);
-          var MONTHS_VI = ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'];
-          var today    = new Date();
-          var curYear  = today.getFullYear();
-          var curMonth = today.getMonth() + 1;
-          var popYear  = curYear;
-          var popOpen  = false;
+            (function(){
+              var BOOKINGS = JSON.parse(document.getElementById('bookings-data').textContent);
+              var MONTHS_VI = ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'];
+              var today    = new Date();
+              var curYear  = today.getFullYear();
+              var curMonth = today.getMonth() + 1;
+              var popYear  = curYear;
+              var popOpen  = false;
 
-          function getBookingsForYear(year){
-            var xn={}, cho={};
-            BOOKINGS.forEach(function(b){
-              if(b.year !== year) return;
-              if(b.status==='DaXacNhan') xn[b.month]=true;
-              if(b.status==='ChoDuyet')  cho[b.month]=true;
-            });
-            return {xn:xn,cho:cho};
-          }
-
-          function renderPopup(year){
-            document.getElementById('popYearLabel').textContent = year;
-            var data = getBookingsForYear(year);
-            var grid = document.getElementById('mpGrid');
-            grid.innerHTML = '';
-            for(var m=1;m<=12;m++){
-              (function(m){
-                var btn = document.createElement('div');
-                var cls = 'mp-m';
-                if(m===curMonth && year===curYear) cls+=' active';
-                if(data.xn[m])       cls+=' has-xn';
-                else if(data.cho[m]) cls+=' has-cho';
-                btn.className   = cls;
-                btn.textContent = MONTHS_VI[m-1];
-                btn.addEventListener('click',function(){
-                  curYear=year; curMonth=m; renderCal(); closePopup();
+              function getBookingsForYear(year){
+                var xn={}, cho={};
+                BOOKINGS.forEach(function(b){
+                  if(b.year !== year) return;
+                  if(b.status==='DaXacNhan') xn[b.month]=true;
+                  if(b.status==='ChoDuyet')  cho[b.month]=true;
                 });
-                grid.appendChild(btn);
-              })(m);
-            }
-          }
+                return {xn:xn,cho:cho};
+              }
 
-          function renderCal(){
-            document.getElementById('calLabelText').textContent =
-              'THÁNG '+curMonth+' · '+curYear;
-
-            var firstDay    = new Date(curYear,curMonth-1,1).getDay();
-            var offset      = firstDay===0 ? 6 : firstDay-1;
-            var daysInMonth = new Date(curYear,curMonth,0).getDate();
-            var xnDays={}, choDays={};
-            BOOKINGS.forEach(function(b){
-              if(b.year!==curYear||b.month!==curMonth) return;
-              if(b.status==='DaXacNhan') xnDays[b.day]=true;
-              if(b.status==='ChoDuyet')  choDays[b.day]=true;
-            });
-
-            var grid=document.getElementById('calDayGrid');
-            grid.innerHTML='';
-
-            for(var i=0;i<offset;i++){
-              var el=document.createElement('div');
-              el.className='cal-day empty';
-              grid.appendChild(el);
-            }
-
-            for(var d=1;d<=daysInMonth;d++){
-              (function(d){
-                var el  = document.createElement('div');
-                var col = (offset+d-1)%7;
-                var isTd= (d===today.getDate()&&curMonth===today.getMonth()+1&&curYear===today.getFullYear());
-                var cls = 'cal-day';
-                if(xnDays[d])       cls+=' xn';
-                else if(choDays[d]) cls+=' cho';
-                else if(col>=5)     cls+=' wknd';
-                if(isTd&&!xnDays[d]&&!choDays[d]) cls+=' today-mark';
-                el.className   = cls;
-                el.textContent = d;
-                if(xnDays[d]||choDays[d]){
-                  el.title='Xem lịch ngày '+d;
-                  el.addEventListener('click',function(){
-                    var dd=String(d).padStart(2,'0');
-                    var mm=String(curMonth).padStart(2,'0');
-                    var dateStr=dd+'/'+mm+'/'+curYear;
-                    var target=null;
-                    document.querySelectorAll('.booking-card').forEach(function(c){
-                      if(c.textContent.indexOf(dateStr)>-1) target=c;
+              function renderPopup(year){
+                document.getElementById('popYearLabel').textContent = year;
+                var data = getBookingsForYear(year);
+                var grid = document.getElementById('mpGrid');
+                grid.innerHTML = '';
+                for(var m=1;m<=12;m++){
+                  (function(m){
+                    var btn = document.createElement('div');
+                    var cls = 'mp-m';
+                    if(m===curMonth && year===curYear) cls+=' active';
+                    if(data.xn[m])       cls+=' has-xn';
+                    else if(data.cho[m]) cls+=' has-cho';
+                    btn.className   = cls;
+                    btn.textContent = MONTHS_VI[m-1];
+                    btn.addEventListener('click',function(){
+                      curYear=year; curMonth=m; renderCal(); closePopup();
                     });
-                    if(target){
-                      target.scrollIntoView({behavior:'smooth',block:'center'});
-                      target.style.outline='2.5px solid #0EA86A';
-                      target.style.outlineOffset='3px';
-                      setTimeout(function(){target.style.outline='';target.style.outlineOffset='';},2000);
-                    }
-                  });
+                    grid.appendChild(btn);
+                  })(m);
                 }
-                grid.appendChild(el);
-              })(d);
+              }
+
+              function renderCal(){
+                document.getElementById('calLabelText').textContent =
+                  'THÁNG '+curMonth+' · '+curYear;
+
+                var firstDay    = new Date(curYear,curMonth-1,1).getDay();
+                var offset      = firstDay===0 ? 6 : firstDay-1;
+                var daysInMonth = new Date(curYear,curMonth,0).getDate();
+                var xnDays={}, choDays={};
+                BOOKINGS.forEach(function(b){
+                  if(b.year!==curYear||b.month!==curMonth) return;
+                  if(b.status==='DaXacNhan') xnDays[b.day]=true;
+                  if(b.status==='ChoDuyet')  choDays[b.day]=true;
+                });
+
+                var grid=document.getElementById('calDayGrid');
+                grid.innerHTML='';
+
+                for(var i=0;i<offset;i++){
+                  var el=document.createElement('div');
+                  el.className='cal-day empty';
+                  grid.appendChild(el);
+                }
+
+                for(var d=1;d<=daysInMonth;d++){
+                  (function(d){
+                    var el  = document.createElement('div');
+                    var col = (offset+d-1)%7;
+                    var isTd= (d===today.getDate()&&curMonth===today.getMonth()+1&&curYear===today.getFullYear());
+                    var cls = 'cal-day';
+                    if(xnDays[d])       cls+=' xn';
+                    else if(choDays[d]) cls+=' cho';
+                    else if(col>=5)     cls+=' wknd';
+                    if(isTd&&!xnDays[d]&&!choDays[d]) cls+=' today-mark';
+                    el.className   = cls;
+                    el.textContent = d;
+                    if(xnDays[d]||choDays[d]){
+                      el.title='Xem lịch ngày '+d;
+                      el.addEventListener('click',function(){
+                        var dd=String(d).padStart(2,'0');
+                        var mm=String(curMonth).padStart(2,'0');
+                        var dateStr=dd+'/'+mm+'/'+curYear;
+                        var target=null;
+                        document.querySelectorAll('.booking-card').forEach(function(c){
+                          if(c.textContent.indexOf(dateStr)>-1) target=c;
+                        });
+                        if(target){
+                          target.scrollIntoView({behavior:'smooth',block:'center'});
+                          target.style.outline='2.5px solid #0EA86A';
+                          target.style.outlineOffset='3px';
+                          setTimeout(function(){target.style.outline='';target.style.outlineOffset='';},2000);
+                        }
+                      });
+                    }
+                    grid.appendChild(el);
+                  })(d);
+                }
+              }
+
+              function openPopup(){
+                popYear=curYear; renderPopup(popYear);
+                var popup = document.getElementById('monthPopup');
+                var btn   = document.getElementById('calLabelBtn');
+                var rect  = btn.getBoundingClientRect();
+                popup.style.display  = 'block';
+                popup.style.top      = (rect.bottom + 8) + 'px';
+                popup.style.left     = (rect.left + rect.width/2 - 140) + 'px';
+                popup.classList.add('open');
+                document.getElementById('calLabelBtn').classList.add('open');
+                popOpen=true;
+              }
+              function closePopup(){
+                var popup = document.getElementById('monthPopup');
+                popup.classList.remove('open');
+                popup.style.display='none';
+                document.getElementById('calLabelBtn').classList.remove('open');
+                popOpen=false;
+              }
+
+              document.getElementById('calLabelBtn').addEventListener('click',function(e){
+                e.stopPropagation(); popOpen?closePopup():openPopup();
+              });
+              document.getElementById('popPrevYear').addEventListener('click',function(e){
+                e.stopPropagation(); popYear--; renderPopup(popYear);
+              });
+              document.getElementById('popNextYear').addEventListener('click',function(e){
+                e.stopPropagation(); popYear++; renderPopup(popYear);
+              });
+              document.addEventListener('click',function(){ if(popOpen) closePopup(); });
+              document.getElementById('monthPopup').addEventListener('click',function(e){ e.stopPropagation(); });
+              document.getElementById('prevMonth').addEventListener('click',function(){
+                curMonth--; if(curMonth<1){curMonth=12;curYear--;} renderCal();
+              });
+              document.getElementById('nextMonth').addEventListener('click',function(){
+                curMonth++; if(curMonth>12){curMonth=1;curYear++;} renderCal();
+              });
+
+              renderCal();
+            })();
+
+        // ── Modal hủy đặt sân ────────────────────────────────────
+        function moHopHuy(id, gio, ngay) {
+            document.getElementById('huyId').value = id;
+            document.getElementById('huyInfo').textContent =
+                'Hủy đơn đặt sân ngày ' + ngay + ' lúc ' + gio;
+            document.getElementById('lyDoHuySelect').value = '';
+            document.getElementById('lyDoHuyText').style.display = 'none';
+            document.getElementById('lyDoHuyText').value = '';
+            document.getElementById('btnXacNhanHuy').disabled = true;
+            document.getElementById('huyChinhSach').textContent = '';
+
+            var modal = document.getElementById('modalHuy');
+            modal.style.display = 'flex';
+        }
+
+        function dongModalHuy() {
+            document.getElementById('modalHuy').style.display = 'none';
+        }
+
+        function kiemTraLyDo() {
+            var sel = document.getElementById('lyDoHuySelect').value;
+            var txt = document.getElementById('lyDoHuyText');
+            if (sel === 'Lý do cá nhân') {
+                txt.style.display = 'block';
+                txt.required = true;
+            } else {
+                txt.style.display = 'none';
+                txt.required = false;
             }
-          }
+            document.getElementById('btnXacNhanHuy').disabled = !sel;
+        }
 
-          function openPopup(){
-            popYear=curYear; renderPopup(popYear);
-            var popup = document.getElementById('monthPopup');
-            var btn   = document.getElementById('calLabelBtn');
-            var rect  = btn.getBoundingClientRect();
-            popup.style.display  = 'block';
-            popup.style.top      = (rect.bottom + 8) + 'px';
-            popup.style.left     = (rect.left + rect.width/2 - 140) + 'px';
-            popup.classList.add('open');
-            document.getElementById('calLabelBtn').classList.add('open');
-            popOpen=true;
-          }
-          function closePopup(){
-            var popup = document.getElementById('monthPopup');
-            popup.classList.remove('open');
-            popup.style.display='none';
-            document.getElementById('calLabelBtn').classList.remove('open');
-            popOpen=false;
-          }
+        // Nếu chọn "Lý do cá nhân", ghi đè name để submit text thay vì select
+        document.getElementById('formHuy')?.addEventListener('submit', function(e) {
+            var sel = document.getElementById('lyDoHuySelect').value;
+            var txt = document.getElementById('lyDoHuyText').value.trim();
+            if (sel === 'Lý do cá nhân') {
+                if (!txt) { e.preventDefault(); alert('Vui lòng nhập lý do cụ thể!'); return; }
+                document.getElementById('lyDoHuySelect').value = txt;
+            }
+        });
 
-          document.getElementById('calLabelBtn').addEventListener('click',function(e){
-            e.stopPropagation(); popOpen?closePopup():openPopup();
-          });
-          document.getElementById('popPrevYear').addEventListener('click',function(e){
-            e.stopPropagation(); popYear--; renderPopup(popYear);
-          });
-          document.getElementById('popNextYear').addEventListener('click',function(e){
-            e.stopPropagation(); popYear++; renderPopup(popYear);
-          });
-          document.addEventListener('click',function(){ if(popOpen) closePopup(); });
-          document.getElementById('monthPopup').addEventListener('click',function(e){ e.stopPropagation(); });
-          document.getElementById('prevMonth').addEventListener('click',function(){
-            curMonth--; if(curMonth<1){curMonth=12;curYear--;} renderCal();
-          });
-          document.getElementById('nextMonth').addEventListener('click',function(){
-            curMonth++; if(curMonth>12){curMonth=1;curYear++;} renderCal();
-          });
-
-          renderCal();
-        })();
+        // Đóng modal khi click ngoài
+        document.getElementById('modalHuy')?.addEventListener('click', function(e) {
+            if (e.target === this) dongModalHuy();
+        });
     </script>
 }

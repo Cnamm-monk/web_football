@@ -98,6 +98,16 @@ namespace Web_Stadium
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
+            builder.Services.AddHostedService<Web_Stadium.End.MatchmakingAutoCleanupService>();
+            builder.Services.AddHostedService<Web_Stadium.End.TournamentBackgroundService>();
+            builder.Services.AddScoped<Web_Stadium.Services.EmailService>();
+            builder.Services.AddScoped<Web_Stadium.Services.ScheduleService>();
+            builder.Services.AddScoped<Web_Stadium.Services.StandingService>();
+            builder.Services.AddScoped<Web_Stadium.Services.SuspensionService>();
+            builder.Services.AddScoped<Web_Stadium.Services.TournamentNotificationService>();
+            builder.Services.AddScoped<Web_Stadium.Services.TournamentExcelService>();
+            builder.Services.AddScoped<Web_Stadium.Services.TournamentService>();
+
             //builder.Services.AddHostedService<Web_Stadium.End.MatchmakingAutoCleanupService>();
             builder.Services.Configure<FormOptions>(options =>
             {
@@ -186,6 +196,7 @@ namespace Web_Stadium
 
             //Map SignalR Hub
             app.MapHub<SanBongHub>("/sanBongHub");
+            app.MapHub<Web_Stadium.Hubs.TournamentHub>("/tournamentHub");
 
             app.MapControllerRoute(
                 name: "default",

@@ -19,6 +19,10 @@ public partial class DanhGia
 
     public DateTime NgayDanhGia { get; set; }
 
+    public int? SoSaoCoSoVatChat { get; set; }
+
+    public int? SoSaoNhanVien { get; set; }
+
     public virtual DatSan DatSan { get; set; } = null!;
 
     public virtual SanBong SanBong { get; set; } = null!;
