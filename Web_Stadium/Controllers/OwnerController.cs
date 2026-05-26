@@ -15,12 +15,14 @@ namespace Web_Stadium.Controllers
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
         private readonly EmailService _emailService;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public OwnerController(SanBongContext context, IConfiguration config, EmailService emailService)
+        public OwnerController(SanBongContext context, IConfiguration config, EmailService emailService, IHttpClientFactory httpClientFactory)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
+            _httpClientFactory = httpClientFactory;
         }
         //test git
         // Helper lấy OwnerId từ JWT
@@ -868,54 +870,6 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ điều khoản
 
             ViewBag.CurrentStatus = status;
             return View(dsDon);
-        }
-
-        // POST: /Owner/XacNhanDon
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> XacNhanDon(int id)
-        {
-            var don = await _context.DatSans
-                .Include(d => d.KhungGio)
-                .ThenInclude(k => k.SanBong)
-                .FirstOrDefaultAsync(d => d.Id == id);
-
-            if (don == null) return NotFound();
-
-            var ownerId = GetOwnerId();
-            if (don.KhungGio.SanBong.OwnerId != ownerId)
-                return Unauthorized();
-
-            don.TrangThai = "DaXacNhan";
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = $"Đã xác nhận đơn đặt sân ngày {don.NgayThiDau:dd/MM/yyyy}.";
-            return RedirectToAction("DanhSachDonDat", new { status = ViewBag.CurrentStatus ?? "ChoDuyet" });
-        }
-
-        // POST: /Owner/TuChoiDon
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> TuChoiDon(int id, string lyDoTuChoi = "")
-        {
-            var don = await _context.DatSans
-                .Include(d => d.KhungGio)
-                .ThenInclude(k => k.SanBong)
-                .FirstOrDefaultAsync(d => d.Id == id);
-
-            if (don == null) return NotFound();
-
-            var ownerId = GetOwnerId();
-            if (don.KhungGio.SanBong.OwnerId != ownerId)
-                return Unauthorized();
-
-            don.TrangThai = "DaHuy";
-            // Có thể lưu lý do từ chối vào đâu đó, ví dụ GhiChuSuCo
-            don.GhiChuSuCo = lyDoTuChoi;
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = $"Đã từ chối đơn đặt sân ngày {don.NgayThiDau:dd/MM/yyyy}.";
-            return RedirectToAction("DanhSachDonDat", new { status = ViewBag.CurrentStatus ?? "ChoDuyet" });
         }
 
         // ================================================================

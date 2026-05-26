@@ -34,16 +34,15 @@ namespace Web_Stadium.Controllers
         // ══════════════════════════════════════════════════════════
         [YeuCauDangNhap]
         public async Task<IActionResult> Create(int khungGioId, string? ngayStr)
-        public async Task<IActionResult> Create(int khungGioId, DateTime? ngay)
         {
-            // Xác định ngày hợp lệ: nếu không có hoặc nhỏ hơn hôm nay thì lấy ngày mai
-            var ngayValid = ngay ?? DateTime.Now.Date.AddDays(1);
-            if (ngayValid < DateTime.Now.Date)
-                ngayValid = DateTime.Now.Date.AddDays(1);
-
             // Parse ngày an toàn — tránh SqlDateTime overflow
             if (!DateTime.TryParse(ngayStr, out var ngay) || ngay < new DateTime(1753, 1, 1))
                 ngay = DateTime.Today;
+
+            // Xác định ngày hợp lệ: nếu nhỏ hơn hôm nay thì lấy ngày mai
+            var ngayValid = ngay.Date;
+            if (ngayValid < DateTime.Now.Date)
+                ngayValid = DateTime.Now.Date.AddDays(1);
 
             // Lấy khung giờ kèm sân và dịch vụ
             var khungGio = await _context.KhungGios
@@ -89,6 +88,7 @@ namespace Web_Stadium.Controllers
                 .ToList() ?? new();
 
             // Voucher user đang có (chưa dùng, chưa hết hạn)
+            var userId = TokenHelper.LayUserId(Request, _config);
             var vouchers = await _context.UserVouchers
                 .Include(uv => uv.Voucher)
                 .Where(uv => uv.UserId == userId
@@ -259,9 +259,9 @@ namespace Web_Stadium.Controllers
             }
 
             // Cập nhật trạng thái khung giờ thành "Đã đặt"
-            khungGioMoi.TrangThai = "DaDat";
-            khungGioMoi.ThoiGianHetGiuCho = null;
-            await _khungGioRepo.UpdateAsync(khungGioMoi);
+            khungGio.TrangThai = "DaDat";
+            khungGio.ThoiGianHetGiuCho = null;
+            await _khungGioRepo.UpdateAsync(khungGio);
             await _hub.Clients.Group($"san_{khungGio.SanBongId}")
                 .SendAsync("CapNhatKhungGio", new { khungGioId = khungGio.Id, trangThai = "DaDat" });
 
