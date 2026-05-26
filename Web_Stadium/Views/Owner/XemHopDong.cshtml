@@ -9,9 +9,32 @@
     var ownerEmail = ViewBag.OwnerEmail ?? Model.Owner?.Email;
     var ownerPhone = ViewBag.OwnerPhone ?? Model.Owner?.SoDienThoai;
     var ngayKy = isPreview ? DateTime.Now : (Model.NgayKyHopDong ?? DateTime.Now);
+    ViewData["ActiveNav"] = isPreview ? "DangKySan" : "DanhSachSan";
 }
 
 <style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body { background: var(--db-bg); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+
+    .page-header { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 24px 0 20px; }
+    .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+    .nav-btn {
+        font-size: 12px; padding: 5px 14px; border-radius: 30px; border: 1px solid var(--db-border);
+        background: transparent; color: var(--db-muted); text-decoration: none;
+        display: inline-flex; align-items: center; gap: 5px; transition: 0.15s;
+    }
+    .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
+    .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
+
     /* In ấn chỉ hiển thị nội dung hợp đồng, ẩn header, footer, nút */
     @@media print {
         .no-print, .btn, .sticky-nav, .page-header, footer, .action-buttons {
@@ -38,11 +61,25 @@
     }
 </style>
 
-<div class="container py-4 no-print">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="fw-bold">📄 @(isPreview ? "Xem trước hợp đồng" : "Hợp đồng điện tử")</h2>
-       
+<div class="page-header no-print">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / HỢP ĐỒNG</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">
+                    @(isPreview ? "Xem trước " : "")<span style="color: var(--db-green);">hợp đồng điện tử</span>
+                </h1>
+                <p class="text-muted mt-2 mb-0">@Model.TenSan — @Model.Quan, @Model.ThanhPho</p>
+            </div>
+            <button type="button" class="btn btn-outline-secondary rounded-pill" onclick="window.print()">
+                <i class="fas fa-print me-2"></i>In hợp đồng
+            </button>
+        </div>
     </div>
+</div>
+
+<div class="no-print">
+    @await Html.PartialAsync("_OwnerNav")
 </div>
 
 <div class="container contract-content" style="max-width: 1000px; margin: 0 auto; background: white; padding: 2rem; box-shadow: 0 0 10px rgba(0,0,0,0.05);">

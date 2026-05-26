@@ -1,56 +1,184 @@
-﻿@{
+@{
     ViewData["Title"] = "Duyệt đơn đặt sân";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "DonDat";
     var donChoDuyet = ViewBag.DonChoDuyet as List<Web_Stadium.EFCore.DatSan> ?? new();
     var donDaXuLy = ViewBag.DonDaXuLy as List<Web_Stadium.EFCore.DatSan> ?? new();
 }
 
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    .page-header { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 24px 0 20px; }
+    .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+    .nav-btn {
+        font-size: 12px; padding: 5px 14px; border-radius: 30px; border: 1px solid var(--db-border);
+        background: transparent; color: var(--db-muted); text-decoration: none;
+        display: inline-flex; align-items: center; gap: 5px; transition: 0.15s;
+    }
+    .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
+    .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
+
+    .badge-count {
+        display: inline-block;
+        background: #ef4444;
+        color: #fff;
+        font-size: 12px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        vertical-align: middle;
+        margin-left: 12px;
+        font-weight: 600;
+    }
+
+    .section-label {
+        font-size: 11px;
+        letter-spacing: 1px;
+        margin: 24px 0 14px;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .order-card {
+        background: var(--db-card);
+        border: 1px solid rgba(239,68,68,0.3);
+        border-radius: 20px;
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+    .order-card__header {
+        background: rgba(239,68,68,0.04);
+        padding: 14px 20px;
+        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+        border-bottom: 1px solid var(--db-border);
+    }
+    .order-card__info {
+        padding: 16px 20px;
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+        font-size: 13px;
+        border-bottom: 1px solid var(--db-border);
+    }
+    .order-card__services {
+        padding: 10px 20px;
+        background: var(--db-bg);
+        border-bottom: 1px solid var(--db-border);
+        font-size: 12px;
+        color: var(--db-muted);
+    }
+    .order-card__actions {
+        padding: 16px 20px;
+        display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap;
+    }
+
+    .info-label { color: var(--db-muted); margin-bottom: 3px; font-size: 12px; }
+    .info-value { font-weight: 600; color: var(--db-text); }
+
+    .form-control-light {
+        background: var(--db-surface);
+        border: 1px solid var(--db-border);
+        color: var(--db-text);
+        border-radius: 12px;
+        padding: 8px 12px;
+        font-size: 13px;
+        flex: 1;
+        min-width: 200px;
+    }
+    .form-control-light:focus {
+        border-color: var(--db-green);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(15,110,74,0.1);
+    }
+
+    .btn-success-pill {
+        background: var(--db-green); border: none; color: white;
+        border-radius: 40px; padding: 8px 20px; font-size: 14px; font-weight: 600;
+        white-space: nowrap;
+    }
+    .btn-success-pill:hover { background: #0a5338; }
+
+    .btn-danger-pill {
+        background: transparent; border: 1px solid #fecaca; color: #dc2626;
+        border-radius: 40px; padding: 8px 18px; font-size: 13px; font-weight: 600;
+        white-space: nowrap; transition: 0.2s;
+    }
+    .btn-danger-pill:hover { background: #fef2f2; border-color: #f87171; }
+
+    .history-row {
+        padding: 12px 18px;
+        border: 1px solid var(--db-border);
+        border-radius: 14px;
+        margin-bottom: 8px;
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 13px; opacity: 0.8;
+        background: var(--db-card);
+    }
+
+    .empty-state { text-align: center; padding: 50px 0; color: var(--db-muted); }
+
+    @@media (max-width: 768px) {
+        .order-card__info { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="page-header">
     <div class="container">
-        <div class="section-label">Owner — Vận hành</div>
-        <h1 style="font-style:italic;line-height:0.9">
-            DUYỆT ĐƠN<br>
-            <span class="text-green">ĐẶT SÂN</span>
-            @if (donChoDuyet.Any())
-            {
-                <span style="display:inline-block;background:#ef4444;color:#fff;
-                                 font-size:.9rem;padding:4px 14px;border-radius:999px;
-                                 vertical-align:middle;margin-left:12px;">
-                    @donChoDuyet.Count chờ duyệt
-                </span>
-            }
-        </h1>
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / VẬN HÀNH</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">
+                    Duyệt đơn <span style="color: var(--db-green);">đặt sân</span>
+                    @if (donChoDuyet.Any())
+                    {
+                        <span class="badge-count">@donChoDuyet.Count chờ duyệt</span>
+                    }
+                </h1>
+                <p class="text-muted mt-2 mb-0">Xác nhận hoặc từ chối đơn đã thanh toán cọc</p>
+            </div>
+        </div>
     </div>
 </div>
 
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2">
-        <a href="/Owner" class="btn btn-sm btn-outline-light rounded-pill">📊 Tổng quan</a>
-        <a href="/Owner/DuyetDon" class="btn btn-sm btn-success rounded-pill">✅ Duyệt đơn</a>
-        <a href="/Owner/HoanCoc" class="btn btn-sm btn-outline-warning rounded-pill">💰 Hoàn cọc</a>
-    </div>
-</div>
+@await Html.PartialAsync("_OwnerNav")
 
 <div class="container py-5">
 
     @if (TempData["Success"] != null)
     {
-        <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <div class="alert alert-success alert-dismissible fade show shadow-sm rounded-3">
+            <i class="fas fa-check-circle me-2"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
     }
     @if (TempData["Error"] != null)
     {
-        <div class="alert alert-danger alert-dismissible fade show">❌ @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3">
+            <i class="fas fa-exclamation-triangle me-2"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
     }
 
-    <!-- ĐƠN CHỜ DUYỆT -->
-    <div style="font-size:11px;color:#ef4444;letter-spacing:1px;margin-bottom:14px;">
-        ⏳ CHỜ DUYỆT (@donChoDuyet.Count) — Khách đã trả cọc và đang chờ xác nhận
+    <div class="section-label" style="color: #ef4444;">
+        ⏳ Chờ duyệt (@donChoDuyet.Count) — Khách đã trả cọc và đang chờ xác nhận
     </div>
 
     @if (!donChoDuyet.Any())
     {
-        <div class="section-card p-5 text-center mb-4" style="color:var(--muted)">
-            <div style="font-size:3rem;margin-bottom:12px;">✅</div>
+        <div class="empty-state">
+            <div style="font-size: 3rem; margin-bottom: 12px; opacity: 0.4;">✅</div>
             <div>Không có đơn nào đang chờ duyệt.</div>
         </div>
     }
@@ -60,86 +188,71 @@
         var kg = don.KhungGio;
         var san = kg?.SanBong;
         var thoiGianCho = (DateTime.Now - don.ThoiGianTao).TotalHours;
-        var urgentColor = thoiGianCho > 4 ? "#ef4444" : thoiGianCho > 2 ? "#f59e0b" : "var(--green)";
+        var urgentColor = thoiGianCho > 4 ? "#ef4444" : thoiGianCho > 2 ? "#f59e0b" : "var(--db-green)";
 
-        <div class="section-card p-0 overflow-hidden mb-4"
-             style="border:1px solid rgba(239,68,68,.3);">
-
-            <!-- Header -->
-            <div style="background:rgba(239,68,68,.06);padding:14px 20px;
-                            display:flex;justify-content:space-between;align-items:center;">
+        <div class="order-card">
+            <div class="order-card__header">
                 <div>
-                    <span style="font-family:var(--ff-h);font-size:15px;color:#fff;">
-                        @san?.TenSan
-                    </span>
-                    <span style="color:var(--muted);font-size:13px;margin-left:10px;">
-                        @kg?.GioBatDau.ToString("HH:mm") – @kg?.GioKetThuc.ToString("HH:mm")
-                        | @don.NgayThiDau.ToString("dd/MM/yyyy")
+                    <strong style="font-size: 15px;">@san?.TenSan</strong>
+                    <span style="color: var(--db-muted); font-size: 13px; margin-left: 10px;">
+                        @kg?.GioBatDau.ToString(@"hh\:mm") – @kg?.GioKetThuc.ToString(@"hh\:mm")
+                        · @don.NgayThiDau.ToString("dd/MM/yyyy")
                     </span>
                 </div>
-                <span style="color:@urgentColor;font-size:12px;font-weight:700;">
+                <span style="color: @urgentColor; font-size: 12px; font-weight: 700;">
                     ⏱ Chờ @((int)thoiGianCho)h @((int)((thoiGianCho % 1) * 60))p
                     @(thoiGianCho > 5 ? "— SẮP TỰ HỦY!" : "")
                 </span>
             </div>
 
-            <!-- Thông tin khách -->
-            <div style="padding:16px 20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:13px;border-bottom:1px solid var(--border)">
+            <div class="order-card__info">
                 <div>
-                    <div style="color:var(--muted);margin-bottom:3px;">Khách hàng</div>
-                    <div style="font-weight:600;">@don.User?.HoTen</div>
-                    <div style="color:var(--muted2);">@don.User?.SoDienThoai</div>
+                    <div class="info-label">Khách hàng</div>
+                    <div class="info-value">@don.User?.HoTen</div>
+                    <div style="color: var(--db-muted); font-size: 12px;">@don.User?.SoDienThoai</div>
                 </div>
                 <div>
-                    <div style="color:var(--muted);margin-bottom:3px;">Tiền cọc đã trả</div>
-                    <div style="font-weight:700;color:var(--green);font-size:15px;">@don.TienCoc.ToString("N0")đ</div>
+                    <div class="info-label">Tiền cọc đã trả</div>
+                    <div style="font-weight: 700; color: var(--db-green); font-size: 16px;">@don.TienCoc.ToString("N0")đ</div>
                 </div>
                 <div>
-                    <div style="color:var(--muted);margin-bottom:3px;">Mã đơn</div>
-                    <code style="color:var(--green);font-size:14px;">@don.MaXacNhan</code>
+                    <div class="info-label">Mã đơn</div>
+                    <code style="color: var(--db-green); font-size: 14px;">@don.MaXacNhan</code>
                 </div>
             </div>
 
-            <!-- Dịch vụ -->
             @if (don.DatSanDichVus?.Any() == true)
             {
-                <div style="padding:10px 20px;background:rgba(0,0,0,.1);border-bottom:1px solid var(--border);font-size:12px;">
-                    <span style="color:var(--muted);">Dịch vụ kèm: </span>
+                <div class="order-card__services">
+                    <span style="color: var(--db-muted);">Dịch vụ kèm: </span>
                     @foreach (var dv in don.DatSanDichVus)
                     {
-                        <span style="margin-right:10px;color:var(--muted2);">
+                        <span style="margin-right: 10px;">
                             @dv.DichVu?.TenDichVu ×@dv.SoLuong
-                            <span style="color:var(--green);">(@(((dv.DichVu?.Gia ?? 0) * dv.SoLuong).ToString("N0"))đ)</span>
+                            <span style="color: var(--db-green);">(@(((dv.DichVu?.Gia ?? 0) * dv.SoLuong).ToString("N0"))đ)</span>
                         </span>
                     }
                 </div>
             }
 
-            <!-- Action -->
-            <div style="padding:16px 20px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-
-                <!-- Duyệt -->
-                <form method="post" action="/Owner/XacNhanDon" style="flex-shrink:0;">
+            <div class="order-card__actions">
+                <form method="post" action="/Owner/XacNhanDon" style="flex-shrink: 0;">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="datSanId" value="@don.Id" />
-                    <button type="submit" class="btn btn-success rounded-pill"
-                            style="font-size:14px;padding:8px 20px;font-weight:700;"
+                    <button type="submit" class="btn-success-pill"
                             onclick="return confirm('Xác nhận duyệt đơn @don.MaXacNhan?\nEmail + QR sẽ gửi ngay cho khách.')">
                         ✅ Duyệt — Gửi email xác nhận
                     </button>
                 </form>
 
-                <!-- Từ chối -->
                 <form method="post" action="/Owner/TuChoiDon"
-                      style="display:flex;gap:8px;flex:1;min-width:280px;">
+                      style="display: flex; gap: 8px; flex: 1; min-width: 280px;">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="datSanId" value="@don.Id" />
-                    <input type="text" name="lyDo" class="form-control form-control-sm"
-                           placeholder="Lý do từ chối (bắt buộc)..."
-                           required
-                           style="background:var(--bg3);border-color:var(--border);color:#fff;font-size:13px;flex:1;" />
-                    <button type="submit" class="btn btn-outline-danger rounded-pill btn-sm"
-                            style="font-size:13px;white-space:nowrap;"
+                    <input type="text" name="lyDo" class="form-control-light"
+                           placeholder="Lý do từ chối (bắt buộc)…"
+                           required />
+                    <button type="submit" class="btn-danger-pill"
                             onclick="return confirm('Xác nhận từ chối? Khách sẽ được hoàn 100% cọc.')">
                         ❌ Từ chối
                     </button>
@@ -148,24 +261,21 @@
         </div>
     }
 
-    <!-- ĐÃ XỬ LÝ GẦN ĐÂY -->
     @if (donDaXuLy.Any())
     {
-        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin:28px 0 14px;">
-            📋 ĐÃ XỬ LÝ GẦN ĐÂY (@donDaXuLy.Count)
+        <div class="section-label" style="color: var(--db-muted);">
+            📋 Đã xử lý gần đây (@donDaXuLy.Count)
         </div>
         @foreach (var don in donDaXuLy)
         {
             var isXN = don.TrangThai == "DaXacNhan";
-            <div style="padding:12px 18px;border:1px solid var(--border);border-radius:10px;
-                                margin-bottom:8px;display:flex;justify-content:space-between;
-                                align-items:center;font-size:13px;opacity:.7;">
+            <div class="history-row">
                 <div>
                     <strong>@don.KhungGio?.SanBong?.TenSan</strong>
-                    <span style="color:var(--muted);margin-left:10px;">@don.User?.HoTen</span>
-                    <span style="color:var(--muted);margin-left:10px;">@don.NgayThiDau.ToString("dd/MM/yyyy")</span>
+                    <span style="color: var(--db-muted); margin-left: 10px;">@don.User?.HoTen</span>
+                    <span style="color: var(--db-muted); margin-left: 10px;">@don.NgayThiDau.ToString("dd/MM/yyyy")</span>
                 </div>
-                <span style="color:@(isXN ? "var(--green)" : "#ef4444");font-weight:700;font-size:12px;">
+                <span style="color: @(isXN ? "var(--db-green)" : "#ef4444"); font-weight: 700; font-size: 12px;">
                     @(isXN ? "✅ Đã duyệt" : "❌ Từ chối")
                 </span>
             </div>

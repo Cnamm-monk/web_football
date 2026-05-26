@@ -1001,6 +1001,99 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
     return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
 }
 
+// POST /Owner/UploadAnhFile
+// Nhận file ảnh upload trực tiếp từ máy, lưu vào wwwroot/uploads/san_{id}/
+[HttpPost]
+[ValidateAntiForgeryToken]
+[RequestSizeLimit(20 * 1024 * 1024)] // tối đa 20MB cho cả request
+public async Task<IActionResult> UploadAnhFile(int sanId, List<IFormFile> files)
+{
+    int ownerId;
+    try { ownerId = GetOwnerId(); }
+    catch
+    {
+        TempData["Error"] = "Phiên đăng nhập hết hạn.";
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    var san = await _context.SanBongs
+        .FirstOrDefaultAsync(s => s.Id == sanId && s.OwnerId == ownerId);
+    if (san == null)
+    {
+        TempData["Error"] = "Sân không hợp lệ.";
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    if (files == null || !files.Any(f => f != null && f.Length > 0))
+    {
+        TempData["Error"] = "Vui lòng chọn ít nhất 1 ảnh.";
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+    const long maxFileSize = 5 * 1024 * 1024; // 5MB / ảnh
+
+    var folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", $"san_{sanId}");
+    Directory.CreateDirectory(folder);
+
+    int saved = 0;
+    var skipped = new List<string>();
+
+    foreach (var file in files)
+    {
+        if (file == null || file.Length == 0) continue;
+
+        if (file.Length > maxFileSize)
+        {
+            skipped.Add($"{file.FileName} (quá 5MB)");
+            continue;
+        }
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExt.Contains(ext))
+        {
+            skipped.Add($"{file.FileName} (định dạng không hỗ trợ)");
+            continue;
+        }
+
+        var fileName = $"san_{sanId}_{Guid.NewGuid():N}{ext}";
+        var filePath = Path.Combine(folder, fileName);
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var duongDan = $"/uploads/san_{sanId}/{fileName}";
+
+        _context.AnhSanBongs.Add(new AnhSanBong
+        {
+            SanBongId = sanId,
+            DuongDan  = duongDan,
+            LoaiAnh   = "File",
+            ThuTu     = 0,
+            NgayThem  = DateTime.Now,
+            IsActive  = true
+        });
+        saved++;
+    }
+
+    if (saved == 0)
+    {
+        TempData["Error"] = "Không upload được ảnh nào. " + string.Join("; ", skipped);
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    await _context.SaveChangesAsync();
+    await ReorderImages(sanId);
+
+    if (skipped.Any())
+        TempData["Success"] = $"Đã upload {saved} ảnh. Bỏ qua: {string.Join("; ", skipped)}";
+    else
+        TempData["Success"] = $"Đã upload {saved} ảnh thành công!";
+
+    return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+}
+
         // POST /Owner/XoaAnhForm
         [HttpPost]
         [ValidateAntiForgeryToken]

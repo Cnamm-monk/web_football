@@ -1,6 +1,7 @@
 ﻿@{
     ViewData["Title"] = "Dashboard Owner";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "TongQuan";
     var donHomNay = ViewBag.DonHomNay as List<Web_Stadium.EFCore.DatSan> ?? new();
     var bieu = (ViewBag.Bieu6Thang as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
 }
@@ -30,7 +31,7 @@
 
     /* Hero */
     .db-hero {
-        background: linear-gradient(135deg, #0b2b40 0%, #1a5f7a 100%);
+        background: url("https://img.pikbest.com/wp/202347/soccer-field-illustration-minimalistic-3d-rendering-of-a-for-presenting-football-match-posters-or-banners-stunning_9746315.jpg!bw800");
         border-bottom: 1px solid var(--db-border);
         padding: 96px 0 28px;
     }
@@ -88,7 +89,7 @@
     }
 
     /* Sticky nav */
-    .db-nav {
+    .sticky-nav {
         background: var(--db-surface);
         border-bottom: 1px solid var(--db-border);
         padding: 10px 0;
@@ -97,13 +98,7 @@
         z-index: 100;
     }
 
-    .db-nav__inner {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .db-nav__btn {
+    .nav-btn {
         font-size: 12px;
         padding: 5px 14px;
         border-radius: 20px;
@@ -117,13 +112,13 @@
         transition: 0.15s;
     }
 
-        .db-nav__btn:hover {
+        .nav-btn:hover {
             background: var(--db-bg);
             color: var(--db-text);
             border-color: #cbd5e1;
         }
 
-    .db-nav__btn--active {
+    .nav-btn-active {
         background: var(--db-green-bg);
         color: var(--db-green);
         border-color: var(--db-green-border);
@@ -394,22 +389,7 @@
 </div>
 
 <!-- Sticky Nav -->
-<div class="db-nav">
-    <div class="container">
-        <div class="db-nav__inner">
-            <a href="/Owner" class="db-nav__btn db-nav__btn--active">📊 Tổng quan</a>
-            <a href="/Owner/DanhSachSan" class="db-nav__btn">🏟️ Danh sách sân</a>
-            <a href="/Owner/DangKySan" class="db-nav__btn">➕ Đăng ký sân</a>
-            <a href="/Tournament" class="db-nav__btn">🏆 Giải đấu</a>
-            <a href="/Owner/DanhSachDonDat" class="db-nav__btn">📋 Duyệt lịch</a>
-            <a href="/Owner/QuanLyAnh" class="db-nav__btn">🖼️ Quản lý ảnh</a>
-            <a href="/Owner/GoiYGiaSan" class="db-nav__btn">💡 Gợi ý giá sân</a>
-            <a href="/Owner/QuanLyStaff" class="db-nav__btn">👷 Nhân viên</a>
-            <a href="/Owner/BaoCao" class="db-nav__btn">📈 Báo cáo</a>
-            <a href="/Owner/DanhSachDanhGia" class="db-nav__btn">⭐ Đánh giá</a>
-        </div>
-    </div>
-</div>
+@await Html.PartialAsync("_OwnerNav")
 
 <!-- Main content -->
 <div class="container db-content">

@@ -1,6 +1,7 @@
 ﻿@{
     ViewData["Title"] = "Báo cáo kinh doanh";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "BaoCao";
 
     // --- Lấy dữ liệu từ ViewBag, xử lý null an toàn ---
     var data = (ViewBag.Data as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
@@ -224,22 +225,7 @@
     </div>
 </div>
 
-<div class="sticky-nav">
-    <div class="container">
-        <div class="d-flex gap-2 flex-wrap">
-            <a href="/Owner" class="nav-btn">📊 Tổng quan</a>
-            <a href="/Owner/DanhSachSan" class="nav-btn">🏟️ Danh sách sân</a>
-            <a href="/Owner/DangKySan" class="nav-btn">➕ Đăng ký sân</a>
-            <a href="/Owner/DanhSachDonDat" class="nav-btn">📋 Duyệt lịch</a>
-            <a href="/Owner/QuanLyAnh" class="nav-btn">🖼️ Quản lý ảnh</a>
-            <a href="/Owner/GoiYGiaSan" class="nav-btn">💡 Gợi ý giá sân</a>
-            <a href="/Owner/QuanLyStaff" class="nav-btn">👷 Nhân viên</a>
-            <a href="/Owner/BaoCao" class="nav-btn nav-btn-active">📈 Báo cáo </a>
-            <a href="/Owner/DanhSachDanhGia" class="nav-btn">⭐ Đánh giá</a>
-
-        </div>
-    </div>
-</div>
+@await Html.PartialAsync("_OwnerNav")
 
 <div class="container py-5">
 

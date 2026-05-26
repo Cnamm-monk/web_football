@@ -1,6 +1,7 @@
 ﻿@{
     ViewData["Title"] = "Gợi ý giá sân";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "GoiYGiaSan";
     var suggestion = ViewBag.Suggestion;
     var error = ViewBag.Error;
 }
@@ -87,22 +88,8 @@
     </div>
 </div>
 
-<!-- Sticky navigation – giống hệt các trang Owner khác -->
-<div class="sticky-nav">
-    <div class="container">
-        <div class="d-flex gap-2 flex-wrap">
-            <a href="/Owner" class="nav-btn">📊 Tổng quan</a>
-            <a href="/Owner/DanhSachSan" class="nav-btn">🏟️ Danh sách sân</a>
-            <a href="/Owner/DangKySan" class="nav-btn">➕ Đăng ký sân</a>
-            <a href="/Owner/DanhSachDonDat" class="nav-btn">📋 Duyệt lịch</a>
-            <a href="/Owner/QuanLyAnh" class="nav-btn">🖼️ Quản lý ảnh</a>
-            <a href="/Owner/GoiYGiaSan" class="nav-btn nav-btn-active">💡 Gợi ý giá sân</a>
-            <a href="/Owner/QuanLyStaff" class="nav-btn">👷 Nhân viên</a>
-            <a href="/Owner/BaoCao" class="nav-btn">📈 Báo cáo</a>
-            <a href="/Owner/DanhSachDanhGia" class="nav-btn">⭐ Đánh giá</a>
-        </div>
-    </div>
-</div>
+<!-- Sticky navigation – dùng partial chung -->
+@await Html.PartialAsync("_OwnerNav")
 
 <div class="container py-5">
     @if (!string.IsNullOrEmpty(error))
