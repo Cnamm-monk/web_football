@@ -35,6 +35,8 @@ public partial class DatSan
 
     public virtual ICollection<DatSanDichVu> DatSanDichVus { get; set; } = new List<DatSanDichVu>();
 
+    public virtual ICollection<DiemThuongLog> DiemThuongLogs { get; set; } = new List<DiemThuongLog>();
+
     public virtual ICollection<KhieuNai> KhieuNais { get; set; } = new List<KhieuNai>();
 
     public virtual KhungGio KhungGio { get; set; } = null!;
@@ -46,4 +48,6 @@ public partial class DatSan
     public virtual User? StaffCheckOut { get; set; }
 
     public virtual User User { get; set; } = null!;
+
+    public virtual ICollection<UserVoucher> UserVouchers { get; set; } = new List<UserVoucher>();
 }

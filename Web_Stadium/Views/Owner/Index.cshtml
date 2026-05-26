@@ -5,6 +5,228 @@
     var bieu = (ViewBag.Bieu6Thang as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
 }
 
+<div style="background:var(--bg2);padding:100px 0 40px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Chủ sân</div>
+        <h1 style="font-style:italic;line-height:0.9;margin-bottom:8px">
+            DASHBOARD<br><span class="text-green">OWNER PORTAL</span>
+        </h1>
+        <p style="color:var(--muted)">Quản lý cơ sở sân bóng của bạn</p>
+    </div>
+</div>
+
+<!-- MENU OWNER -->
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2 flex-wrap justify-content-center">
+        <a href="/Owner" class="btn btn-outline-success rounded-pill">📊 Tổng quan</a>
+        <a href="/Tournament" class="btn btn-outline-dark rounded-pill">🏆 Giải đấu</a>
+        <a href="/Owner/DanhSachSan" class="btn btn-outline-green rounded-pill">🏟️ Danh sách sân</a>
+        @{
+            var soDonCho = (int)(ViewBag.SoDonChoDuyet ?? 0);
+        }
+        <a href="/Owner/DuyetDon"
+           class="btn rounded-pill @(soDonCho > 0 ? "btn-danger" : "btn-outline-danger")"
+           style="position:relative;">
+            ✅ Duyệt đơn
+            @if (soDonCho > 0)
+            {
+                <span style="position:absolute;top:-6px;right:-6px;background:#fff;color:#ef4444;
+                                 font-size:.65rem;width:18px;height:18px;border-radius:50%;
+                                 display:flex;align-items:center;justify-content:center;font-weight:700;
+                                 box-shadow:0 0 0 2px #ef4444;">
+                    @soDonCho
+                </span>
+            }
+        </a>
+        <a href="/Owner/HoanCoc" class="btn btn-outline-warning rounded-pill">💰 Hoàn cọc</a>
+        <a href="/Owner/DangKySan" class="btn btn-outline-warning rounded-pill">➕ Đăng ký sân mới</a>
+        <a href="/Owner/QuanLyStaff" class="btn btn-outline-info rounded-pill">👷 Nhân viên</a>
+        <a href="/Owner/BaoCao" class="btn btn-outline-primary rounded-pill">📈 Báo cáo</a>
+    </div>
+</div>
+
+<div class="container py-5">
+
+    <!-- KPI -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="owner-kpi-card">
+                <div class="owner-kpi-top">
+                    <div>
+                        <div class="owner-kpi-label">TỔNG SÂN</div>
+                        <div class="owner-kpi-value">@ViewBag.TongSan</div>
+                    </div>
+
+                    <div class="owner-kpi-icon">
+                        🏟️
+                    </div>
+                </div>
+
+                <div class="owner-kpi-desc">
+                    @ViewBag.SanDaDuyet đã duyệt /
+                    @ViewBag.SanChoDuyet chờ duyệt
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="owner-kpi-card active-green">
+                <div class="owner-kpi-top">
+                    <div>
+                        <div class="owner-kpi-label text-green">
+                            THU THUẦN THÁNG
+                        </div>
+
+                        <div class="owner-kpi-value text-green">
+                            @(((decimal)ViewBag.DoanhThuThang / 1_000_000m).ToString("F1"))M
+                        </div>
+                    </div>
+
+                    <div class="owner-kpi-icon green">
+                        💰
+                    </div>
+                </div>
+
+                <div class="owner-kpi-desc text-green">
+                    Sau khi trừ hoa hồng PitchHub
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="owner-kpi-card">
+                <div class="owner-kpi-top">
+                    <div>
+                        <div class="owner-kpi-label">
+                            HOA HỒNG
+                        </div>
+
+                        <div class="owner-kpi-value">
+                            @(((decimal)ViewBag.HoaHongThang / 1_000_000m).ToString("F2"))M
+                        </div>
+                    </div>
+
+                    <div class="owner-kpi-icon orange">
+                        📉
+                    </div>
+                </div>
+
+                <div class="owner-kpi-desc">
+                    Phí nền tảng tháng này
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="owner-kpi-card">
+                <div class="owner-kpi-top">
+                    <div>
+                        <div class="owner-kpi-label">
+                            ĐƠN HÔM NAY
+                        </div>
+
+                        <div class="owner-kpi-value">
+                            @donHomNay.Count
+                        </div>
+                    </div>
+
+                    <div class="owner-kpi-icon blue">
+                        📅
+                    </div>
+                </div>
+
+                <div class="owner-kpi-desc">
+                    Lịch đặt sân hôm nay
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- CHART + BOOKING -->
+    <div class="row g-4 mb-5">
+
+        <!-- Chart -->
+        <div class="col-lg-7">
+
+            <div class="owner-panel h-100">
+
+                <div class="owner-panel-head">
+                    <div>
+                        <div class="owner-panel-title">
+                            Doanh thu 6 tháng
+                        </div>
+
+                        <div class="owner-panel-sub">
+                            Sau khi trừ hoa hồng PitchHub
+                        </div>
+                    </div>
+                </div>
+
+                <div style="position:relative;height:320px">
+                    <canvas id="chartBieu"></canvas>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Booking -->
+        <div class="col-lg-5">
+
+            <div class="owner-panel h-100">
+
+                <div class="owner-panel-head">
+                    <div>
+                        <div class="owner-panel-title">
+                            Lịch đặt hôm nay
+                        </div>
+
+                        <div class="owner-panel-sub">
+                            @DateTime.Now.ToString("dd/MM/yyyy")
+                        </div>
+                    </div>
+                </div>
+
+                @if (!donHomNay.Any())
+                {
+                    <div class="empty-owner">
+                        Chưa có lịch đặt hôm nay
+                    </div>
+                }
+
+                @foreach (var don in donHomNay)
+                {
+                    var statusColor = don.TrangThai switch
+                    {
+                        "DaXacNhan" => "#0EA86A",
+                        "DangSuDung" => "#8E44AD",
+                        "HoanThanh" => "#0EA5E9",
+                        _ => "#64748B"
+                    };
+
+                    var statusBg = don.TrangThai switch
+                    {
+                        "DaXacNhan" => "rgba(14,168,106,.10)",
+                        "DangSuDung" => "rgba(142,68,173,.12)",
+                        "HoanThanh" => "rgba(14,165,233,.12)",
+                        _ => "rgba(100,116,139,.08)"
+                    };
+
+                    <div class="booking-modern-item">
+
+                        <div class="booking-modern-left">
+
+                            <div class="booking-modern-time">
+                                <strong>
+                                    @don.KhungGio?.GioBatDau.ToString(@"hh\:mm")
+                                </strong>
+
+                                <span>
+                                    @don.KhungGio?.GioKetThuc.ToString(@"hh\:mm")
+                                </span>
+                            </div>
 <style>
     /* ========== LIGHT THEME – NỀN TRẮNG, CHỮ ĐEN ========== */
     :root {
@@ -368,16 +590,14 @@
         letter-spacing: 0.3px;
     }
 
-    .db-action__desc {
-        font-size: 11px;
-        color: var(--db-muted);
-        line-height: 1.4;
-    }
+        @{
+                    var lbls = System.Text.Json.JsonSerializer.Serialize(
+                                    bieu.Select(d => (string)d.thang)
+                    );
 
-    /* Responsive */
-    @@media (max-width: 768px) {
-        .db-kpi-grid, .db-actions-grid {
-            grid-template-columns: repeat(2, 1fr);
+                    var dts = System.Text.Json.JsonSerializer.Serialize(
+                                    bieu.Select(d => Math.Round((double)d.dt / 1_000_000, 2))
+                    );
         }
 
         .db-two-col {

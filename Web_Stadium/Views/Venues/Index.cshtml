@@ -2,7 +2,12 @@
 @{
     ViewData["Title"] = "Tìm sân bóng";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var yeuThichIds = ViewBag.YeuThichIds as System.Collections.Generic.HashSet<int>
+                   ?? new System.Collections.Generic.HashSet<int>();
+    var currentUserId = ViewBag.UserId as int?;
 }
+@* AntiForgery token ẩn để JS dùng cho bookmark *@
+<form id="afForm" style="display:none">@Html.AntiForgeryToken()</form>
 
 @section Styles {
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -359,9 +364,9 @@
             {
                 <a href="/Venues"
                    style="font-family:var(--ff-h); font-size:10px; font-weight:700; letter-spacing:1px;
-                                  text-transform:uppercase; padding:10px 16px; border-radius:10px;
-                                  border:1.5px solid var(--border2); background:#fff; color:var(--muted);
-                                  text-decoration:none; white-space:nowrap;">
+                                      text-transform:uppercase; padding:10px 16px; border-radius:10px;
+                                      border:1.5px solid var(--border2); background:#fff; color:var(--muted);
+                                      text-decoration:none; white-space:nowrap;">
                     ✕ Xoá lọc
                 </a>
             }
@@ -375,21 +380,21 @@
             @if (!string.IsNullOrEmpty(tuKhoa))
             {
                 <span style="background:rgba(14,168,106,0.10); border:1px solid rgba(14,168,106,0.25); color:#0EA86A;
-                                             font-family:var(--ff-h); font-size:9px; letter-spacing:1px; padding:3px 10px; border-radius:999px;">
+                                                     font-family:var(--ff-h); font-size:9px; letter-spacing:1px; padding:3px 10px; border-radius:999px;">
                     🔍 "@tuKhoa"
                 </span>
             }
             @if (!string.IsNullOrEmpty(loaiSan))
             {
                 <span style="background:rgba(14,168,106,0.10); border:1px solid rgba(14,168,106,0.25); color:#0EA86A;
-                                             font-family:var(--ff-h); font-size:9px; letter-spacing:1px; padding:3px 10px; border-radius:999px;">
+                                                     font-family:var(--ff-h); font-size:9px; letter-spacing:1px; padding:3px 10px; border-radius:999px;">
                     ⚽ Sân @loaiSan người
                 </span>
             }
             @if (!string.IsNullOrEmpty(loaiCo))
             {
                 <span style="background:rgba(14,168,106,0.10); border:1px solid rgba(14,168,106,0.25); color:#0EA86A;
-                                             font-family:var(--ff-h); font-size:9px; letter-spacing:1px; padding:3px 10px; border-radius:999px;">
+                                                     font-family:var(--ff-h); font-size:9px; letter-spacing:1px; padding:3px 10px; border-radius:999px;">
                     🌱 @(loaiCo == "Nhan tao" ? "Cỏ nhân tạo" : "Cỏ tự nhiên")
                 </span>
             }
@@ -463,13 +468,26 @@
                                 <span class="stag stag-b">🌱 @san.LoaiCo</span>
                             </div>
                         </div>
-                        <div>
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
                             <div class="san-item-rating">★ @san.DanhGiaTrungBinh.ToString("F1")</div>
+                            @if (currentUserId.HasValue)
+                            {
+                                <button onclick="event.stopPropagation();toggleTimSan(@san.Id,this)"
+                                        title="@(yeuThichIds.Contains(san.Id) ? "Bỏ yêu thích" : "Thêm yêu thích")"
+                                        style="background:rgba(0,0,0,.4);border:none;border-radius:50%;
+                                                           width:30px;height:30px;font-size:1rem;cursor:pointer;
+                                                           display:flex;align-items:center;justify-content:center;
+                                                           transition:background .2s;"
+                                        onmouseover="this.style.background='rgba(0,0,0,.7)'"
+                                        onmouseout="this.style.background='rgba(0,0,0,.4)'">
+                                    @(yeuThichIds.Contains(san.Id) ? "❤️" : "🤍")
+                                </button>
+                            }
                             <a href="/Venues/Details/@san.Id"
                                onclick="event.stopPropagation()"
-                               style="display:block; margin-top:8px; font-family:var(--ff-h); font-size:9px; font-weight:700;
-                                                      letter-spacing:1px; text-transform:uppercase; padding:5px 10px; border-radius:6px;
-                                                      background:var(--green); color:#fff; text-decoration:none; text-align:center; white-space:nowrap;">
+                               style="display:block;font-family:var(--ff-h);font-size:9px;font-weight:700;
+                                              letter-spacing:1px;text-transform:uppercase;padding:5px 10px;border-radius:6px;
+                                              background:var(--green);color:#fff;text-decoration:none;text-align:center;white-space:nowrap;">
                                 Đặt sân
                             </a>
                         </div>
@@ -484,17 +502,17 @@
 <script id="san-data" type="application/json">
     @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select((s, i) => new {
         id = s.Id,
-                                ten = s.TenSan,
-                                tenLow = s.TenSan.ToLower(),
-                                quan = s.Quan,
-                                quanLow = s.Quan.ToLower(),
-                                diaChi = s.DiaChi + " — " + s.Quan,
-                                loaiSan = s.LoaiSan.ToString(),
-                                loaiCo = s.LoaiCo,
-                                rating = s.DanhGiaTrungBinh,
-                                lat = 21.0285 + (i % 5) * 0.012 + (s.Id % 3) * 0.005,
-                                lng = 105.8542 + (i % 4) * 0.015 + (s.Id % 3) * 0.006
-                })))
+                                                                ten = s.TenSan,
+                                                                tenLow = s.TenSan.ToLower(),
+                                                                quan = s.Quan,
+                                                                quanLow = s.Quan.ToLower(),
+                                                                diaChi = s.DiaChi + " — " + s.Quan,
+                                                                loaiSan = s.LoaiSan.ToString(),
+                                                                loaiCo = s.LoaiCo,
+                                                                rating = s.DanhGiaTrungBinh,
+                                                                lat = 21.0285 + (i % 5) * 0.012 + (s.Id % 3) * 0.005,
+                                                                lng = 105.8542 + (i % 4) * 0.015 + (s.Id % 3) * 0.006
+                                })))
 </script>
 
 @section Scripts {
@@ -678,4 +696,23 @@
           });
         })();
     </script>
+    <script>
+        async function toggleTimSan(sanId, btn) {
+            var token = document.querySelector('#afForm input[name="__RequestVerificationToken"]')?.value || '';
+            try {
+                var res = await fetch('/User/ToggleYeuThich', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'sanBongId=' + sanId + '&__RequestVerificationToken=' + encodeURIComponent(token)
+                });
+                if (res.ok) {
+                    var data = await res.json();
+                    btn.textContent = data.liked ? '❤️' : '🤍';
+                    btn.title = data.liked ? 'Bỏ yêu thích' : 'Thêm yêu thích';
+                    if (window.reloadHeartDD) window.reloadHeartDD();
+                }
+            } catch(e) { console.error(e); }
+        }
+    </script>
+
 }

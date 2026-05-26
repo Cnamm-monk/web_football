@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
-using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
+using Web_Stadium.Services;
 
 namespace Web_Stadium.Controllers
 {
@@ -11,11 +11,13 @@ namespace Web_Stadium.Controllers
     {
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
+        private readonly EmailService _emailService;
 
-        public StaffController(SanBongContext context, IConfiguration config)
+        public StaffController(SanBongContext context, IConfiguration config, EmailService emailService)
         {
             _context = context;
             _config = config;
+            _emailService = emailService;
         }
 
         private int GetStaffId() => TokenHelper.LayUserId(Request, _config)!.Value;
@@ -103,23 +105,58 @@ namespace Web_Stadium.Controllers
         {
             var sanIds = await GetSanDuocGiaoAsync();
             var don = await _context.DatSans
-                .Include(d => d.KhungGio)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.User)
                 .FirstOrDefaultAsync(d => d.Id == datSanId
                                        && sanIds.Contains(d.KhungGio.SanBongId));
 
             if (don == null) return NotFound();
 
+            // Thông báo lý do từ chối rõ ràng theo flow
             if (don.TrangThai != "DaXacNhan")
             {
-                TempData["Error"] = $"Đơn #{datSanId} đang ở trạng thái \"{don.TrangThai}\", không thể check-in.";
+                var lyDo = don.TrangThai switch
+                {
+                    "ChoDuyet" => "Đơn đang chờ Owner xác nhận. Hướng dẫn khách liên hệ Owner để được duyệt nhanh.",
+                    "DaHuy" => "Đơn này đã bị hủy — không thể check-in.",
+                    "DangSuDung" => "Khách đã được check-in rồi.",
+                    "HoanThanh" => "Đơn này đã hoàn thành.",
+                    _ => $"Đơn ở trạng thái \"{ don.TrangThai }\" — không thể check-in."
+                };
+                TempData["Error"] = lyDo;
                 return RedirectToAction("CheckIn");
             }
 
             don.TrangThai = "DangSuDung";
             don.StaffCheckInId = GetStaffId();
+
+            // ✅ ĐỒNG BỘ VỚI FLOW USER: Trừ kho dịch vụ đặt trước khi check-in
+            // (dịch vụ đặt online không trừ kho ngay — chỉ trừ khi Staff xác nhận giao hàng)
+            var dichVuDatTruoc = await _context.DatSanDichVus
+                .Include(x => x.DichVu)
+                .Where(x => x.DatSanId == datSanId)
+                .ToListAsync();
+
+            foreach (var item in dichVuDatTruoc)
+            {
+                if (item.DichVu != null)
+                    item.DichVu.TonKho = Math.Max(0, item.DichVu.TonKho - item.SoLuong);
+            }
+
+            // Ghi AuditLog
+            _context.AuditLogs.Add(new Web_Stadium.EFCore.AuditLog
+            {
+                UserId = GetStaffId(),
+                VaiTro = "Staff",
+                HanhDong = "CheckIn",
+                DoiTuong = "DatSan",
+                DoiTuongId = datSanId,
+                MoTa = $"Check-in đơn {don.MaXacNhan} — {don.User?.HoTen}"
+            });
+
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"Check-in thành công! Đơn #{don.MaXacNhan}";
+            TempData["Success"] = $"✅ Check-in thành công! {don.User?.HoTen} — {don.KhungGio?.SanBong?.TenSan} | Mã: {don.MaXacNhan}";
             return RedirectToAction("Index");
         }
 
@@ -252,7 +289,21 @@ namespace Web_Stadium.Controllers
             var kg = don.KhungGio;
             kg.TrangThai = "Trong";
 
+            // Ghi AuditLog checkout
+            _context.AuditLogs.Add(new Web_Stadium.EFCore.AuditLog
+            {
+                UserId = GetStaffId(),
+                VaiTro = "Staff",
+                HanhDong = "CheckOut",
+                DoiTuong = "DatSan",
+                DoiTuongId = datSanId,
+                MoTa = $"Check-out đơn {don.MaXacNhan} — Thu {(tongTatCa - don.TienCoc):N0}đ"
+            });
+
             await _context.SaveChangesAsync();
+
+            // BackgroundJobService sẽ tự gửi email mời đánh giá sau 30 phút
+            // (kiểm tra AuditLog "GuiMoiDanhGia" để không gửi trùng)
 
             TempData["Success"] = $"Check-out thành công! Thu {(tongTatCa - don.TienCoc):N0}đ. Tổng đơn: {tongTatCa:N0}đ.";
             return RedirectToAction("Index");
@@ -311,6 +362,78 @@ namespace Web_Stadium.Controllers
             return RedirectToAction("SuCo");
         }
 
+
+        // ══════════════════════════════════════════════════════════
+        // 6. ĐƠN VÃNG LAI — Bán lẻ độc lập sau khi đơn đã HoanThanh
+        // GET /Staff/VangLai
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> VangLai()
+        {
+            var sanIds = await GetSanDuocGiaoAsync();
+
+            // Tổng hợp dịch vụ của tất cả sân được phân công
+            ViewBag.DanhSachDichVu = await _context.DichVus
+                .Include(d => d.SanBong)
+                .Where(d => sanIds.Contains(d.SanBongId)
+                         && d.IsActive && d.TonKho > 0)
+                .ToListAsync();
+
+            return View();
+        }
+
+        // POST /Staff/ThucHienVangLai
+        [HttpPost]
+        public async Task<IActionResult> ThucHienVangLai(
+            List<int> dichVuIds, List<int> soLuongs)
+        {
+            var sanIds = await GetSanDuocGiaoAsync();
+            if (!dichVuIds.Any())
+            {
+                TempData["Error"] = "Chưa chọn dịch vụ nào!";
+                return RedirectToAction("VangLai");
+            }
+
+            decimal tongTien = 0;
+            var ghiChu = new List<string>();
+
+            for (int i = 0; i < dichVuIds.Count; i++)
+            {
+                var sl = (soLuongs != null && i < soLuongs.Count) ? soLuongs[i] : 1;
+                if (sl <= 0) continue;
+
+                var dv = await _context.DichVus
+                    .FirstOrDefaultAsync(d => d.Id == dichVuIds[i]
+                                           && sanIds.Contains(d.SanBongId));
+                if (dv == null || dv.TonKho < sl) continue;
+
+                dv.TonKho -= sl;
+                tongTien += dv.Gia * sl;
+                ghiChu.Add($"{dv.TenDichVu}×{sl}");
+            }
+
+            if (tongTien == 0)
+            {
+                TempData["Error"] = "Không có dịch vụ hợp lệ!";
+                return RedirectToAction("VangLai");
+            }
+
+            // Ghi AuditLog cho đơn vãng lai (không tạo DatSan mới)
+            _context.AuditLogs.Add(new Web_Stadium.EFCore.AuditLog
+            {
+                UserId = GetStaffId(),
+                VaiTro = "Staff",
+                HanhDong = "BanVangLai",
+                DoiTuong = "VangLai",
+                DoiTuongId = 0,
+                MoTa = $"Đơn vãng lai: {string.Join(", ", ghiChu)} — Tổng: {tongTien:N0}đ"
+            });
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"✅ Đơn vãng lai hoàn tất! {string.Join(", ", ghiChu)} — Thu {tongTien:N0}đ";
+            return RedirectToAction("VangLai");
+        }
+
         // ══════════════════════════════════════════════════════════
         // AJAX: Lấy trạng thái slot realtime (dùng cho dashboard)
         // ══════════════════════════════════════════════════════════
@@ -325,11 +448,59 @@ namespace Web_Stadium.Controllers
                 {
                     id = k.Id,
                     sanTen = k.SanBong.TenSan,
-                    bat = k.GioBatDau.ToString(@"hh\:mm"),
-                    ket = k.GioKetThuc.ToString(@"hh\:mm"),
+                    bat = k.GioBatDau.ToString("HH:mm"),
+                    ket = k.GioKetThuc.ToString("HH:mm"),
                     trangThai = k.TrangThai
                 }).ToListAsync();
             return Json(slots);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // HO SO
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> HoSo(string tab = "tongquan")
+        {
+            var userId = GetStaffId();
+            var user = await _context.Users.FindAsync(userId);
+
+            var sanIds = await _context.StaffSanPhanCongs
+                .Where(s => s.StaffId == userId)
+                .Select(s => s.SanBongId).ToListAsync();
+
+            var sanPhanCong = await _context.SanBongs
+                .Where(s => sanIds.Contains(s.Id)).ToListAsync();
+
+            // Lịch: đơn tại sân phụ trách (7 ngày tới + 30 ngày qua)
+            var lichSuCa = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.User)
+                .Where(d => sanIds.Contains(d.KhungGio.SanBongId)
+                         && d.NgayThiDau >= DateTime.Today.AddDays(-30)
+                         && d.NgayThiDau <= DateTime.Today.AddDays(7))
+                .OrderByDescending(d => d.NgayThiDau).ToListAsync();
+
+            // Tổng giờ phục vụ thực từ khung giờ
+            var tongGio = lichSuCa
+                .Where(d => d.KhungGio != null && d.TrangThai == "HoanThanh")
+                .Sum(d => (d.KhungGio!.GioKetThuc - d.KhungGio.GioBatDau).TotalHours);
+
+            // Tồn kho các sân phụ trách
+            var dichVuBySan = await _context.DichVus
+                .Include(d => d.SanBong)
+                .Where(d => sanIds.Contains(d.SanBongId) && d.IsActive)
+                .GroupBy(d => d.SanBongId)
+                .ToDictionaryAsync(g => g.Key, g => g.ToList());
+
+            ViewBag.SanPhanCong = sanPhanCong;
+            ViewBag.LichSuCa = lichSuCa;
+            ViewBag.SoCheckIn = lichSuCa.Count(d => d.StaffCheckInId == userId);
+            ViewBag.SoCheckOut = lichSuCa.Count(d => d.StaffCheckOutId == userId);
+            ViewBag.TongGioLam = tongGio;
+            ViewBag.SoSuCo = await _context.AuditLogs
+                .CountAsync(a => a.UserId == userId && a.HanhDong == "SuCo");
+            ViewBag.DichVuBySan = dichVuBySan;
+            ViewBag.Tab = tab;
+            return View(user);
         }
     }
 }

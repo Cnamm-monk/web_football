@@ -4,7 +4,6 @@ using System.Security.Claims;
 using System.Text;
 using Web_Stadium.EFCore;
 
-
 namespace Web_Stadium.Controllers
 {
     public static class TokenHelper
