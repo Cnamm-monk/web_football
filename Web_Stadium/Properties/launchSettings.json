@@ -1,0 +1,52 @@
+﻿{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:40429",
+      "sslPort": 44364
+    }
+  },
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "http://localhost:5290",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_USE_POLLING_FILE_WATCHER": "false",
+        "DOTNET_HOSTBUILDER_RELOADCONFIGONCHANGE": "false",
+        "DOTNET_WATCH_RESTART_ON_FILE_CHANGE": "false",
+        "DOTNET_WATCH_SUPPRESS_BROWSER_REFRESH": "true",
+        "DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER": "true",
+        "ASPNETCORE_HOSTINGSTARTUPASSEMBLIES": "",
+        "ASPNETCORE_HOSTINGSTARTUPEXCLUDEASSEMBLIES": "Microsoft.AspNetCore.Watch.BrowserRefresh;Microsoft.WebTools.BrowserLink.Net"
+      }
+    },
+    "https": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "https://localhost:7045;http://localhost:5290",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_USE_POLLING_FILE_WATCHER": "false",
+        "DOTNET_HOSTBUILDER_RELOADCONFIGONCHANGE": "false",
+        "DOTNET_WATCH_RESTART_ON_FILE_CHANGE": "false",
+        "DOTNET_WATCH_SUPPRESS_BROWSER_REFRESH": "true",
+        "DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER": "true",
+        "ASPNETCORE_HOSTINGSTARTUPASSEMBLIES": "",
+        "ASPNETCORE_HOSTINGSTARTUPEXCLUDEASSEMBLIES": "Microsoft.AspNetCore.Watch.BrowserRefresh;Microsoft.WebTools.BrowserLink.Net"
+      }
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

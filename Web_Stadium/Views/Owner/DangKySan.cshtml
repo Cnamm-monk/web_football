@@ -1,0 +1,304 @@
+﻿@* Views/Owner/DangKySan.cshtml *@
+@{
+    ViewData["Title"] = "Đăng ký sân mới";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var quans = ViewBag.Quans as List<Web_Stadium.EFCore.DanhMucQuan> ?? new();
+    var loaiSans = ViewBag.LoaiSans as List<Web_Stadium.EFCore.DanhMucLoaiSan> ?? new();
+    var loaiCos = ViewBag.LoaiCos as List<Web_Stadium.EFCore.DanhMucLoaiCo> ?? new();
+}
+
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+
+    /* ── ĐỒNG BỘ FONT VỚI CÁC TRANG OWNER KHÁC ── */
+    body, input, select, textarea, button, .form-label, .nav-btn, .db-section-label, .info-note {
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+    }
+
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+    }
+
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 24px 0 20px;
+    }
+
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        transition: 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .nav-btn:hover {
+            background: var(--db-bg);
+            color: var(--db-text);
+            border-color: #cbd5e1;
+        }
+
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+
+    .form-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        padding: 24px;
+    }
+
+    .form-control, .form-select {
+        background: var(--db-surface);
+        border: 1px solid var(--db-border);
+        color: var(--db-text);
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--db-green);
+            box-shadow: 0 0 0 3px rgba(15,110,74,0.1);
+            outline: none;
+        }
+
+    .form-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--db-muted);
+        margin-bottom: 4px;
+    }
+
+    .preview-card {
+        background: var(--db-green-bg);
+        border: 1px solid var(--db-green-border);
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 24px;
+    }
+
+    .btn-green {
+        background: var(--db-green);
+        border: none;
+        border-radius: 40px;
+        padding: 8px 28px;
+        font-weight: 500;
+        color: white;
+        transition: 0.2s;
+        font-family: inherit;
+    }
+
+        .btn-green:hover {
+            background: #0a5338;
+            transform: translateY(-1px);
+        }
+
+    .info-note {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #1e40af;
+        font-family: inherit;
+    }
+
+    .text-muted {
+        color: var(--db-muted) !important;
+    }
+</style>
+
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / ĐĂNG KÝ SÂN</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Đăng ký <span style="color: var(--db-green);">sân mới</span></h1>
+                <p class="text-muted mt-2 mb-0">Điền thông tin → Xem hợp đồng → Xác nhận đăng ký</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="sticky-nav">
+    <div class="container">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/Owner" class="nav-btn">📊 Tổng quan</a>
+            <a href="/Owner/DanhSachSan" class="nav-btn">🏟️ Danh sách sân</a>
+            <a href="/Owner/DangKySan" class="nav-btn nav-btn-active">➕ Đăng ký sân</a>
+            <a href="/Owner/DanhSachDonDat" class="nav-btn">📋 Duyệt lịch</a>
+            <a href="/Owner/QuanLyAnh" class="nav-btn">🖼️ Quản lý ảnh</a>
+            <a href="/Owner/GoiYGiaSan" class="nav-btn">💡 Gợi ý giá sân</a>
+            <a href="/Owner/QuanLyStaff" class="nav-btn">👷 Nhân viên</a>
+            <a href="/Owner/BaoCao" class="nav-btn">📈 Báo cáo</a>
+            <a href="/Owner/DanhSachDanhGia" class="nav-btn">⭐ Đánh giá</a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3">
+                    <i class="fas fa-exclamation-circle me-2"></i> @TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            <div class="form-card">
+                <form method="post" action="/Owner/XemHopDongPreview">
+                    <!-- Preview vùng hoa hồng (ẩn ban đầu) -->
+                    <div id="hopDongPreview" style="display:none;" class="preview-card">
+                        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--db-muted); margin-bottom: 6px;">KHU VỰC ÁP DỤNG HOA HỒNG</div>
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <div id="vungDot" style="width: 14px; height: 14px; border-radius: 50%; background: #aaa;"></div>
+                            <span id="tenVung" style="font-weight: 600; color: var(--db-green);"></span>
+                            <span>→</span>
+                            <span id="tyLeHH" style="font-size: 1.2rem; font-weight: 700; color: var(--db-green);"></span>
+                            <span class="text-muted small">hoa hồng trên doanh thu</span>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="form-label">TÊN CƠ SỞ *</div>
+                            <input type="text" name="tenSan" class="form-control" required
+                                   placeholder="VD: Sân Bóng Cầu Giấy Sport">
+                        </div>
+                        <div class="col-12">
+                            <div class="form-label">ĐỊA CHỈ *</div>
+                            <input type="text" name="diaChi" class="form-control" required
+                                   placeholder="Số nhà, tên đường">
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-label">QUẬN/HUYỆN *</div>
+                            <select name="quan" id="selectQuan" class="form-select" required>
+                                <option value="">-- Chọn quận/huyện --</option>
+                                @foreach (var q in quans)
+                                {
+                                    <option value="@q.TenQuan"
+                                            data-vung="@(q.VungKhuVuc?.TenVung ?? "Chưa phân vùng")"
+                                            data-tyle="@(q.VungKhuVuc?.TyLeHoaHong ?? 0.10m)"
+                                            data-mau="@(q.VungKhuVuc?.MauSac ?? "#aaa")">
+                                        @q.TenQuan
+                                        @if (q.VungKhuVuc != null)
+                                        {
+                                            <text>(@((q.VungKhuVuc.TyLeHoaHong * 100).ToString("F0"))% HH)</text>
+                                        }
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-label">THÀNH PHỐ *</div>
+                            <input type="text" name="thanhPho" class="form-control" value="Hà Nội">
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-label">LOẠI SÂN *</div>
+                            <select name="loaiSan" class="form-select" required>
+                                @foreach (var ls in loaiSans)
+                                {
+                                    <option value="@ls.MaLoai">@ls.TenLoai</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-label">LOẠI CỎ *</div>
+                            <select name="loaiCo" class="form-select" required>
+                                @foreach (var lc in loaiCos)
+                                {
+                                    <option value="@lc.MaLoai">@lc.TenLoai</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-label">TỶ LỆ CỌC (%)</div>
+                            <select name="tyLeCoc" class="form-select">
+                                <option value="0.30">30% (phổ biến)</option>
+                                <option value="0.40">40%</option>
+                                <option value="0.50">50%</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-label">VĨ ĐỘ (Lat)</div>
+                            <input type="number" name="latitude" step="0.0001" value="21.0285" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-label">KINH ĐỘ (Lng)</div>
+                            <input type="number" name="longitude" step="0.0001" value="105.8542" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <div class="form-label">MÔ TẢ CƠ SỞ</div>
+                            <textarea name="moTa" rows="3" class="form-control"
+                                      placeholder="Giới thiệu ngắn về cơ sở của bạn..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="info-note mt-4">
+                        <i class="fas fa-file-signature me-2"></i>
+                        Sau khi điền xong, bạn sẽ được xem <strong>Hợp đồng Điện tử</strong> với tỷ lệ hoa hồng theo khu vực của sân. Vui lòng đọc kỹ trước khi xác nhận.
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <button type="submit" class="btn btn-green px-4">
+                            Tiếp theo — Xem hợp đồng <i class="fas fa-arrow-right ms-2"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('selectQuan').addEventListener('change', function() {
+            var opt = this.options[this.selectedIndex];
+            var vung = opt.dataset.vung;
+            var tyle = parseFloat(opt.dataset.tyle || 0);
+            var mau  = opt.dataset.mau || '#aaa';
+            if (vung && tyle) {
+                document.getElementById('tenVung').textContent = vung;
+                document.getElementById('tyLeHH').textContent = (tyle * 100).toFixed(0) + '%';
+                document.getElementById('vungDot').style.background = mau;
+                document.getElementById('hopDongPreview').style.display = 'block';
+            } else {
+                document.getElementById('hopDongPreview').style.display = 'none';
+            }
+        });
+    </script>
+}

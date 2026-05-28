@@ -1,0 +1,270 @@
+﻿@* Views/Owner/DanhSachSan.cshtml *@
+@model List<Web_Stadium.EFCore.SanBong>
+@{
+    ViewData["Title"] = "Danh sách sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var tyLeMap = ViewBag.TyLeMap as Dictionary<string, decimal> ?? new();
+}
+
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+    }
+    .pitch-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        transition: all 0.2s ease;
+        overflow: hidden;
+    }
+    .pitch-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px -8px rgba(0,0,0,0.08);
+        border-color: var(--db-green-border);
+    }
+    .pitch-card.opacity-50 { opacity: 0.6; }
+    .pitch-header {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--db-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .pitch-title {
+        font-weight: 700;
+        font-size: 1.2rem;
+        margin: 0;
+        color: var(--db-text);
+    }
+    .pitch-address {
+        font-size: 12px;
+        color: var(--db-muted);
+        margin-top: 5px;
+    }
+    .pitch-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+    .badge-custom {
+        background: #eef2ff;
+        color: #1e40af;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .badge-grass { background: #e6f7e6; color: #2e7d32; }
+    .status-approved { background: rgba(15,110,74,0.12); color: #0f6e4a; border: 1px solid rgba(15,110,74,0.2); }
+    .status-pending { background: rgba(245,158,11,0.1); color: #b45309; border: 1px solid rgba(245,158,11,0.2); }
+    .status-rejected { background: rgba(220,38,38,0.1); color: #b91c1c; border: 1px solid rgba(220,38,38,0.2); }
+    .pitch-commission { text-align: right; }
+    .pitch-commission-label { font-size: 11px; color: var(--db-muted); }
+    .pitch-commission-value { font-size: 18px; font-weight: 700; color: var(--db-green); }
+    .pitch-commission-sub { font-size: 11px; color: var(--db-muted); margin-top: 2px; }
+    .pitch-actions {
+        padding: 12px 20px;
+        border-top: 1px solid var(--db-border);
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .btn-outline-custom {
+        background: transparent;
+        border: 1px solid var(--db-border);
+        border-radius: 40px;
+        padding: 5px 14px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--db-text);
+        transition: 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn-outline-custom:hover {
+        background: var(--db-green-bg);
+        border-color: var(--db-green-border);
+        color: var(--db-green);
+    }
+    /* Header gọn nhẹ - không padding-top quá lớn */
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 20px 0 20px;
+        margin-top: 0;
+    }
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        transition: 0.15s;
+    }
+    .nav-btn:hover {
+        background: var(--db-bg);
+        color: var(--db-text);
+        border-color: #cbd5e1;
+    }
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+    .empty-state {
+        text-align: center;
+        padding: 80px 0;
+        color: var(--db-muted);
+    }
+    .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.4; }
+</style>
+
+<!-- Header rút gọn, không còn khoảng trống lớn -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / QUẢN LÝ SÂN</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Danh sách <span style="color: var(--db-green);">cơ sở sân</span></h1>
+                <p class="text-muted mt-2 mb-0">Quản lý, cập nhật thông tin và cấu hình từng sân</p>
+            </div>
+            <a href="/Owner/DangKySan" class="btn" style="background: var(--db-green); color: white; border-radius: 40px; padding: 8px 24px;">
+                <i class="fas fa-plus-circle me-2"></i>Đăng ký sân mới
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="sticky-nav">
+    <div class="container">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/Owner" class="nav-btn">📊 Tổng quan</a>
+            <a href="/Owner/DanhSachSan" class="nav-btn nav-btn-active">🏟️ Danh sách sân</a>
+            <a href="/Owner/DangKySan" class="nav-btn">➕ Đăng ký sân</a>
+            <a href="/Owner/DanhSachDonDat" class="nav-btn">📋 Duyệt lịch</a>
+            <a href="/Owner/QuanLyAnh" class="nav-btn">🖼️ Quản lý ảnh</a>
+            <a href="/Owner/GoiYGiaSan" class="nav-btn">💡 Gợi ý giá sân</a>
+            <a href="/Owner/QuanLyStaff" class="nav-btn">👷 Nhân viên</a>
+            <a href="/Owner/BaoCao" class="nav-btn">📈 Báo cáo</a>
+            <a href="/Owner/DanhSachDanhGia" class="nav-btn">⭐ Đánh giá</a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm rounded-3">
+            <i class="fas fa-check-circle me-2"></i> @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon">🏟️</div>
+            <h4 class="fw-semibold">Chưa có sân nào</h4>
+            <p class="text-muted">Hãy đăng ký sân đầu tiên để bắt đầu kinh doanh</p>
+            <a href="/Owner/DangKySan" class="btn btn-success rounded-pill px-4 mt-2">+ Đăng ký ngay</a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var san in Model)
+            {
+                var tyLe = tyLeMap.TryGetValue(san.Quan ?? "", out var tl) ? tl : 0.10m;
+                var statusClass = san.TrangThaiDuyet switch
+                {
+                    "DaDuyet" => "status-approved",
+                    "TuChoi" => "status-rejected",
+                    _ => "status-pending"
+                };
+                var statusLabel = san.TrangThaiDuyet switch
+                {
+                    "DaDuyet" => "✅ Đã duyệt",
+                    "TuChoi" => "❌ Từ chối",
+                    _ => "⏳ Chờ duyệt"
+                };
+                var hiddenClass = san.IsHidden ? "opacity-50" : "";
+
+                <div class="col-md-6 col-xl-4">
+                    <div class="pitch-card @hiddenClass">
+                        <div class="pitch-header">
+                            <div>
+                                <div class="pitch-title">@san.TenSan</div>
+                                <div class="pitch-address">
+                                    <i class="fas fa-map-marker-alt me-1"></i> @san.DiaChi, @san.Quan
+                                </div>
+                                <div class="pitch-badges">
+                                    <span class="badge-custom">⚽ @san.LoaiSan người</span>
+                                    <span class="badge-custom badge-grass">🌱 @san.LoaiCo</span>
+                                    <span class="badge-custom @statusClass">@statusLabel</span>
+                                    @if (san.IsHidden)
+                                    {
+                                        <span class="badge-custom" style="background:#fee2e2;color:#991b1b;">🔒 Đang ẩn</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="pitch-commission">
+                                <div class="pitch-commission-label">Hoa hồng nền tảng</div>
+                                <div class="pitch-commission-value">@((tyLe * 100).ToString("F0"))%</div>
+                                <div class="pitch-commission-sub">Cọc: @((san.TyLeCoc * 100).ToString("F0"))%</div>
+                            </div>
+                        </div>
+                        <div class="pitch-actions">
+                            <a href="/Owner/KhungGio?sanId=@san.Id" class="btn-outline-custom">
+                                <i class="far fa-clock"></i> Khung giờ (@(san.KhungGios?.Count ?? 0))
+                            </a>
+                            <a href="/Owner/KhoDichVu?sanId=@san.Id" class="btn-outline-custom">
+                                <i class="fas fa-box"></i> Dịch vụ
+                            </a>
+                            <a href="/Owner/SuaSan/@san.Id" class="btn-outline-custom">
+    <i class="fas fa-sliders-h"></i> Cấu hình
+</a>
+<a href="/Owner/XemHopDong/@san.Id" class="btn-outline-custom">
+    <i class="fas fa-file-contract"></i> Hợp đồng
+</a>
+<form method="post" action="/Owner/ToggleHideSan" style="display: inline;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@san.Id" />
+    <button type="submit" class="btn-outline-custom" 
+            style="@(san.IsHidden ? "border-color: var(--db-green); color: var(--db-green);" : "")">
+        @(san.IsHidden ? "🔓 Hiện" : "🔒 Ẩn")
+    </button>
+</form>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

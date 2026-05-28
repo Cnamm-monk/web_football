@@ -1,0 +1,271 @@
+﻿@model List<Web_Stadium.EFCore.SanBong>
+@{
+    ViewData["Title"] = "Quản lý ảnh sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var anhDaiDien = ViewBag.AnhDaiDien as Dictionary<int, string> ?? new();
+}
+
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+    }
+    .pitch-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        transition: all 0.2s ease;
+        overflow: hidden;
+    }
+    .pitch-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px -8px rgba(0,0,0,0.08);
+        border-color: var(--db-green-border);
+    }
+    .pitch-card.opacity-50 { opacity: 0.6; }
+    .pitch-header {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--db-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .pitch-title {
+        font-weight: 700;
+        font-size: 1.2rem;
+        margin: 0;
+        color: var(--db-text);
+    }
+    .pitch-address {
+        font-size: 12px;
+        color: var(--db-muted);
+        margin-top: 5px;
+    }
+    .pitch-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+    .badge-custom {
+        background: #eef2ff;
+        color: #1e40af;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .badge-grass { background: #e6f7e6; color: #2e7d32; }
+    .status-approved { background: rgba(15,110,74,0.12); color: #0f6e4a; border: 1px solid rgba(15,110,74,0.2); }
+    .status-pending { background: rgba(245,158,11,0.1); color: #b45309; border: 1px solid rgba(245,158,11,0.2); }
+    .status-rejected { background: rgba(220,38,38,0.1); color: #b91c1c; border: 1px solid rgba(220,38,38,0.2); }
+    .pitch-commission { text-align: right; }
+    .pitch-commission-label { font-size: 11px; color: var(--db-muted); }
+    .pitch-commission-value { font-size: 18px; font-weight: 700; color: var(--db-green); }
+    .pitch-commission-sub { font-size: 11px; color: var(--db-muted); margin-top: 2px; }
+    .pitch-actions {
+        padding: 12px 20px;
+        border-top: 1px solid var(--db-border);
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .btn-outline-custom {
+        background: transparent;
+        border: 1px solid var(--db-border);
+        border-radius: 40px;
+        padding: 5px 14px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--db-text);
+        transition: 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn-outline-custom:hover {
+        background: var(--db-green-bg);
+        border-color: var(--db-green-border);
+        color: var(--db-green);
+    }
+    /* Header gọn nhẹ - không padding-top quá lớn */
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 20px 0 20px;
+        margin-top: 0;
+    }
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        transition: 0.15s;
+    }
+    .nav-btn:hover {
+        background: var(--db-bg);
+        color: var(--db-text);
+        border-color: #cbd5e1;
+    }
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+    .empty-state {
+        text-align: center;
+        padding: 80px 0;
+        color: var(--db-muted);
+    }
+    .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.4; }
+    .stadium-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        overflow: hidden;
+        transition: 0.25s;
+        cursor: pointer;
+    }
+
+        .stadium-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -8px rgba(0,0,0,0.1);
+            border-color: var(--db-green-border);
+        }
+
+    .stadium-image {
+        height: 200px;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        position: relative;
+    }
+
+        .stadium-image .overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+            padding: 12px;
+            color: white;
+        }
+
+    .stadium-info {
+        padding: 16px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        justify-content: flex-end;
+    }
+
+    .btn-sm-outline {
+        background: transparent;
+        border: 1px solid var(--db-border);
+        border-radius: 40px;
+        padding: 4px 12px;
+        font-size: 12px;
+        transition: 0.2s;
+    }
+
+        .btn-sm-outline:hover {
+            background: var(--db-green-bg);
+            border-color: var(--db-green-border);
+            color: var(--db-green);
+        }
+
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 24px;
+        margin-top: 24px;
+    }
+</style>
+
+<!-- Header rút gọn, không còn khoảng trống lớn -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / QUẢN LÝ ẢNH</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Danh sách <span style="color: var(--db-green);">ảnh của các sân</span></h1>
+                <p class="text-muted mt-2 mb-0">Quản lý, cập nhật ảnh cho các sân</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="sticky-nav">
+    <div class="container">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/Owner" class="nav-btn">📊 Tổng quan</a>
+            <a href="/Owner/DanhSachSan" class="nav-btn">🏟️ Danh sách sân</a>
+            <a href="/Owner/DangKySan" class="nav-btn">➕ Đăng ký sân</a>
+            <a href="/Owner/DanhSachDonDat" class="nav-btn">📋 Duyệt lịch</a>
+            <a href="/Owner/QuanLyAnh" class="nav-btn">🖼️ Quản lý ảnh</a>
+            <a href="/Owner/GoiYGiaSan" class="nav-btn">💡 Gợi ý giá sân</a>
+            <a href="/Owner/QuanLyStaff" class="nav-btn">👷 Nhân viên</a>
+            <a href="/Owner/BaoCao" class="nav-btn">📈 Báo cáo</a>
+            <a href="/Owner/DanhSachDanhGia" class="nav-btn">⭐ Đánh giá</a>
+        </div>
+    </div>
+</div>
+
+
+<div class="container py-5">
+    <div class="grid-container">
+        @foreach (var san in Model)
+        {
+            var anhUrl = anhDaiDien.ContainsKey(san.Id) ? anhDaiDien[san.Id] : "/images/default-stadium.jpg";
+            <div class="stadium-card" onclick="window.location.href='/Owner/QuanLyAnhChiTiet?sanId=@san.Id'">
+                <div class="stadium-image" style="background-image: url('@anhUrl');">
+                    <div class="overlay">
+                        <strong>@san.TenSan</strong>
+                    </div>
+                </div>
+                <div class="stadium-info">
+                    <div style="font-size:13px; color:var(--db-muted); margin-bottom:6px;">
+                        <i class="fas fa-map-marker-alt"></i> @san.DiaChi, @san.Quan
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                        <span class="badge-custom">⚽ @san.LoaiSan người</span>
+                        <span class="badge-custom">🌱 @san.LoaiCo</span>
+                    </div>
+                    <div class="action-buttons" onclick="event.stopPropagation()">
+                        <a href="/Owner/QuanLyAnhChiTiet?sanId=@san.Id" class="btn-sm-outline">
+                            <i class="fas fa-images"></i> Quản lý ảnh
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

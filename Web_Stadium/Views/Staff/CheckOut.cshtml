@@ -1,0 +1,183 @@
+@model Web_Stadium.EFCore.DatSan
+@{
+    ViewData["Title"] = "Check-out";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var tongTienDichVu = (decimal)(ViewBag.TongTienDichVu ?? 0m);
+    var tongTatCa      = (decimal)(ViewBag.TongTatCa ?? 0m);
+    var conLai         = (decimal)(ViewBag.ConLai ?? 0m);
+    var sanIds         = ViewBag.SanIds as List<int> ?? new List<int>();
+    var bankName  = ViewBag.BankName      as string ?? "Techcombank";
+    var bankAcc   = ViewBag.AccountNumber as string ?? "";
+    var bankOwner = ViewBag.AccountName   as string ?? "";
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Staff — Kết thúc ca</div>
+        <h1 style="font-style:italic;line-height:0.9">CHECK-OUT<br><span class="text-green">THU TIỀN & KẾT THÚC</span></h1>
+    </div>
+</div>
+
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2">
+        <a href="/Staff/POS/@Model.Id" class="btn btn-sm btn-outline-warning rounded-pill">← POS mini</a>
+        <a href="/Staff" class="btn btn-sm btn-outline-secondary rounded-pill">Ca trực</a>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+
+            <div class="section-card p-4 mb-4">
+                <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:16px">TỔNG KẾT ĐƠN #@Model.MaXacNhan</div>
+
+                <div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;margin-bottom:16px">
+                    <div style="width:36px;height:36px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">
+                        @(Model.User?.HoTen?.FirstOrDefault())
+                    </div>
+                    <div>
+                        <div style="font-weight:600">@Model.User?.HoTen</div>
+                        <div style="font-size:12px;color:var(--muted)">@Model.User?.SoDienThoai</div>
+                    </div>
+                    <div style="margin-left:auto;text-align:right;font-size:12px;color:var(--muted)">
+                        <div>@Model.KhungGio?.SanBong?.TenSan</div>
+                        <div>@Model.KhungGio?.GioBatDau.ToString(@"hh\:mm") – @Model.KhungGio?.GioKetThuc.ToString(@"hh\:mm")</div>
+                    </div>
+                </div>
+
+                <div style="font-size:13px">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                        <span style="color:var(--muted2)">Tiền thuê sân</span>
+                        <span>@(Model.KhungGio?.Gia.ToString("N0") ?? "0")đ</span>
+                    </div>
+                    @if (Model.DatSanDichVus?.Any() == true)
+                    {
+                        @foreach (var x in Model.DatSanDichVus)
+                        {
+                            <div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--muted2)">
+                                <span>@x.DichVu?.TenDichVu × @x.SoLuong</span>
+                                <span>@(((x.DichVu?.Gia ?? 0) * x.SoLuong).ToString("N0"))đ</span>
+                            </div>
+                        }
+                        <div style="display:flex;justify-content:space-between;margin-bottom:8px;color:var(--muted)">
+                            <span>Tổng dịch vụ</span>
+                            <span>@tongTienDichVu.ToString("N0")đ</span>
+                        </div>
+                    }
+                    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                            <span style="font-weight:600">TỔNG CỘNG</span>
+                            <span style="font-weight:700;font-size:15px">@tongTatCa.ToString("N0")đ</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--muted)">
+                            <span>Khách đã cọc</span>
+                            <span style="color:#6caee0">−@Model.TienCoc.ToString("N0")đ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="padding:16px;border-radius:8px;background:rgba(22,196,127,0.08);border:1px solid rgba(22,196,127,0.3);text-align:center;margin-top:8px">
+                    <div style="font-size:12px;color:var(--muted);margin-bottom:4px">SỐ TIỀN CẦN THU TẠI QUẦY</div>
+                    <div style="font-family:var(--ff-h);font-size:2.4rem;color:var(--green)">
+                        @conLai.ToString("N0")đ
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card p-4 mb-3">
+                <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:14px">PHƯƠNG THỨC THANH TOÁN</div>
+                <div style="display:flex;gap:10px;margin-bottom:14px">
+                    <label class="pay-opt active" data-method="cash" onclick="chonPT('cash')"
+                           style="flex:1;display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--green);border-radius:10px;cursor:pointer;background:rgba(22,196,127,0.08)">
+                        <span style="font-size:22px">💵</span>
+                        <div>
+                            <div style="font-weight:700;font-size:13px">Tiền mặt</div>
+                            <div style="font-size:11px;color:var(--muted)">Thu tại quầy</div>
+                        </div>
+                    </label>
+                    <label class="pay-opt" data-method="bank" onclick="chonPT('bank')"
+                           style="flex:1;display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--border);border-radius:10px;cursor:pointer">
+                        <span style="font-size:22px">🏦</span>
+                        <div>
+                            <div style="font-weight:700;font-size:13px">Chuyển khoản</div>
+                            <div style="font-size:11px;color:var(--muted)">Quét VietQR</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="qr-bank" style="display:none;text-align:center;padding:14px;border-radius:10px;background:white;border:1px solid var(--border)">
+                    <div style="font-size:12px;color:#0f172a;font-weight:700">@bankName</div>
+                    <div style="font-size:11px;color:#64748b;margin-bottom:8px">@bankOwner • @bankAcc</div>
+                    <img id="vietqr-img"
+                         src="/QR/VietQR?amount=@conLai&info=@Model.MaXacNhan"
+                         alt="VietQR"
+                         style="width:240px;height:240px;border-radius:8px;background:#f8fafc" />
+                    <div style="margin-top:8px;font-size:12px;color:#0f172a">
+                        Số tiền: <strong style="color:#16C47F">@conLai.ToString("N0")đ</strong>
+                        — ND: <code>@Model.MaXacNhan</code>
+                    </div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:4px">Đưa khách quét bằng app ngân hàng</div>
+                </div>
+            </div>
+
+            <div class="section-card p-4">
+                <div style="font-size:12px;color:var(--muted2);margin-bottom:16px">
+                    Sau khi bấm <strong>Xác nhận Check-out</strong>:
+                    <ul style="margin-top:8px;padding-left:18px">
+                        <li>Đơn chuyển sang trạng thái <strong style="color:var(--green)">Hoàn thành</strong></li>
+                        <li>Khung giờ được <strong>giải phóng</strong> cho lượt đặt tiếp theo</li>
+                        <li>Khách hàng có thể <strong>đánh giá sân</strong></li>
+                    </ul>
+                </div>
+
+                <form method="post" action="/Staff/ThucHienCheckOut" id="formCheckOut">
+                    <input type="hidden" name="datSanId" value="@Model.Id" />
+                    <input type="hidden" name="phuongThuc" value="cash" id="phuongThuc" />
+                    <button type="submit" class="btn btn-success w-100 rounded-pill voice-confirm-checkout"
+                            style="font-size:15px;padding:12px;font-weight:700"
+                            onclick="return confirm('Xác nhận đã thu @conLai.ToString("N0")đ và hoàn tất check-out?')">
+                        ✅ Xác nhận Check-out — Thu @conLai.ToString("N0")đ
+                    </button>
+                </form>
+
+                <a href="/Staff/POS/@Model.Id" class="btn btn-outline-warning w-100 rounded-pill mt-2 voice-back-pos"
+                   style="font-size:13px">
+                    ← Quay lại thêm dịch vụ
+                </a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_StaffWidgets")
+
+@section Scripts {
+    <script>
+        window.__STAFF_SAN_IDS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(sanIds));
+
+        function chonPT(method) {
+            document.getElementById('phuongThuc').value = method;
+            document.querySelectorAll('.pay-opt').forEach(el => {
+                const isActive = el.dataset.method === method;
+                el.style.border = '2px solid ' + (isActive ? 'var(--green)' : 'var(--border)');
+                el.style.background = isActive ? 'rgba(22,196,127,0.08)' : 'transparent';
+                el.classList.toggle('active', isActive);
+            });
+            document.getElementById('qr-bank').style.display = method === 'bank' ? 'block' : 'none';
+        }
+
+        window.voiceHelpHTML = 'Trang Check-out: <em>"tiền mặt", "chuyển khoản", "xác nhận", "quay lại"</em>';
+        window.voiceCommands = [
+            { re:/(tiền mặt|tien mat|cash|tiền)/, label:'Chọn Tiền mặt', action: () => chonPT('cash') },
+            { re:/(chuyển khoản|chuyen khoan|qr|bank|ngân hàng|ngan hang|viet qr)/, label:'Chọn Chuyển khoản', action: () => chonPT('bank') },
+            {
+                re:/(xác nhận|xac nhan|hoàn tất|hoan tat|kết thúc|ket thuc|ok)/,
+                label:'Xác nhận check-out',
+                action: () => { const btn = document.querySelector('.voice-confirm-checkout'); btn.onclick = null; btn.click(); }
+            },
+            { re:/(quay lại|quay lai|pos|thêm dịch vụ|them dich vu)/, label:'Quay lại POS', action: () => document.querySelector('.voice-back-pos').click() }
+        ];
+    </script>
+}
