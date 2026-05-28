@@ -29,6 +29,8 @@ public partial class DatSan
 
     public string? GhiChuSuCo { get; set; }
 
+    public string? GhiChuStaff { get; set; }
+
     public DateTime ThoiGianTao { get; set; }
 
     public string? NguonHuy { get; set; }
