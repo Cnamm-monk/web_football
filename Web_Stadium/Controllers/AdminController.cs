@@ -12,12 +12,14 @@ namespace Web_Stadium.Controllers
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
         private readonly EmailService _emailService;
+        private readonly HoanCocService _hoanCocService;
 
-        public AdminController(SanBongContext context, IConfiguration config, EmailService emailService)
+        public AdminController(SanBongContext context, IConfiguration config, EmailService emailService, HoanCocService hoanCocService)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
+            _hoanCocService = hoanCocService;
         }
 
         private int GetAdminId() => TokenHelper.LayUserId(Request, _config)!.Value;
@@ -704,15 +706,38 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
         public async Task<IActionResult> XuLyKhieuNai(int id, string ketQua, decimal? soTienHoan, string? ghiChu)
         {
             var kn = await _context.KhieuNais
-                .Include(k => k.DatSan).Include(k => k.User)
+                .Include(k => k.DatSan)
+                    .ThenInclude(d => d.KhungGio)
+                        .ThenInclude(k => k.SanBong)
+                .Include(k => k.User)
                 .FirstOrDefaultAsync(k => k.Id == id);
             if (kn == null) return NotFound();
+
+            if (ketQua == "DaHoanCoc" && kn.DatSan != null)
+            {
+                var (success, message) = await _hoanCocService.ThucHienHoanCocAsync(
+                    kn.DatSan,
+                    nguonHuy: "AdminKhieuNai",
+                    vaiTroNguoiKhoiTao: "Admin",
+                    nguoiKhoiTaoId: GetAdminId(),
+                    soTienHoanTuyChon: soTienHoan,
+                    ghiChu: ghiChu
+                );
+
+                if (!success)
+                {
+                    TempData["Error"] = message;
+                    return RedirectToAction("KhieuNai");
+                }
+
+                kn.DatSan.TrangThai = "DaHuy";
+            }
+
             kn.TrangThai = ketQua;
             kn.SoTienHoan = soTienHoan;
             kn.GhiChuAdmin = ghiChu;
             kn.NgayXuLy = DateTime.Now;
             kn.AdminXuLyId = GetAdminId();
-            if (ketQua == "DaHoanCoc" && kn.DatSan != null) kn.DatSan.TrangThai = "DaHuy";
             await _context.SaveChangesAsync();
             await GhiLog(ketQua == "DaHoanCoc" ? "HoanCoc" : "TuChoiHoanCoc",
                 "KhieuNai", id, $"{kn.User?.HoTen} — {soTienHoan:N0}đ");

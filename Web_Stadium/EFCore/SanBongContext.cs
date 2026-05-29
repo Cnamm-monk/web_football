@@ -55,6 +55,7 @@ public partial class SanBongContext : DbContext
     public virtual DbSet<SanYeuThich> SanYeuThichs { get; set; }
     public virtual DbSet<UserVoucher> UserVouchers { get; set; }
     public virtual DbSet<Voucher> Vouchers { get; set; }
+    public virtual DbSet<GiaoDichHoanCoc> GiaoDichHoanCocs { get; set; }
 
     // - V6: 6 bang moi 
     public virtual DbSet<BangDau> BangDaus { get; set; }
@@ -586,6 +587,32 @@ public partial class SanBongContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.SoNgayHieuLuc).HasDefaultValue(30);
             entity.Property(e => e.TenVoucher).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<GiaoDichHoanCoc>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__GiaoDich__3214EC07A1B2C3D4");
+
+            entity.HasIndex(e => e.DatSanId, "IX_GiaoDichHoanCoc_DatSanId");
+            entity.HasIndex(e => e.ThoiGianGiaoDich, "IX_GiaoDichHoanCoc_ThoiGian");
+            entity.HasIndex(e => e.VaiTroNguoiKhoiTao, "IX_GiaoDichHoanCoc_VaiTro");
+
+            entity.Property(e => e.ThoiGianGiaoDich)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.SoTien).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.VaiTroNguoiKhoiTao).HasMaxLength(20);
+            entity.Property(e => e.TrangThaiHoan).HasMaxLength(20);
+            entity.Property(e => e.GhiChu).HasMaxLength(500);
+
+            entity.HasOne(d => d.DatSan).WithMany(p => p.GiaoDichHoanCocs)
+                .HasForeignKey(d => d.DatSanId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_GiaoDichHoanCoc_DatSan");
+
+            entity.HasOne(d => d.NguoiKhoiTao).WithMany()
+                .HasForeignKey(d => d.NguoiKhoiTaoId)
+                .HasConstraintName("FK_GiaoDichHoanCoc_User");
         });
 
         // ngày 22/5/2026   : Config 6 bảng mới của V6

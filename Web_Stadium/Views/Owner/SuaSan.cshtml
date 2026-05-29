@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Cấu hình sân";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "DanhSachSan";
     var loaiSans = ViewBag.LoaiSans as List<Web_Stadium.EFCore.DanhMucLoaiSan> ?? new();
     var loaiCos = ViewBag.LoaiCos as List<Web_Stadium.EFCore.DanhMucLoaiCo> ?? new();
 }
@@ -21,131 +22,24 @@
     body {
         background: var(--db-bg);
         color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     }
-    .pitch-card {
-        background: var(--db-card);
-        border: 1px solid var(--db-border);
-        border-radius: 20px;
-        transition: all 0.2s ease;
-        overflow: hidden;
-    }
-    .pitch-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px -8px rgba(0,0,0,0.08);
-        border-color: var(--db-green-border);
-    }
-    .pitch-card.opacity-50 { opacity: 0.6; }
-    .pitch-header {
-        padding: 18px 20px;
-        border-bottom: 1px solid var(--db-border);
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        flex-wrap: wrap;
-        gap: 12px;
-    }
-    .pitch-title {
-        font-weight: 700;
-        font-size: 1.2rem;
-        margin: 0;
-        color: var(--db-text);
-    }
-    .pitch-address {
-        font-size: 12px;
-        color: var(--db-muted);
-        margin-top: 5px;
-    }
-    .pitch-badges {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-top: 8px;
-    }
-    .badge-custom {
-        background: #eef2ff;
-        color: #1e40af;
-        padding: 4px 10px;
-        border-radius: 30px;
-        font-size: 11px;
-        font-weight: 500;
-    }
-    .badge-grass { background: #e6f7e6; color: #2e7d32; }
-    .status-approved { background: rgba(15,110,74,0.12); color: #0f6e4a; border: 1px solid rgba(15,110,74,0.2); }
-    .status-pending { background: rgba(245,158,11,0.1); color: #b45309; border: 1px solid rgba(245,158,11,0.2); }
-    .status-rejected { background: rgba(220,38,38,0.1); color: #b91c1c; border: 1px solid rgba(220,38,38,0.2); }
-    .pitch-commission { text-align: right; }
-    .pitch-commission-label { font-size: 11px; color: var(--db-muted); }
-    .pitch-commission-value { font-size: 18px; font-weight: 700; color: var(--db-green); }
-    .pitch-commission-sub { font-size: 11px; color: var(--db-muted); margin-top: 2px; }
-    .pitch-actions {
-        padding: 12px 20px;
-        border-top: 1px solid var(--db-border);
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-    .btn-outline-custom {
-        background: transparent;
-        border: 1px solid var(--db-border);
-        border-radius: 40px;
-        padding: 5px 14px;
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--db-text);
-        transition: 0.2s;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .btn-outline-custom:hover {
-        background: var(--db-green-bg);
-        border-color: var(--db-green-border);
-        color: var(--db-green);
-    }
-    /* Header gọn nhẹ - không padding-top quá lớn */
-    .page-header {
-        background: var(--db-surface);
-        border-bottom: 1px solid var(--db-border);
-        padding: 20px 0 20px;
-        margin-top: 0;
-    }
-    .sticky-nav {
-        background: var(--db-surface);
-        border-bottom: 1px solid var(--db-border);
-        padding: 12px 0;
-        position: sticky;
-        top: 0;
-        z-index: 100;
-    }
-    .nav-btn {
-        font-size: 12px;
-        padding: 5px 14px;
-        border-radius: 30px;
-        border: 1px solid var(--db-border);
-        background: transparent;
-        color: var(--db-muted);
-        text-decoration: none;
-        transition: 0.15s;
-    }
-    .nav-btn:hover {
-        background: var(--db-bg);
-        color: var(--db-text);
-        border-color: #cbd5e1;
-    }
-    .nav-btn-active {
-        background: var(--db-green-bg);
-        color: var(--db-green);
-        border-color: var(--db-green-border);
-    }
-    .empty-state {
-        text-align: center;
-        padding: 80px 0;
-        color: var(--db-muted);
-    }
-    .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.4; }
-    body { background: var(--db-bg); color: var(--db-text); font-family: 'Inter', sans-serif; }
     .page-header { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 24px 0 20px; }
+    .sticky-nav { background: var(--db-surface); border-bottom: 1px solid var(--db-border); padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+    .nav-btn {
+        font-size: 12px; padding: 5px 14px; border-radius: 30px; border: 1px solid var(--db-border);
+        background: transparent; color: var(--db-muted); text-decoration: none;
+        display: inline-flex; align-items: center; gap: 5px; transition: 0.15s;
+    }
+    .nav-btn:hover { background: var(--db-bg); color: var(--db-text); border-color: #cbd5e1; }
+    .nav-btn-active { background: var(--db-green-bg); color: var(--db-green); border-color: var(--db-green-border); }
+
+    .breadcrumb-back {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12px; color: var(--db-muted); text-decoration: none; margin-bottom: 8px;
+    }
+        .breadcrumb-back:hover { color: var(--db-green); }
+
     .form-card { background: var(--db-card); border: 1px solid var(--db-border); border-radius: 20px; padding: 28px; max-width: 800px; margin: 0 auto; }
     .form-label { font-size: 13px; font-weight: 500; color: var(--db-muted); margin-bottom: 6px; }
     .form-control, .form-select {
@@ -153,15 +47,7 @@
         padding: 8px 12px; font-size: 14px; color: var(--db-text);
     }
     .form-control:focus, .form-select:focus {
-        border-color: var(--db-green); box-shadow: 0 0 0 3px rgba(15,110,74,0.1);
-    }
-        .sticky-nav {
-        background: var(--db-surface);
-        border-bottom: 1px solid var(--db-border);
-        padding: 12px 0;
-        position: sticky;
-        top: 0;
-        z-index: 100;
+        border-color: var(--db-green); box-shadow: 0 0 0 3px rgba(15,110,74,0.1); outline: none;
     }
 
     .btn-save { background: var(--db-green); border: none; border-radius: 40px; padding: 8px 28px; color: white; font-weight: 500; }
@@ -171,6 +57,7 @@
 
 <div class="page-header">
     <div class="container">
+        <a href="/Owner/DanhSachSan" class="breadcrumb-back"><i class="fas fa-arrow-left"></i> Danh sách sân</a>
         <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
             <div>
                 <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">OWNER / CẤU HÌNH SÂN</div>
@@ -181,13 +68,7 @@
     </div>
 </div>
 
-<div class="sticky-nav">
-    <div class="container">
-        <a href="/Owner/DanhSachSan" class="nav-btn">
-            <i class="fas fa-arrow-left me-1"></i> Danh sách sân
-        </a>
-    </div>
-</div>
+@await Html.PartialAsync("_OwnerNav")
 
 <div class="container py-5">
     <div class="form-card">

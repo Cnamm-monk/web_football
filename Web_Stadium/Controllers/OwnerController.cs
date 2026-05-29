@@ -15,12 +15,16 @@ namespace Web_Stadium.Controllers
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
         private readonly EmailService _emailService;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly HoanCocService _hoanCocService;
 
-        public OwnerController(SanBongContext context, IConfiguration config, EmailService emailService)
+        public OwnerController(SanBongContext context, IConfiguration config, EmailService emailService, IHttpClientFactory httpClientFactory, HoanCocService hoanCocService)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
+            _httpClientFactory = httpClientFactory;
+            _hoanCocService = hoanCocService;
         }
         //test git
         // Helper lấy OwnerId từ JWT
@@ -870,54 +874,6 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ điều khoản
             return View(dsDon);
         }
 
-        // POST: /Owner/XacNhanDon
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> XacNhanDon(int id)
-        {
-            var don = await _context.DatSans
-                .Include(d => d.KhungGio)
-                .ThenInclude(k => k.SanBong)
-                .FirstOrDefaultAsync(d => d.Id == id);
-
-            if (don == null) return NotFound();
-
-            var ownerId = GetOwnerId();
-            if (don.KhungGio.SanBong.OwnerId != ownerId)
-                return Unauthorized();
-
-            don.TrangThai = "DaXacNhan";
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = $"Đã xác nhận đơn đặt sân ngày {don.NgayThiDau:dd/MM/yyyy}.";
-            return RedirectToAction("DanhSachDonDat", new { status = ViewBag.CurrentStatus ?? "ChoDuyet" });
-        }
-
-        // POST: /Owner/TuChoiDon
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> TuChoiDon(int id, string lyDoTuChoi = "")
-        {
-            var don = await _context.DatSans
-                .Include(d => d.KhungGio)
-                .ThenInclude(k => k.SanBong)
-                .FirstOrDefaultAsync(d => d.Id == id);
-
-            if (don == null) return NotFound();
-
-            var ownerId = GetOwnerId();
-            if (don.KhungGio.SanBong.OwnerId != ownerId)
-                return Unauthorized();
-
-            don.TrangThai = "DaHuy";
-            // Có thể lưu lý do từ chối vào đâu đó, ví dụ GhiChuSuCo
-            don.GhiChuSuCo = lyDoTuChoi;
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = $"Đã từ chối đơn đặt sân ngày {don.NgayThiDau:dd/MM/yyyy}.";
-            return RedirectToAction("DanhSachDonDat", new { status = ViewBag.CurrentStatus ?? "ChoDuyet" });
-        }
-
         // ================================================================
         // FILE: OwnerController_QuanLyAnh.cs
         // Thay toàn bộ #region Quản lý ảnh sân trong OwnerController.cs
@@ -1044,6 +1000,99 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
     await ReorderImages(sanId);
 
     TempData["Success"] = $"Đã thêm {count} ảnh thành công!";
+    return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+}
+
+// POST /Owner/UploadAnhFile
+// Nhận file ảnh upload trực tiếp từ máy, lưu vào wwwroot/uploads/san_{id}/
+[HttpPost]
+[ValidateAntiForgeryToken]
+[RequestSizeLimit(20 * 1024 * 1024)] // tối đa 20MB cho cả request
+public async Task<IActionResult> UploadAnhFile(int sanId, List<IFormFile> files)
+{
+    int ownerId;
+    try { ownerId = GetOwnerId(); }
+    catch
+    {
+        TempData["Error"] = "Phiên đăng nhập hết hạn.";
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    var san = await _context.SanBongs
+        .FirstOrDefaultAsync(s => s.Id == sanId && s.OwnerId == ownerId);
+    if (san == null)
+    {
+        TempData["Error"] = "Sân không hợp lệ.";
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    if (files == null || !files.Any(f => f != null && f.Length > 0))
+    {
+        TempData["Error"] = "Vui lòng chọn ít nhất 1 ảnh.";
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+    const long maxFileSize = 5 * 1024 * 1024; // 5MB / ảnh
+
+    var folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", $"san_{sanId}");
+    Directory.CreateDirectory(folder);
+
+    int saved = 0;
+    var skipped = new List<string>();
+
+    foreach (var file in files)
+    {
+        if (file == null || file.Length == 0) continue;
+
+        if (file.Length > maxFileSize)
+        {
+            skipped.Add($"{file.FileName} (quá 5MB)");
+            continue;
+        }
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExt.Contains(ext))
+        {
+            skipped.Add($"{file.FileName} (định dạng không hỗ trợ)");
+            continue;
+        }
+
+        var fileName = $"san_{sanId}_{Guid.NewGuid():N}{ext}";
+        var filePath = Path.Combine(folder, fileName);
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var duongDan = $"/uploads/san_{sanId}/{fileName}";
+
+        _context.AnhSanBongs.Add(new AnhSanBong
+        {
+            SanBongId = sanId,
+            DuongDan  = duongDan,
+            LoaiAnh   = "File",
+            ThuTu     = 0,
+            NgayThem  = DateTime.Now,
+            IsActive  = true
+        });
+        saved++;
+    }
+
+    if (saved == 0)
+    {
+        TempData["Error"] = "Không upload được ảnh nào. " + string.Join("; ", skipped);
+        return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
+    }
+
+    await _context.SaveChangesAsync();
+    await ReorderImages(sanId);
+
+    if (skipped.Any())
+        TempData["Success"] = $"Đã upload {saved} ảnh. Bỏ qua: {string.Join("; ", skipped)}";
+    else
+        TempData["Success"] = $"Đã upload {saved} ảnh thành công!";
+
     return RedirectToAction("QuanLyAnhChiTiet", new { sanId });
 }
 
@@ -1519,19 +1568,30 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
                 return RedirectToAction("DuyetDon");
             }
 
+            var (success, message) = await _hoanCocService.ThucHienHoanCocAsync(
+                don,
+                nguonHuy: "OwnerTuChoi",
+                vaiTroNguoiKhoiTao: "Owner",
+                nguoiKhoiTaoId: GetOwnerId(),
+                ghiChu: $"Owner từ chối: {lyDo}"
+            );
+
+            if (!success)
+            {
+                TempData["Error"] = message;
+                return RedirectToAction("DuyetDon");
+            }
+
             don.TrangThai = "DaHuy";
 
-            // Giải phóng slot
             if (don.KhungGio != null)
                 don.KhungGio.TrangThai = "Trong";
 
-            // Hoàn kho dịch vụ đặt trước (chưa trừ kho vì chưa check-in)
             foreach (var dv in don.DatSanDichVus)
                 if (dv.DichVu != null) dv.DichVu.TonKho += dv.SoLuong;
 
             await _context.SaveChangesAsync();
 
-            // Gửi email thông báo từ chối + hoàn tiền cho khách
             if (don.User != null)
             {
                 await _emailService.GuiEmailHuyDon(
@@ -1540,10 +1600,9 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
                     don.KhungGio?.SanBong?.TenSan ?? "",
                     don.NgayThiDau.ToString("dd/MM/yyyy"),
                     lyDo: $"Owner từ chối: {lyDo}",
-                    soTienHoan: don.TienCoc); // hoàn 100%
+                    soTienHoan: don.TienCoc);
             }
 
-            // Ghi AuditLog
             _context.AuditLogs.Add(new AuditLog
             {
                 UserId = GetOwnerId(),
@@ -1581,7 +1640,7 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
         }
 
         [HttpPost]
-        public async Task<IActionResult> ThucHienHoanCoc(int datSanId, string lyDo)
+        public async Task<IActionResult> ThucHienHoanCocSuCo(int datSanId, string lyDo)
         {
             var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
             var don = await _context.DatSans
@@ -1598,27 +1657,38 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
                 return RedirectToAction("HoanCoc");
             }
 
+            var (success, message) = await _hoanCocService.ThucHienHoanCocAsync(
+                don,
+                nguonHuy: "OwnerSuCo",
+                vaiTroNguoiKhoiTao: "Owner",
+                nguoiKhoiTaoId: GetOwnerId(),
+                ghiChu: $"Sự cố: {lyDo}"
+            );
+
+            if (!success)
+            {
+                TempData["Error"] = message;
+                return RedirectToAction("HoanCoc");
+            }
+
             don.TrangThai = "DaHuy";
             if (don.KhungGio != null) don.KhungGio.TrangThai = "Trong";
 
-            // Hoàn kho (đơn DaXacNhan kho chưa bị trừ — chỉ trừ khi check-in)
             foreach (var dv in don.DatSanDichVus)
                 if (dv.DichVu != null) dv.DichVu.TonKho += dv.SoLuong;
 
-            // Ghi AuditLog
             _context.AuditLogs.Add(new AuditLog
             {
                 UserId = GetOwnerId(),
                 VaiTro = "Owner",
-                HanhDong = "HoanCocChuDong",
+                HanhDong = "HoanCocSuCo",
                 DoiTuong = "DatSan",
                 DoiTuongId = datSanId,
-                MoTa = $"Hoàn cọc chủ động đơn {don.MaXacNhan} — Lý do: {lyDo}"
+                MoTa = $"Hoàn cọc do sự cố đơn {don.MaXacNhan} — Lý do: {lyDo}"
             });
 
             await _context.SaveChangesAsync();
 
-            // Gửi email thông báo cho khách
             if (don.User != null)
             {
                 await _emailService.GuiEmailHuyDon(
@@ -1631,6 +1701,72 @@ public async Task<IActionResult> UploadAnhUrl(int sanId, List<string> urls)
             }
 
             TempData["Success"] = $"Đã hủy đơn {don.MaXacNhan} và hoàn 100% cọc ({don.TienCoc:N0}đ) cho khách.";
+            return RedirectToAction("HoanCoc");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ThucHienHoanCocKhieuNai(int datSanId, decimal soTienHoan, string ghiChu)
+        {
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+            var don = await _context.DatSans
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
+                .FirstOrDefaultAsync(d => d.Id == datSanId
+                                       && sanIds.Contains(d.KhungGio.SanBongId)
+                                       && d.TrangThai == "DaXacNhan");
+
+            if (don == null)
+            {
+                TempData["Error"] = "Chỉ hoàn cọc được đơn đang ở trạng thái Đã xác nhận!";
+                return RedirectToAction("HoanCoc");
+            }
+
+            var (success, message) = await _hoanCocService.ThucHienHoanCocAsync(
+                don,
+                nguonHuy: "OwnerKhieuNai",
+                vaiTroNguoiKhoiTao: "Owner",
+                nguoiKhoiTaoId: GetOwnerId(),
+                soTienHoanTuyChon: soTienHoan,
+                ghiChu: ghiChu
+            );
+
+            if (!success)
+            {
+                TempData["Error"] = message;
+                return RedirectToAction("HoanCoc");
+            }
+
+            don.TrangThai = "DaHuy";
+            if (don.KhungGio != null) don.KhungGio.TrangThai = "Trong";
+
+            foreach (var dv in don.DatSanDichVus)
+                if (dv.DichVu != null) dv.DichVu.TonKho += dv.SoLuong;
+
+            _context.AuditLogs.Add(new AuditLog
+            {
+                UserId = GetOwnerId(),
+                VaiTro = "Owner",
+                HanhDong = "HoanCocKhieuNai",
+                DoiTuong = "DatSan",
+                DoiTuongId = datSanId,
+                MoTa = $"Hoàn cọc do khiếu nại đơn {don.MaXacNhan} — Số tiền: {soTienHoan:N0}đ — Ghi chú: {ghiChu}"
+            });
+
+            await _context.SaveChangesAsync();
+
+            if (don.User != null)
+            {
+                await _emailService.GuiEmailHuyDon(
+                    don.User.Email,
+                    don.User.HoTen,
+                    don.KhungGio?.SanBong?.TenSan ?? "",
+                    don.NgayThiDau.ToString("dd/MM/yyyy"),
+                    lyDo: $"Hoàn cọc do khiếu nại: {ghiChu}",
+                    soTienHoan: soTienHoan);
+            }
+
+            TempData["Success"] = $"Đã hủy đơn {don.MaXacNhan} và hoàn {soTienHoan:N0}đ cho khách.";
             return RedirectToAction("HoanCoc");
         }
 

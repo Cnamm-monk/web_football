@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
 using Web_Stadium.Hubs;
+using Web_Stadium.Services;
 
 namespace Web_Stadium.Controllers
 {
@@ -14,36 +15,38 @@ namespace Web_Stadium.Controllers
         private readonly IRepository<KhungGio> _khungGioRepo;
         private readonly IConfiguration _config;
         private readonly IHubContext<SanBongHub> _hub;
+        private readonly HoanCocService _hoanCocService;
 
         public BookingController(
             SanBongContext context,
             IRepository<DatSan> datSanRepo,
             IRepository<KhungGio> khungGioRepo,
             IConfiguration config,
-            IHubContext<SanBongHub> hub)
+            IHubContext<SanBongHub> hub,
+            HoanCocService hoanCocService)
         {
             _context = context;
             _datSanRepo = datSanRepo;
             _khungGioRepo = khungGioRepo;
             _config = config;
             _hub = hub;
+            _hoanCocService = hoanCocService;
         }
-
+//
         // ══════════════════════════════════════════════════════════
         // GET /Booking/Create?khungGioId=1&ngay=2024-04-15
         // ══════════════════════════════════════════════════════════
         [YeuCauDangNhap]
         public async Task<IActionResult> Create(int khungGioId, string? ngayStr)
-        public async Task<IActionResult> Create(int khungGioId, DateTime? ngay)
         {
-            // Xác định ngày hợp lệ: nếu không có hoặc nhỏ hơn hôm nay thì lấy ngày mai
-            var ngayValid = ngay ?? DateTime.Now.Date.AddDays(1);
-            if (ngayValid < DateTime.Now.Date)
-                ngayValid = DateTime.Now.Date.AddDays(1);
-
             // Parse ngày an toàn — tránh SqlDateTime overflow
             if (!DateTime.TryParse(ngayStr, out var ngay) || ngay < new DateTime(1753, 1, 1))
                 ngay = DateTime.Today;
+
+            // Xác định ngày hợp lệ: nếu nhỏ hơn hôm nay thì lấy ngày mai
+            var ngayValid = ngay.Date;
+            if (ngayValid < DateTime.Now.Date)
+                ngayValid = DateTime.Now.Date.AddDays(1);
 
             // Lấy khung giờ kèm sân và dịch vụ
             var khungGio = await _context.KhungGios
@@ -89,6 +92,7 @@ namespace Web_Stadium.Controllers
                 .ToList() ?? new();
 
             // Voucher user đang có (chưa dùng, chưa hết hạn)
+            var userId = TokenHelper.LayUserId(Request, _config);
             var vouchers = await _context.UserVouchers
                 .Include(uv => uv.Voucher)
                 .Where(uv => uv.UserId == userId
@@ -259,9 +263,9 @@ namespace Web_Stadium.Controllers
             }
 
             // Cập nhật trạng thái khung giờ thành "Đã đặt"
-            khungGioMoi.TrangThai = "DaDat";
-            khungGioMoi.ThoiGianHetGiuCho = null;
-            await _khungGioRepo.UpdateAsync(khungGioMoi);
+            khungGio.TrangThai = "DaDat";
+            khungGio.ThoiGianHetGiuCho = null;
+            await _khungGioRepo.UpdateAsync(khungGio);
             await _hub.Clients.Group($"san_{khungGio.SanBongId}")
                 .SendAsync("CapNhatKhungGio", new { khungGioId = khungGio.Id, trangThai = "DaDat" });
 
@@ -315,7 +319,6 @@ namespace Web_Stadium.Controllers
         [YeuCauDangNhap]
         public async Task<IActionResult> Huy(int id, string? lyDoHuy)
         {
-            // ❌ FIX 4: Bắt buộc nhập lý do hủy
             if (string.IsNullOrWhiteSpace(lyDoHuy))
             {
                 TempData["Error"] = "Vui lòng nhập lý do hủy đặt sân!";
@@ -325,6 +328,7 @@ namespace Web_Stadium.Controllers
             var userId = TokenHelper.LayUserId(Request, _config);
             var datSan = await _context.DatSans
                 .Include(d => d.KhungGio)
+                    .ThenInclude(k => k.SanBong)
                 .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
                 .FirstOrDefaultAsync(d => d.Id == id && d.UserId == userId);
 
@@ -336,49 +340,29 @@ namespace Web_Stadium.Controllers
                 return RedirectToAction("MyBookings");
             }
 
-            // ── Tính tiền hoàn theo đúng chính sách ─────────────
-            decimal phanTramHoan = 1.0m; // mặc định 100%
-            string thongBaoHoan;
+            var (success, message) = await _hoanCocService.ThucHienHoanCocAsync(
+                datSan,
+                nguonHuy: "KhachTuHuy",
+                vaiTroNguoiKhoiTao: "User",
+                nguoiKhoiTaoId: userId,
+                ghiChu: $"Lý do hủy: {lyDoHuy}"
+            );
 
-            if (datSan.TrangThai == "DaXacNhan")
+            if (!success)
             {
-                // Đã được Owner xác nhận → tính theo thời gian còn lại
-                var gioBatDau = datSan.KhungGio?.GioBatDau.ToTimeSpan() ?? TimeSpan.Zero;
-                var gioDauTran = datSan.NgayThiDau.Date.Add(gioBatDau);
-                var conLai = gioDauTran - DateTime.Now;
-
-                if (conLai.TotalHours >= 24)
-                {
-                    phanTramHoan = 1.0m;   // trước 24h: hoàn 100%
-                    thongBaoHoan = "Hoàn 100% tiền cọc vì huỷ trước 24 giờ.";
-                }
-                else if (conLai.TotalHours >= 2)
-                {
-                    phanTramHoan = 0.5m;   // trong 24h: hoàn 50%
-                    thongBaoHoan = "Hoàn 50% tiền cọc vì huỷ trong vòng 24 giờ.";
-                }
-                else
-                {
-                    phanTramHoan = 0m;     // trong 2h: không hoàn
-                    thongBaoHoan = "Không hoàn cọc vì huỷ trong vòng 2 giờ trước trận.";
-                }
-            }
-            else
-            {
-                // ChoDuyet → hoàn 100% (Owner chưa cam kết gì)
-                thongBaoHoan = "Hoàn 100% tiền cọc vì Owner chưa xác nhận.";
+                TempData["Error"] = message;
+                return RedirectToAction("MyBookings");
             }
 
-            var soTienHoan = Math.Round(datSan.TienCoc * phanTramHoan, 0);
             datSan.TrangThai = "DaHuy";
-            datSan.GhiChuSuCo = $"Lý do hủy: {lyDoHuy}";  // Lưu lý do hủy
+            datSan.GhiChuSuCo = $"Lý do hủy: {lyDoHuy}";
             datSan.KhungGio.TrangThai = "Trong";
 
             await _context.SaveChangesAsync();
             await _hub.Clients.Group($"san_{datSan.KhungGio.SanBongId}")
                 .SendAsync("CapNhatKhungGio", new { khungGioId = datSan.KhungGioId, trangThai = "Trong" });
 
-            TempData["Success"] = $"Đã huỷ đặt sân. {thongBaoHoan} Hoàn {soTienHoan:N0}đ trong 1–3 ngày làm việc.";
+            TempData["Success"] = $"Đã huỷ đặt sân. {message} Hoàn trong 1–3 ngày làm việc.";
             return RedirectToAction("MyBookings");
         }
 

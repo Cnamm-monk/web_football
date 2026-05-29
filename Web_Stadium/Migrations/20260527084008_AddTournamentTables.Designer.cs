@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Web_Stadium.EFCore;
 
@@ -11,9 +12,11 @@ using Web_Stadium.EFCore;
 namespace Web_Stadium.Migrations
 {
     [DbContext(typeof(SanBongContext))]
-    partial class SanBongContextModelSnapshot : ModelSnapshot
+    [Migration("20260527084008_AddTournamentTables")]
+    partial class AddTournamentTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -351,15 +354,8 @@ namespace Web_Stadium.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("GhiChuStaff")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
                     b.Property<int>("KhungGioId")
                         .HasColumnType("int");
-
-                    b.Property<string>("LoaiHoanCoc")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LoaiSuCo")
                         .HasMaxLength(20)
@@ -372,15 +368,6 @@ namespace Web_Stadium.Migrations
 
                     b.Property<DateTime>("NgayThiDau")
                         .HasColumnType("datetime");
-
-                    b.Property<string>("NguonHuy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("PhanTramHoan")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("SoTienDaHoan")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int?>("StaffCheckInId")
                         .HasColumnType("int");
@@ -672,55 +659,6 @@ namespace Web_Stadium.Migrations
                     b.ToTable("GiaiDaus");
                 });
 
-            modelBuilder.Entity("Web_Stadium.EFCore.GiaoDichHoanCoc", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("DatSanId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("GhiChu")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int?>("NguoiKhoiTaoId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("SoTien")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<DateTime>("ThoiGianGiaoDich")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime")
-                        .HasDefaultValueSql("(getdate())");
-
-                    b.Property<string>("TrangThaiHoan")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("VaiTroNguoiKhoiTao")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.HasKey("Id")
-                        .HasName("PK__GiaoDich__3214EC07A1B2C3D4");
-
-                    b.HasIndex("NguoiKhoiTaoId");
-
-                    b.HasIndex(new[] { "DatSanId" }, "IX_GiaoDichHoanCoc_DatSanId");
-
-                    b.HasIndex(new[] { "ThoiGianGiaoDich" }, "IX_GiaoDichHoanCoc_ThoiGian");
-
-                    b.HasIndex(new[] { "VaiTroNguoiKhoiTao" }, "IX_GiaoDichHoanCoc_VaiTro");
-
-                    b.ToTable("GiaoDichHoanCocs");
-                });
-
             modelBuilder.Entity("Web_Stadium.EFCore.KhieuNai", b =>
                 {
                     b.Property<int>("Id")
@@ -975,6 +913,9 @@ namespace Web_Stadium.Migrations
 
                     b.Property<double>("Longitude")
                         .HasColumnType("float");
+
+                    b.Property<string>("LyDoHuy")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("MoTa")
                         .IsRequired()
@@ -1720,24 +1661,6 @@ namespace Web_Stadium.Migrations
                     b.Navigation("SanBong");
                 });
 
-            modelBuilder.Entity("Web_Stadium.EFCore.GiaoDichHoanCoc", b =>
-                {
-                    b.HasOne("Web_Stadium.EFCore.DatSan", "DatSan")
-                        .WithMany("GiaoDichHoanCocs")
-                        .HasForeignKey("DatSanId")
-                        .IsRequired()
-                        .HasConstraintName("FK_GiaoDichHoanCoc_DatSan");
-
-                    b.HasOne("Web_Stadium.EFCore.User", "NguoiKhoiTao")
-                        .WithMany()
-                        .HasForeignKey("NguoiKhoiTaoId")
-                        .HasConstraintName("FK_GiaoDichHoanCoc_User");
-
-                    b.Navigation("DatSan");
-
-                    b.Navigation("NguoiKhoiTao");
-                });
-
             modelBuilder.Entity("Web_Stadium.EFCore.KhieuNai", b =>
                 {
                     b.HasOne("Web_Stadium.EFCore.User", "AdminXuLy")
@@ -2003,8 +1926,6 @@ namespace Web_Stadium.Migrations
                     b.Navigation("DatSanDichVus");
 
                     b.Navigation("DiemThuongLogs");
-
-                    b.Navigation("GiaoDichHoanCocs");
 
                     b.Navigation("KhieuNais");
 
