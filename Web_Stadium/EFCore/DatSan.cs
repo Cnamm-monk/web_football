@@ -31,6 +31,16 @@ public partial class DatSan
 
     public DateTime ThoiGianTao { get; set; }
 
+    public string? NguonHuy { get; set; }
+
+    public string? LoaiHoanCoc { get; set; }
+
+    public decimal? PhanTramHoan { get; set; }
+
+    public decimal? SoTienDaHoan { get; set; }
+
+    public virtual ICollection<GiaoDichHoanCoc> GiaoDichHoanCocs { get; set; } = new List<GiaoDichHoanCoc>();
+
     public virtual ICollection<DanhGia> DanhGia { get; set; } = new List<DanhGia>();
 
     public virtual ICollection<DatSanDichVu> DatSanDichVus { get; set; } = new List<DatSanDichVu>();

@@ -12,12 +12,14 @@ namespace Web_Stadium.Controllers
         private readonly SanBongContext _context;
         private readonly IConfiguration _config;
         private readonly EmailService _emailService;
+        private readonly HoanCocService _hoanCocService;
 
-        public StaffController(SanBongContext context, IConfiguration config, EmailService emailService)
+        public StaffController(SanBongContext context, IConfiguration config, EmailService emailService, HoanCocService hoanCocService)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
+            _hoanCocService = hoanCocService;
         }
 
         private int GetStaffId() => TokenHelper.LayUserId(Request, _config)!.Value;
@@ -344,17 +346,28 @@ namespace Web_Stadium.Controllers
             var sanIds = await GetSanDuocGiaoAsync();
             var don = await _context.DatSans
                 .Include(d => d.KhungGio)
+                    .ThenInclude(k => k.SanBong)
                 .FirstOrDefaultAsync(d => d.Id == datSanId
                                        && sanIds.Contains(d.KhungGio.SanBongId));
 
             if (don == null) return NotFound();
 
-            don.LoaiSuCo = loaiSuCo;  // "NoShow" | "HongHoc"
+            don.LoaiSuCo = loaiSuCo;
             don.GhiChuSuCo = ghiChu;
 
-            // No-show: khách không đến → chuyển về DaHuy để Owner xem xét
             if (loaiSuCo == "NoShow" && don.TrangThai == "DaXacNhan")
+            {
+                var (success, message) = await _hoanCocService.ThucHienHoanCocAsync(
+                    don,
+                    nguonHuy: "StaffNoShow",
+                    vaiTroNguoiKhoiTao: "Staff",
+                    nguoiKhoiTaoId: GetStaffId(),
+                    soTienHoanTuyChon: 0m,
+                    ghiChu: $"No-show: {ghiChu}"
+                );
+
                 don.TrangThai = "DaHuy";
+            }
 
             await _context.SaveChangesAsync();
 
