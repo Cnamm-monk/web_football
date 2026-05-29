@@ -26,7 +26,6 @@ namespace Web_Stadium.Controllers
             _httpClientFactory = httpClientFactory;
             _hoanCocService = hoanCocService;
         }
-        //test git
         // Helper lấy OwnerId từ JWT
         private int GetOwnerId()
         {
@@ -475,9 +474,6 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonString = await response.Content.ReadAsStringAsync();
-                    // Log ra output debug
-                    System.Diagnostics.Debug.WriteLine($"Java response: {jsonString}");
-
                     using var doc = System.Text.Json.JsonDocument.Parse(jsonString);
                     var root = doc.RootElement;
                     var suggestion = new
@@ -492,13 +488,11 @@ Bên B xác nhận đã đọc, hiểu và đồng ý toàn bộ các điều kh
                 else
                 {
                     var errorBody = await response.Content.ReadAsStringAsync();
-                    System.Diagnostics.Debug.WriteLine($"Java API error: {response.StatusCode} - {errorBody}");
                     ViewBag.Error = $"Java service trả về lỗi: {response.StatusCode}";
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Exception: {ex.Message}");
                 ViewBag.Error = $"Lỗi kết nối Java: {ex.Message}";
             }
 
