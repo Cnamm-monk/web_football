@@ -113,25 +113,31 @@
 
     // ═══ Kết nối SignalR ═══
     const __sanIdsTheoDoi = window.__STAFF_SAN_IDS || [];
-    const rtConn = new signalR.HubConnectionBuilder()
-        .withUrl('/sanBongHub')
-        .withAutomaticReconnect()
-        .build();
+    let rtConn = null;
+    if (typeof signalR !== 'undefined') {
+        rtConn = new signalR.HubConnectionBuilder()
+            .withUrl('/sanBongHub')
+            .withAutomaticReconnect()
+            .build();
 
-    rtConn.on('StaffSuKien', function(ev) {
-        showRTToast(ev.loai, ev.data || {}, ev.thoiGian);
-        if (typeof window.onStaffSuKien === 'function') window.onStaffSuKien(ev);
-    });
-    rtConn.onreconnecting(() => setRTStatus(false));
-    rtConn.onreconnected(() => {
-        setRTStatus(true);
-        __sanIdsTheoDoi.forEach(id => rtConn.invoke('ThamGiaSan', id).catch(()=>{}));
-    });
-    rtConn.onclose(() => setRTStatus(false));
-    rtConn.start().then(() => {
-        setRTStatus(true);
-        __sanIdsTheoDoi.forEach(id => rtConn.invoke('ThamGiaSan', id).catch(()=>{}));
-    }).catch(() => setRTStatus(false));
+        rtConn.on('StaffSuKien', function(ev) {
+            showRTToast(ev.loai, ev.data || {}, ev.thoiGian);
+            if (typeof window.onStaffSuKien === 'function') window.onStaffSuKien(ev);
+        });
+        rtConn.onreconnecting(() => setRTStatus(false));
+        rtConn.onreconnected(() => {
+            setRTStatus(true);
+            __sanIdsTheoDoi.forEach(id => rtConn.invoke('ThamGiaSan', id).catch(()=>{}));
+        });
+        rtConn.onclose(() => setRTStatus(false));
+        rtConn.start().then(() => {
+            setRTStatus(true);
+            __sanIdsTheoDoi.forEach(id => rtConn.invoke('ThamGiaSan', id).catch(()=>{}));
+        }).catch(() => setRTStatus(false));
+    } else {
+        setRTStatus(false);
+        console.warn('[Staff] SignalR không load được — real-time tắt, giọng nói vẫn hoạt động');
+    }
 
     // ═══════════════════════════════════════
     // VOICE ENGINE v3 — nhạy hơn, đa phương án, liên tục
@@ -156,7 +162,7 @@
     // Giúp "nô sô" khớp với pattern "no show", "trê hẹn" khớp "tre hen", v.v.
     function norm(t) {
         return (t || '').toLowerCase()
-            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .replace(/đ/g, 'd').replace(/[^a-z0-9\s]/g, ' ')
             .replace(/\s+/g, ' ').trim();
     }
@@ -487,12 +493,21 @@
         };
 
         recognition.onerror = (e) => {
-            if (e.error === 'no-speech') {
-                $vStatus.textContent = '🔇 Không nghe thấy — thử lại';
+            const _errMsg = {
+                'no-speech'           : '🔇 Không nghe thấy — nhấn mic và thử lại',
+                'network'             : '🌐 Lỗi mạng Speech API — cần Internet & HTTPS. Chạy qua localhost hoặc cài HTTPS.',
+                'not-allowed'         : '🔒 Trình duyệt chặn mic — vào Settings → cho phép Microphone rồi thử lại.',
+                'service-not-allowed' : '🔒 Dịch vụ giọng nói bị chặn — dùng Chrome/Edge, chạy qua localhost.',
+                'audio-capture'       : '🎙️ Không tìm thấy microphone — kiểm tra thiết bị.',
+                'aborted'             : '',
+            };
+            const msg = _errMsg[e.error];
+            if (msg !== undefined) {
+                if (msg) $vStatus.textContent = msg;
             } else {
-                $vStatus.textContent = '❌ Lỗi: ' + e.error;
-                _autoRestart = false;
+                $vStatus.textContent = '❌ Lỗi giọng nói: ' + e.error;
             }
+            if (e.error !== 'no-speech' && e.error !== 'aborted') _autoRestart = false;
             _pendingConfirm = null;
         };
 
