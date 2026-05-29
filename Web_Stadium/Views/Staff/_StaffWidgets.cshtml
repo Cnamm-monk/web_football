@@ -134,7 +134,7 @@
     }).catch(() => setRTStatus(false));
 
     // ═══════════════════════════════════════
-    // VOICE ENGINE v2
+    // VOICE ENGINE v3 — nhạy hơn, đa phương án, liên tục
     // ═══════════════════════════════════════
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const $mic    = document.getElementById('voice-mic');
@@ -143,7 +143,8 @@
     const $vText  = document.getElementById('voice-text');
     const $vHelp  = document.getElementById('voice-help');
     let recognition = null, isListening = false;
-    let _pendingConfirm = null; // { fn, label } — chờ "xác nhận" hoặc "hủy"
+    let _pendingConfirm = null;
+    let _autoRestart    = false; // chế độ liên tục (nói "liên tục bật")
 
     if (!SR) {
         $mic.style.opacity = '0.4';
@@ -151,45 +152,58 @@
         $mic.onclick = () => alert('Dùng Chrome/Edge để dùng tính năng giọng nói.');
     }
 
-    // ── Tiện ích ──
-    const __wnum = { 'một':1,'mot':1,'hai':2,'ba':3,'bốn':4,'bon':4,'năm':5,'nam':5,
-                     'sáu':6,'sau':6,'bảy':7,'bay':7,'tám':8,'tam':8,'chín':9,'chin':9,
-                     'mười':10,'muoi':10,'mươi':10 };
+    // ── Chuẩn hóa: bỏ dấu + lowercase ──────────────────────────────
+    // Giúp "nô sô" khớp với pattern "no show", "trê hẹn" khớp "tre hen", v.v.
+    function norm(t) {
+        return (t || '').toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/đ/g, 'd').replace(/[^a-z0-9\s]/g, ' ')
+            .replace(/\s+/g, ' ').trim();
+    }
+
+    const __wnum = { 'một':1,'mot':1,'hai':2,'ba':3,'bốn':4,'bon':4,
+                     'năm':5,'nam':5,'sáu':6,'sau':6,'bảy':7,'bay':7,
+                     'tám':8,'tam':8,'chín':9,'chin':9,'mười':10,'muoi':10,'mươi':10 };
     window.extractNum = function(t) {
         const m = t.match(/\b(\d+)\b/); if (m) return parseInt(m[1]);
-        for (const w in __wnum) if (t.includes(w)) return __wnum[w];
+        const n = norm(t);
+        const m2 = n.match(/\b(\d+)\b/); if (m2) return parseInt(m2[1]);
+        for (const w in __wnum) if (t.includes(w) || n.includes(norm(w))) return __wnum[w];
         return null;
     };
 
-    // Tìm đơn theo tên / số sân trong câu nói
+    // ── Tìm đơn theo tên/số sân (thử cả bản gốc lẫn bản đã norm) ──
     function _matchSan(list, text, num) {
         if (!list || !list.length) return null;
+        const t  = (text || '').toLowerCase();
+        const tn = norm(text);
         const byId = {};
         list.forEach(d => { byId[d.sanId] = d; });
         const sanList = (window.voiceContext || {}).sanList || [];
 
         for (const san of sanList) {
             if (!(san.id in byId)) continue;
-            const tenLow = (san.ten || '').toLowerCase();
-            const soStr  = tenLow.replace(/^sân\s*/i,'').trim();   // "1", "a", "mini"
-            const soNum  = parseInt(soStr);
+            const tenLow  = (san.ten || '').toLowerCase();
+            const tenNorm = norm(san.ten);
+            const soStr   = tenLow.replace(/^sân\s*/i, '').trim();
+            const soNorm  = norm(soStr);
+            const soNum   = parseInt(soStr);
             if (num !== null && !isNaN(soNum) && soNum === num) return byId[san.id];
-            if (text.includes(tenLow)) return byId[san.id];
-            if (soStr && text.includes(soStr)) return byId[san.id];
+            if (t.includes(tenLow) || tn.includes(tenNorm))   return byId[san.id];
+            if (soStr && (t.includes(soStr) || tn.includes(soNorm))) return byId[san.id];
         }
-        // Nếu sanList chưa inject, thử khớp tenSan trực tiếp
         if (num !== null) {
             const d = list.find(d => (d.tenSan||'').includes(String(num)));
             if (d) return d;
         }
         for (const d of list) {
-            const tenLow = (d.tenSan||'').toLowerCase();
-            if (text.includes(tenLow)) return d;
+            const tl = (d.tenSan||'').toLowerCase();
+            if (t.includes(tl) || tn.includes(norm(tl))) return d;
         }
         return list.length === 1 ? list[0] : null;
     }
 
-    // AJAX check-in (không cần chuyển trang)
+    // ── AJAX check-in ──
     async function _ajaxCheckIn(donId) {
         const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
         const fd = new FormData();
@@ -198,269 +212,316 @@
         const r = await fetch('/Staff/ThucHienCheckIn', { method:'POST', body:fd });
         if (r.ok || r.redirected) {
             $vStatus.textContent = '✅ Check-in thành công!';
-            if (typeof dingTone === 'function') dingTone(880);
+            dingTone(880);
             setTimeout(() => location.reload(), 1200);
         } else {
             $vStatus.textContent = '❌ Check-in thất bại — thử lại';
         }
     }
 
-    // Đặt yêu cầu xác nhận, tự restart mic
+    // ── 2-bước xác nhận ──
     function _confirmThen(msg, fn) {
         _pendingConfirm = { fn, label: msg };
         $vStatus.textContent = '❓ ' + msg;
         $vHelp.innerHTML = 'Nói <em>"xác nhận"</em> để tiếp tục &nbsp;|&nbsp; <em>"hủy"</em> để bỏ qua';
-        // Tự restart lắng nghe sau khi mic tắt
         setTimeout(() => { if (_pendingConfirm && !isListening) toggleVoice(); }, 700);
     }
 
-    // Help overlay
+    // ── Help overlay ──
     function showVoiceHelp() {
         const ctx = window.voiceContext || {};
         const ci  = ctx.checkIns  || [];
         const co  = ctx.checkOuts || [];
         const r   = (cmd, desc) =>
-            `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px">
-                <span style="color:#e5e7eb">${cmd}</span><span style="color:#6b7280">${desc}</span></div>`;
+            `<div style="display:flex;justify-content:space-between;padding:5px 0;
+                         border-bottom:1px solid rgba(255,255,255,.06);font-size:12px">
+                <span style="color:#e5e7eb">${cmd}</span>
+                <span style="color:#6b7280;font-size:11px">${desc}</span></div>`;
+        const sect = (label) =>
+            `<div style="font-size:10px;color:#9ca3af;letter-spacing:1px;margin:12px 0 6px">${label}</div>`;
 
-        let html = `<div onclick="this.remove()" style="position:fixed;inset:0;z-index:10001;
+        const html = `<div onclick="this.remove()" style="position:fixed;inset:0;z-index:10001;
                         background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px">
-            <div onclick="event.stopPropagation()" style="max-width:480px;width:100%;background:#0f172a;
+            <div onclick="event.stopPropagation()" style="max-width:500px;width:100%;background:#0f172a;
                     border:1px solid #16C47F;border-radius:16px;padding:24px;color:white;max-height:90vh;overflow-y:auto">
-                <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#16C47F">🎤 Danh sách lệnh giọng nói</div>
+                <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:#16C47F">🎤 Lệnh giọng nói</div>
+                <div style="font-size:11px;color:#6b7280;margin-bottom:14px">
+                    Nói tự nhiên — hệ thống tự hiểu biến thể phát âm
+                </div>
 
-                <div style="font-size:10px;color:#9ca3af;letter-spacing:1px;margin-bottom:6px">ĐIỀU HƯỚNG</div>
-                ${r('"ca trực"','Về Dashboard')}
-                ${r('"mở check-in"','Trang Check-in')}
-                ${r('"mở sự cố"','Trang Sự cố')}
-                ${r('"vãng lai"','Trang Vãng lai')}
-                ${r('"báo cáo ca"','Mở modal báo cáo')}
-                ${r('"làm mới"','Reload trang')}
-                ${r('"đăng xuất"','Đăng xuất')}
-                ${r('"chế độ sáng / tối"','Đổi giao diện')}
+                ${sect('ĐIỀU HƯỚNG')}
+                ${r('"ca trực"','Dashboard')}${r('"mở check-in"','Trang Check-in')}
+                ${r('"mở sự cố"','Trang Sự cố')}${r('"vãng lai"','Trang Vãng lai')}
+                ${r('"báo cáo ca"','Modal báo cáo')}${r('"làm mới"','Reload')}
+                ${r('"đăng xuất"','')}${r('"chế độ sáng / tối"','')}
+                ${r('"liên tục bật"','Mic luôn bật sau mỗi lệnh')}
 
-                ${ci.length ? `
-                <div style="font-size:10px;color:#9ca3af;letter-spacing:1px;margin:12px 0 6px">CHECK-IN (${ci.length} đơn đang chờ)</div>
-                ${ci.map(d => r(`"check-in sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"`,d.tenKhach||'')).join('')}
-                ${r('"check-in mã ABC123"','Theo mã xác nhận')}
-                ` : ''}
+                ${ci.length ? sect(`CHECK-IN — ${ci.length} đơn chờ`) +
+                  ci.map(d => r(`"check-in sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"`,d.tenKhach||'')).join('') +
+                  r('"check-in mã [ABC123]"','Theo mã xác nhận') : ''}
 
-                ${co.length ? `
-                <div style="font-size:10px;color:#9ca3af;letter-spacing:1px;margin:12px 0 6px">CHECK-OUT / POS (${co.length} sân đang dùng)</div>
-                ${co.map(d => r(`"check-out sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"`,d.tenKhach||'')).join('')}
-                ${co.map(d => r(`"POS sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"`,'')).join('')}
-                ` : ''}
+                ${co.length ? sect(`CHECK-OUT / POS — ${co.length} sân đang dùng`) +
+                  co.map(d => r(`"check-out sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"`,d.tenKhach||'')).join('') +
+                  co.map(d => r(`"POS sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"`,'')).join('') : ''}
 
-                <div style="font-size:10px;color:#9ca3af;letter-spacing:1px;margin:12px 0 6px">BÁO SỰ CỐ</div>
-                ${r('"no-show sân 2"','Khách không đến')}
-                ${r('"hỏng hóc sân 1"','Hỏng cơ sở vật chất')}
-                ${r('"trễ hẹn sân 3"','Khách đến muộn')}
-                ${r('"về sớm sân 2"','Khách về sớm')}
+                ${sect('BÁO SỰ CỐ (nhận mọi biến thể phát âm)')}
+                ${r('"no-show sân 2"','Khách không đến · cũng: "khách không tới", "vắng mặt"')}
+                ${r('"hỏng hóc sân 1"','Hỏng cơ sở · cũng: "hư hỏng", "bị hỏng"')}
+                ${r('"trễ hẹn sân 3"','Khách đến muộn · cũng: "khách muộn", "đến trễ"')}
+                ${r('"về sớm sân 2"','Khách về sớm · cũng: "kết thúc sớm"')}
 
                 <button onclick="this.closest('[onclick]').remove()"
                     style="width:100%;margin-top:16px;padding:9px;border:1px solid #374151;
                            background:transparent;color:#9ca3af;border-radius:8px;cursor:pointer;font-size:12px">
-                    Đóng (hoặc click bên ngoài)
+                    Đóng
                 </button>
             </div></div>`;
         document.body.insertAdjacentHTML('beforeend', html);
     }
 
-    // ── Xử lý lệnh chính ──
-    function executeVoice(text) {
-        text = (text || '').toLowerCase().trim();
-        $vText.textContent = '🗣️ "' + text + '"';
+    // ── Xử lý lệnh chính — trả về true nếu đã khớp ──────────────────
+    function executeVoice(text, confidence) {
+        text = (text || '').trim();
+        const t  = text.toLowerCase();
+        const tn = norm(text);  // bản không dấu để khớp biến thể phát âm
+        $vText.textContent = '🗣️ "' + text + '"' + (confidence != null ? ` (${Math.round(confidence * 100)}%)` : '');
 
-        // Bước xác nhận
+        // ── Bước xác nhận 2 bước ──
         if (_pendingConfirm) {
             const { fn } = _pendingConfirm;
             _pendingConfirm = null;
             $vHelp.innerHTML = '';
-            if (/(^(xác nhận|xac nhan|đồng ý|dong y|có|co|ok|oke|được|duoc|yes)$|^(ok|oke)$)/.test(text)
-                || text === 'có' || text === 'co' || text === 'ok' || text === 'xác nhận' || text === 'xac nhan') {
+            const YES = /^(xac nhan|dong y|co|ok|oke|duoc|yes|u|uh|yeah|roi|r)$/;
+            if (YES.test(tn) || /^(xác nhận|đồng ý|có|được|ừ|rồi)$/.test(t)) {
                 $vStatus.textContent = '⏳ Đang thực hiện...';
                 setTimeout(() => { try { fn(); } catch(e) { $vStatus.textContent = '❌ ' + e.message; } }, 200);
             } else {
                 $vStatus.textContent = '↩️ Đã hủy';
             }
-            return;
+            return true;
         }
 
-        const ctx   = window.voiceContext || {};
-        const num   = window.extractNum(text);
-        const ci    = ctx.checkIns  || [];
-        const co    = ctx.checkOuts || [];
-        const sc    = ctx.suCoList  || co;
+        const ctx = window.voiceContext || {};
+        const num = window.extractNum(t);
+        const ci  = ctx.checkIns  || [];
+        const co  = ctx.checkOuts || [];
+        const sc  = ctx.suCoList  || co;
 
-        // Page-specific commands luôn được ưu tiên đầu
+        // ── Page-specific commands (ưu tiên cao nhất) ──
         for (const c of (window.voiceCommands || [])) {
-            if (c.re.test(text)) {
+            if (c.re.test(t) || c.re.test(tn)) {
                 $vStatus.textContent = '✅ ' + (c.label || 'OK');
-                try { c.action(text, num); } catch(e) { console.error(e); }
-                return;
+                try { c.action(t, num); } catch(e) { console.error(e); }
+                return true;
             }
         }
 
         // ── Check-in ──
-        if (/(check.?in|checkin|vào sân|khách vào)/.test(text)) {
-            // Theo mã xác nhận
-            const maM = text.match(/mã[\s:]*([a-z0-9]{4,})/i);
+        if (/check.?in|checkin|vao san|khach vao/.test(tn)
+            || /check.?in|checkin|vào sân|khách vào/.test(t)) {
+            const maM = t.match(/mã[\s:]*([a-z0-9]{4,})/i) || tn.match(/ma[\s:]*([a-z0-9]{4,})/i);
             if (maM) {
                 const ma  = maM[1].toUpperCase();
                 const don = ci.find(d => (d.maXacNhan||'').toUpperCase() === ma);
                 if (don) _confirmThen(`Check-in ${don.tenKhach} (${don.tenSan})?`, () => _ajaxCheckIn(don.id));
                 else     $vStatus.textContent = `❓ Không có đơn mã "${ma}" chờ check-in`;
-                return;
+                return true;
             }
-            // Theo tên/số sân
-            const don = _matchSan(ci, text, num);
+            const don = _matchSan(ci, t, num) || _matchSan(ci, tn, num);
             if (don) {
                 _confirmThen(`Check-in ${don.tenKhach} — ${don.tenSan}?`, () => _ajaxCheckIn(don.id));
             } else if (!ci.length) {
                 $vStatus.textContent = '❓ Không có đơn nào chờ check-in lúc này';
-            } else if (ci.length > 1 && !num) {
+            } else if (ci.length > 1 && num === null) {
                 $vStatus.textContent = `❓ Nói rõ sân: ${ci.map(d=>d.tenSan).join(', ')}`;
-                $vHelp.innerHTML = ci.map(d=>`<em>"check-in sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"</em>`).join(' &nbsp;|&nbsp; ');
+                $vHelp.innerHTML = ci.map(d=>`<em>"check-in sân ${(d.tenSan||'').replace(/sân\s*/i,'')}"</em>`).join(' | ');
             } else {
                 $vStatus.textContent = '❓ Không tìm thấy đơn chờ check-in phù hợp';
             }
-            return;
+            return true;
         }
 
         // ── Check-out ──
-        if (/(check.?out|checkout|thanh toán|thanh toan|thu tiền|thu tien|đóng sân|dong san)/.test(text)) {
-            const maM = text.match(/mã[\s:]*([a-z0-9]{4,})/i);
+        if (/check.?out|checkout|thanh toan|thu tien|dong san/.test(tn)
+            || /check.?out|checkout|thanh toán|thu tiền|đóng sân/.test(t)) {
+            const maM = t.match(/mã[\s:]*([a-z0-9]{4,})/i) || tn.match(/ma[\s:]*([a-z0-9]{4,})/i);
             if (maM) {
                 const ma  = maM[1].toUpperCase();
                 const don = co.find(d => (d.maXacNhan||'').toUpperCase() === ma);
-                if (don) { $vStatus.textContent = `✅ Chuyển đến check-out ${don.tenKhach}`; setTimeout(()=>location.href='/Staff/CheckOut/'+don.id,600); }
+                if (don) { $vStatus.textContent = `✅ Check-out ${don.tenKhach}`; setTimeout(()=>location.href='/Staff/CheckOut/'+don.id,600); }
                 else     $vStatus.textContent = `❓ Không có đơn mã "${ma}" đang sử dụng`;
-                return;
+                return true;
             }
-            const don = _matchSan(co, text, num);
+            const don = _matchSan(co, t, num) || _matchSan(co, tn, num);
             if (don) {
                 $vStatus.textContent = `✅ Check-out ${don.tenSan} — ${don.tenKhach}`;
                 setTimeout(() => location.href = '/Staff/CheckOut/' + don.id, 600);
             } else if (!co.length) {
                 $vStatus.textContent = '❓ Không có sân nào đang sử dụng';
-            } else if (co.length > 1 && !num) {
+            } else if (co.length > 1 && num === null) {
                 $vStatus.textContent = `❓ Nói rõ sân: ${co.map(d=>d.tenSan).join(', ')}`;
             } else {
-                $vStatus.textContent = '❓ Không tìm thấy sân đang sử dụng phù hợp';
+                $vStatus.textContent = '❓ Không tìm thấy sân phù hợp';
             }
-            return;
+            return true;
         }
 
         // ── POS ──
-        if (/(pos|thêm dịch vụ|them dich vu|mua thêm|mua them|dịch vụ|dich vu)/.test(text)) {
-            const don = _matchSan(co, text, num) || (co.length === 1 ? co[0] : null);
+        if (/^pos$|them dich vu|mua them|dich vu/.test(tn)
+            || /\bpos\b|thêm dịch vụ|mua thêm/.test(t)) {
+            const don = _matchSan(co, t, num) || _matchSan(co, tn, num) || (co.length===1 ? co[0] : null);
             if (don) { $vStatus.textContent = `✅ Mở POS ${don.tenSan}`; setTimeout(()=>location.href='/Staff/POS/'+don.id,600); }
             else if (!co.length) $vStatus.textContent = '❓ Không có sân nào đang sử dụng';
             else $vStatus.textContent = `❓ Nói rõ sân: ${co.map(d=>d.tenSan).join(', ')}`;
-            return;
+            return true;
         }
 
-        // ── Sự cố ──
-        if (/(sự cố|su co|báo sự|bao su|no.?show|không đến|khong den|hỏng|hong hoc|hỏng hóc|trễ hẹn|tre hen|về sớm|ve som)/.test(text)) {
+        // ── Sự cố — regex rộng nhất, bao mọi biến thể phát âm ──────────
+        // "no show" → STT thường ra: "nô sô", "no sô", "nô show", "nô shô", "no so"
+        const SC_TRIGGER = /su.?co|bao.?su|no.?s[ho]|no.?so|no.?show|no.?sho|khong.?den|khong.?toi|vang.?mat|hong.?hoc|hu.?hong|tre.?hen|ve.?som|ket.?thuc.?som|muon|khach.?khong|khach.?vang/;
+        const SC_TRIGGER_RAW = /sự cố|báo sự|no.?show|không đến|không tới|vắng mặt|hỏng hóc|hư hỏng|trễ hẹn|về sớm|kết thúc sớm|muộn|khách không/;
+        if (SC_TRIGGER.test(tn) || SC_TRIGGER_RAW.test(t)) {
             const loaiMap = [
-                { re:/(no.?show|không đến|khong den|vắng mặt|vang mat)/, val:'NoShow' },
-                { re:/(hỏng|hong|hỏng hóc|hong hoc|hư hỏng)/, val:'HongHoc' },
-                { re:/(trễ|tre|muộn|muon|trễ hẹn|tre hen)/, val:'TreHen' },
-                { re:/(về sớm|ve som|kết thúc sớm|ket thuc som)/, val:'VeSom' },
+                // NoShow: nhận hết biến thể "no show", "nô sô", "khách không đến"
+                { re: /no.?s[ho]|no.?so|no.?show|no.?sho|khong.?den|khong.?toi|vang.?mat|khach.?khong|khach.?vang/, raw: /no.?show|không đến|không tới|vắng mặt|khách không/ , val:'NoShow' },
+                // HongHoc
+                { re: /hong.?hoc|hu.?hong|hu.?hoa|co.?so.?vc|co.?so.?vc|co.?so|vat.?chat/, raw: /hỏng hóc|hư hỏng|cơ sở|vật chất/, val:'HongHoc' },
+                // TreHen
+                { re: /tre.?hen|den.?tre|muon|khach.?muon|khach.?tre/, raw: /trễ hẹn|đến trễ|muộn/, val:'TreHen' },
+                // VeSom
+                { re: /ve.?som|ket.?thuc.?som|ra.?som|di.?som/, raw: /về sớm|kết thúc sớm|ra sớm/, val:'VeSom' },
             ];
             let loai = '';
-            for (const l of loaiMap) { if (l.re.test(text)) { loai = l.val; break; } }
+            for (const l of loaiMap) {
+                if (l.re.test(tn) || l.raw.test(t)) { loai = l.val; break; }
+            }
 
-            const don = _matchSan(sc, text, num);
+            const don = _matchSan(sc, t, num) || _matchSan(sc, tn, num);
             if (don) {
-                const url = '/Staff/SuCo?prefill=' + don.id + (loai ? '&loai=' + loai : '');
-                $vStatus.textContent = `✅ Báo sự cố${loai?' — '+loai:''} | ${don.tenSan}`;
-                setTimeout(() => location.href = url, 600);
+                const loaiLabel = { NoShow:'No-show', HongHoc:'Hỏng hóc', TreHen:'Trễ hẹn', VeSom:'Về sớm' }[loai] || 'Sự cố';
+                $vStatus.textContent = `✅ Báo ${loaiLabel} | ${don.tenSan}`;
+                setTimeout(() => location.href = '/Staff/SuCo?prefill=' + don.id + (loai ? '&loai=' + loai : ''), 600);
             } else {
                 $vStatus.textContent = '↪️ Mở trang Sự cố';
                 setTimeout(() => location.href = '/Staff/SuCo', 600);
             }
-            return;
+            return true;
         }
 
-        // ── Điều hướng và lệnh toàn cục ──
+        // ── Điều hướng và lệnh toàn cục ──────────────────────────────────
         const globalCmds = [
-            { re:/(ca trực|ca truc|dashboard|trang chủ|trang chu|staff home)/, label:'Về Ca trực', url:'/Staff' },
-            { re:/(mở check.?in|open checkin|quét|quet|qr scanner)/, label:'Mở Check-in', url:'/Staff/CheckIn' },
-            { re:/(mở sự cố|mo su co|báo cáo sự cố|bao cao su co)/, label:'Mở Sự cố', url:'/Staff/SuCo' },
-            { re:/(vãng lai|vang lai|bán lẻ|ban le)/, label:'Vãng lai', url:'/Staff/VangLai' },
-            { re:/(làm mới|lam moi|reload|refresh|cập nhật|cap nhat)/, label:'Làm mới', fn:()=>location.reload() },
-            { re:/(đăng xuất|dang xuat|logout|thoát|thoat)/, label:'Đăng xuất', url:'/Auth/Logout' },
-            { re:/(báo cáo ca|bao cao ca|in ca|xem báo cáo|xem bao cao)/, label:'Báo cáo ca',
+            { rn:/ca truc|dashboard|trang chu|staff home/, raw:/ca trực|trang chủ/,          label:'Về Ca trực',       url:'/Staff' },
+            { rn:/mo check.?in|open checkin|quet|qr.?scan/, raw:/mở check.?in|quét/,         label:'Mở Check-in',      url:'/Staff/CheckIn' },
+            { rn:/mo su.?co|bao cao su.?co/,               raw:/mở sự cố|báo cáo sự cố/,     label:'Mở Sự cố',         url:'/Staff/SuCo' },
+            { rn:/vang lai|ban le/,                        raw:/vãng lai|bán lẻ/,             label:'Vãng lai',         url:'/Staff/VangLai' },
+            { rn:/lam moi|reload|refresh|cap nhat/,        raw:/làm mới|cập nhật/,            label:'Làm mới',          fn:()=>location.reload() },
+            { rn:/dang xuat|logout|thoat/,                 raw:/đăng xuất|thoát/,             label:'Đăng xuất',        url:'/Auth/Logout' },
+            { rn:/bao cao ca|in ca|xem bao cao/,           raw:/báo cáo ca|xem báo cáo/,      label:'Báo cáo ca',
               fn:()=>{ const m=document.getElementById('printModal'); if(m) m.style.display='flex'; } },
-            { re:/(chế độ sáng|che do sang|sáng lên|sang len|ban ngày|ban ngay)/, label:'Giao diện sáng',
+            { rn:/che do sang|sang len|ban ngay/,          raw:/chế độ sáng|ban ngày/,        label:'Giao diện sáng',
               fn:()=>{ if(document.documentElement.dataset.theme!=='light') toggleTheme(); } },
-            { re:/(chế độ tối|che do toi|tối lại|toi lai|ban đêm|ban dem)/, label:'Giao diện tối',
+            { rn:/che do toi|toi lai|ban dem/,             raw:/chế độ tối|ban đêm/,          label:'Giao diện tối',
               fn:()=>{ if(document.documentElement.dataset.theme==='light') toggleTheme(); } },
-            { re:/(trợ giúp|tro giup|help|hướng dẫn|huong dan|lệnh|xem lệnh|câu lệnh)/, label:'Hiển thị trợ giúp',
-              fn:()=>showVoiceHelp() },
+            { rn:/tro giup|help|huong dan|xem lenh|cau lenh/, raw:/trợ giúp|hướng dẫn|câu lệnh/, label:'Trợ giúp',   fn:()=>showVoiceHelp() },
+            { rn:/lien tuc bat|always on|luon bat/,        raw:/liên tục bật|luôn bật/,       label:'Chế độ liên tục BẬT',
+              fn:()=>{ _autoRestart=true; $vStatus.textContent='🔁 Liên tục BẬT — nói "liên tục tắt" để dừng'; } },
+            { rn:/lien tuc tat|always off|luon tat/,       raw:/liên tục tắt|luôn tắt/,       label:'Chế độ liên tục TẮT',
+              fn:()=>{ _autoRestart=false; $vStatus.textContent='⏹ Liên tục TẮT'; } },
         ];
         for (const c of globalCmds) {
-            if (c.re.test(text)) {
+            if (c.rn.test(tn) || c.raw.test(t)) {
                 $vStatus.textContent = '✅ ' + c.label;
                 setTimeout(() => { if (c.url) location.href = c.url; if (c.fn) c.fn(); }, 600);
-                return;
+                return true;
             }
         }
 
         $vStatus.textContent = '❓ Không hiểu — nói "trợ giúp" để xem danh sách lệnh';
+        return false;
     }
 
+    // ── Khởi động nhận dạng — thử tất cả alternatives đến khi khớp ──
     function toggleVoice() {
         if (!SR) return;
-        if (isListening) { recognition.stop(); return; }
+        if (isListening) { recognition.stop(); _autoRestart = false; return; }
         recognition = new SR();
         recognition.lang = 'vi-VN';
         recognition.continuous = false;
         recognition.interimResults = true;
-        recognition.maxAlternatives = 3;
+        recognition.maxAlternatives = 5; // tăng từ 3 lên 5
+
         recognition.onstart = () => {
             isListening = true;
             $mic.classList.add('listening');
             $vToast.style.display = 'block';
             if (!_pendingConfirm) {
-                $vStatus.textContent = '🎤 Đang nghe...';
+                $vStatus.textContent = _autoRestart ? '🔁 Đang nghe (liên tục)...' : '🎤 Đang nghe...';
                 $vText.textContent   = '';
                 const ctx = window.voiceContext || {};
                 const ci  = ctx.checkIns  || [];
                 const co  = ctx.checkOuts || [];
-                const hint = ci.length  ? `✅ ${ci.length} chờ check-in` :
-                             co.length  ? `🟣 ${co.length} đang đánh` : '';
+                const hint = ci.length ? `✅ ${ci.length} chờ check-in` :
+                             co.length ? `🟣 ${co.length} đang đánh` : '';
                 $vHelp.innerHTML = (window.voiceHelpHTML || '')
                     + (hint ? `<span style="color:#16C47F">${hint}</span><br>` : '')
                     + 'Nói <em>"trợ giúp"</em> để xem tất cả lệnh';
             }
         };
+
         recognition.onresult = (e) => {
-            const last = e.results[e.results.length - 1];
-            $vText.textContent = '🗣️ "' + last[0].transcript + '"';
-            if (last.isFinal) executeVoice(last[0].transcript);
+            const results = e.results[e.results.length - 1];
+            $vText.textContent = '🗣️ "' + results[0].transcript + '"';
+            if (results.isFinal) {
+                // Thử từng alternative cho đến khi một lệnh được khớp
+                let handled = false;
+                for (let i = 0; i < results.length && !handled; i++) {
+                    const alt = results[i];
+                    if (i === 0 || alt.confidence > 0.05) {
+                        handled = executeVoice(alt.transcript, alt.confidence);
+                    }
+                }
+                if (!handled) {
+                    $vStatus.textContent = '❓ Không hiểu — nói "trợ giúp" để xem danh sách lệnh';
+                }
+            }
         };
+
         recognition.onerror = (e) => {
-            $vStatus.textContent = '❌ Lỗi: ' + e.error;
+            if (e.error === 'no-speech') {
+                $vStatus.textContent = '🔇 Không nghe thấy — thử lại';
+            } else {
+                $vStatus.textContent = '❌ Lỗi: ' + e.error;
+                _autoRestart = false;
+            }
             _pendingConfirm = null;
         };
+
         recognition.onend = () => {
             isListening = false;
             $mic.classList.remove('listening');
             if (_pendingConfirm) {
-                // Tự mở lại để lắng nghe xác nhận
                 setTimeout(() => { if (_pendingConfirm) toggleVoice(); }, 600);
                 return;
             }
-            setTimeout(() => { $vToast.style.display = 'none'; }, 3500);
+            if (_autoRestart) {
+                setTimeout(() => { if (_autoRestart) toggleVoice(); }, 800);
+                return;
+            }
+            setTimeout(() => { if (!isListening) $vToast.style.display = 'none'; }, 3500);
         };
+
         recognition.start();
     }
 
     document.addEventListener('keydown', e => {
-        if (e.code === 'Space' && e.ctrlKey && !isListening) { e.preventDefault(); toggleVoice(); }
-        if (e.code === 'Escape' && _pendingConfirm) { _pendingConfirm = null; $vStatus.textContent = '↩️ Đã hủy'; }
+        if (e.code === 'Space' && e.ctrlKey) { e.preventDefault(); toggleVoice(); }
+        if (e.code === 'Escape' && _pendingConfirm) {
+            _pendingConfirm = null; $vStatus.textContent = '↩️ Đã hủy';
+        }
+        if (e.code === 'Escape' && _autoRestart) {
+            _autoRestart = false;
+            if (isListening) recognition.stop();
+        }
     });
 
     // ═══ Dark / Light Toggle ═══
