@@ -107,6 +107,7 @@ namespace Web_Stadium
             builder.Services.AddScoped<Web_Stadium.Services.SuspensionService>();
             builder.Services.AddScoped<Web_Stadium.Services.TournamentNotificationService>();
             builder.Services.AddScoped<Web_Stadium.Services.TournamentExcelService>();
+            builder.Services.AddScoped<Web_Stadium.Services.KnockOutService>();
             builder.Services.AddScoped<Web_Stadium.Services.TournamentService>();
 
             //builder.Services.AddHostedService<Web_Stadium.End.MatchmakingAutoCleanupService>();

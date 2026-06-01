@@ -41,6 +41,11 @@ public partial class DatSan
 
     public decimal? SoTienDaHoan { get; set; }
 
+    // Dummy Booking cho giải đấu (giai đoạn 1 blueprint)
+    public int? GiaiDauId { get; set; }
+    public bool LaDummyBooking { get; set; }
+    public virtual GiaiDau? GiaiDau { get; set; }
+
     public virtual ICollection<GiaoDichHoanCoc> GiaoDichHoanCocs { get; set; } = new List<GiaoDichHoanCoc>();
 
     public virtual ICollection<DanhGia> DanhGia { get; set; } = new List<DanhGia>();

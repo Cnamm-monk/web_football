@@ -1,323 +1,184 @@
-﻿@model Web_Stadium.EFCore.GiaiDau
+@model Web_Stadium.EFCore.GiaiDau
 @{
     ViewData["Title"] = "Bracket — " + Model.TenGiai;
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "Tournament";
 
-    var tranTuKet = Model.TranDaus?.Where(t => t.LoaiVong == "TuKet")
-                          .OrderBy(t => t.Id).ToList() ?? new();
-    var tranBanKet = Model.TranDaus?.Where(t => t.LoaiVong == "BanKet")
-                          .OrderBy(t => t.Id).ToList() ?? new();
-    var tranChungKet = Model.TranDaus?.Where(t => t.LoaiVong == "ChungKet")
-                          .FirstOrDefault();
-    var isOwner = ViewBag.IsOwner as bool? ?? false;
+    var tranTuKet    = Model.TranDaus?.Where(t => t.LoaiVong == "TuKet").OrderBy(t => t.Id).ToList() ?? new();
+    var tranBanKet   = Model.TranDaus?.Where(t => t.LoaiVong == "BanKet").OrderBy(t => t.Id).ToList() ?? new();
+    var tranChungKet = Model.TranDaus?.FirstOrDefault(t => t.LoaiVong == "ChungKet");
+    var isOwner   = ViewBag.IsOwner as bool? ?? false;
     var khungGios = ViewBag.KhungGios as List<Web_Stadium.EFCore.KhungGio> ?? new();
 }
 
+@await Html.PartialAsync("_TournamentStyle")
+
 @section Styles {
     <style>
-        /* Bracket layout */
-        .bracket-wrap {
-            overflow-x: auto;
-            padding: 24px 0;
-        }
+        .bracket-wrap { overflow-x: auto; padding: 16px 0; }
+        .bracket { display: flex; gap: 0; align-items: center; min-width: 900px; }
+        .bracket-round { display: flex; flex-direction: column; justify-content: space-around;
+                         flex: 1; position: relative; }
+        .round-title { font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase;
+                       color: var(--db-muted); font-weight: 700; text-align: center; margin-bottom: 16px; }
 
-        .bracket {
-            display: flex;
-            gap: 0;
-            align-items: center;
-            min-width: 900px;
-        }
+        .bk-match { background: #fff; border: 1px solid var(--db-border); border-radius: 12px;
+                    overflow: hidden; margin: 8px 16px; transition: box-shadow .15s; position: relative; }
+        .bk-match:hover { box-shadow: 0 4px 8px rgba(0,0,0,.05); }
+        .bk-match.winner { border-color: var(--db-green); box-shadow: 0 0 0 2px var(--db-green-bg); }
+        .bk-match.pending { opacity: .55; border-style: dashed; }
 
-        .bracket-round {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-around;
-            flex: 1;
-            position: relative;
-        }
+        .bk-team { display: flex; align-items: center; justify-content: space-between;
+                   padding: 10px 14px; gap: 8px; border-bottom: 1px solid var(--db-border);
+                   transition: background .15s; }
+        .bk-team:last-child { border-bottom: none; }
+        .bk-team.win { background: var(--db-green-bg); }
+        .bk-team.lose { opacity: .5; }
+        .bk-team-name { font-weight: 600; font-size: 13px; color: var(--db-text);
+                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+        .bk-team-score { font-size: 1rem; font-weight: 800; color: var(--db-green); min-width: 22px; text-align: center; }
+        .bk-team-tbd { color: #94a3b8; font-size: 12px; font-style: italic; }
 
-        .round-title {
-            font-family: var(--ff-h);
-            font-size: 10px;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--muted);
-            text-align: center;
-            margin-bottom: 16px;
-        }
-
-        /* Match card trong bracket */
-        .bk-match {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: var(--r);
-            overflow: hidden;
-            margin: 8px 16px;
-            transition: box-shadow .15s;
-            position: relative;
-        }
-
-            .bk-match:hover {
-                box-shadow: var(--shadow-md);
-            }
-
-            .bk-match.winner {
-                border-color: var(--green);
-                box-shadow: 0 0 0 2px rgba(14,168,106,.15);
-            }
-
-            .bk-match.pending {
-                opacity: .5;
-                border-style: dashed;
-            }
-
-        .bk-team {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            gap: 8px;
-            border-bottom: 1px solid var(--border);
-            transition: background .15s;
-        }
-
-            .bk-team:last-child {
-                border-bottom: none;
-            }
-
-            .bk-team.win {
-                background: rgba(14,168,106,.06);
-            }
-
-            .bk-team.lose {
-                opacity: .5;
-            }
-
-        .bk-team-name {
-            font-weight: 600;
-            font-size: 13px;
-            color: var(--text);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 120px;
-        }
-
-        .bk-team-score {
-            font-family: var(--ff-h);
-            font-size: 1rem;
-            font-weight: 800;
-            color: var(--green);
-            min-width: 20px;
-            text-align: center;
-        }
-
-        .bk-team-tbd {
-            color: var(--muted2);
-            font-size: 12px;
-            font-style: italic;
-        }
-
-        /* Connector lines */
         .bracket-round:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            right: -1px;
-            top: 25%;
-            height: 50%;
-            width: 1px;
-            background: var(--border);
-            pointer-events: none;
+            content: ''; position: absolute; right: -1px; top: 25%;
+            height: 50%; width: 1px; background: var(--db-border); pointer-events: none;
         }
+        .bk-meta { font-size: 10.5px; color: var(--db-muted); padding: 5px 14px;
+                   border-top: 1px solid var(--db-border); display: flex;
+                   justify-content: space-between; background: var(--db-bg); }
 
-        .bk-meta {
-            font-size: 10px;
-            color: var(--muted2);
-            padding: 4px 14px;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            background: var(--bg3);
-        }
+        .champion-box { text-align: center; padding: 24px; margin: 8px 16px;
+                        background: linear-gradient(135deg, rgba(255,215,0,.12), var(--db-green-bg));
+                        border: 1px solid rgba(255,215,0,.4); border-radius: 14px; }
+        .champion-icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .champion-name { font-size: 1rem; font-weight: 800; letter-spacing: 2px;
+                         text-transform: uppercase; color: #b8860b; }
 
-        /* Champion box */
-        .champion-box {
-            text-align: center;
-            padding: 20px;
-            background: linear-gradient(135deg, rgba(255,215,0,.1), rgba(14,168,106,.08));
-            border: 1px solid rgba(255,215,0,.3);
-            border-radius: var(--r-lg);
-            margin: 8px 16px;
-        }
-
-        .champion-icon {
-            font-size: 2.5rem;
-            margin-bottom: 8px;
-        }
-
-        .champion-name {
-            font-family: var(--ff-h);
-            font-size: 1rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: #FFD700;
-        }
-
-        /* Gán khung giờ */
-        .assign-btn {
-            font-size: 10px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            background: rgba(14,168,106,.1);
-            color: var(--green);
-            border: 1px solid rgba(14,168,106,.2);
-            cursor: pointer;
-            transition: all .15s;
-        }
-
-            .assign-btn:hover {
-                background: var(--green);
-                color: #fff;
-            }
+        .assign-btn { font-size: 11px; padding: 3px 10px; border-radius: 999px;
+                      background: var(--db-green-bg); color: var(--db-green);
+                      border: 1px solid var(--db-green-border); cursor: pointer; transition: .15s; }
+        .assign-btn:hover { background: var(--db-green); color: #fff; }
     </style>
 }
 
-<div style="background:var(--bg2);padding:100px 0 32px;border-bottom:1px solid var(--border)">
+<!-- HERO -->
+<div class="tour-hero">
     <div class="container">
-        <div class="section-label">Owner — Giải đấu</div>
-        <h1 style="font-style:italic;line-height:.9;margin:0">
-            BRACKET<br><span class="text-green">@Model.TenGiai.ToUpper()</span>
-        </h1>
-    </div>
-</div>
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);
-            padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap justify-content-between align-items-center">
-        <a href="/Tournament/Details/@Model.Id" class="btn btn-outline-secondary rounded-pill">
-            ← Quay lại Details
+        <a href="/Tournament/Details/@Model.Id"
+           style="color:rgba(255,255,255,.85);font-size:13px;text-decoration:none;
+                  display:inline-flex;align-items:center;gap:6px;margin-bottom:10px">
+            ← Quay lại chi tiết giải
         </a>
-        @if (isOwner && !tranTuKet.Any() && !tranBanKet.Any() && tranChungKet == null)
-        {
-            <form method="post" action="/Tournament/SinhBracket">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="giaiDauId" value="@Model.Id" />
-                <button type="submit" class="btn btn-success rounded-pill"
-                        onclick="return confirm('Sinh vòng knock-out từ kết quả vòng bảng?')">
-                    🏆 Sinh Bracket Knock-out
-                </button>
-            </form>
-        }
+        <div class="tour-hero__inner">
+            <div>
+                <div class="tour-hero__label">Owner · Bracket Knock-out</div>
+                <h1 class="tour-hero__title">BRACKET — @Model.TenGiai.ToUpper()</h1>
+                <div class="tour-hero__sub">
+                    Cây nhánh từ kết quả vòng bảng. Click "Gán giờ" để xếp khung giờ trận.
+                </div>
+            </div>
+            @if (isOwner && !tranTuKet.Any() && !tranBanKet.Any() && tranChungKet == null)
+            {
+                <form method="post" action="/Tournament/SinhBracket">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="giaiDauId" value="@Model.Id" />
+                    <button type="submit" class="tour-btn tour-btn--primary"
+                            onclick="return confirm('Sinh vòng knock-out từ kết quả vòng bảng?')">
+                        🏆 Sinh Bracket Knock-out
+                    </button>
+                </form>
+            }
+        </div>
     </div>
 </div>
 
-<div class="container py-4">
+@await Html.PartialAsync("/Views/Owner/_OwnerNav.cshtml")
+
+<div class="container tour-content">
 
     @if (TempData["Error"] != null)
     {
-        <div class="alert alert-danger alert-dismissible fade show mb-4">
-            ❌ @TempData["Error"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+        <div class="tour-alert tour-alert--error">❌ @TempData["Error"]</div>
     }
     @if (TempData["Success"] != null)
     {
-        <div class="alert alert-success alert-dismissible fade show mb-4">
-            ✅ @TempData["Success"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+        <div class="tour-alert tour-alert--success">✅ @TempData["Success"]</div>
     }
 
     @if (!tranTuKet.Any() && !tranBanKet.Any() && tranChungKet == null)
     {
-        <div style="text-align:center;padding:80px 0;color:var(--muted)">
-            <div style="font-size:3rem;margin-bottom:14px">🏆</div>
-            <div style="font-size:1.1rem;margin-bottom:8px">
-                Chưa có vòng knock-out
-            </div>
-            <div style="font-size:13px;margin-bottom:20px">
-                Hoàn thành toàn bộ trận vòng bảng trước khi sinh bracket.
-            </div>
+        <div class="tour-card tour-empty">
+            <div class="tour-empty__icon">🏆</div>
+            <div class="tour-empty__title">Chưa có vòng knock-out</div>
+            <div class="tour-empty__sub">Hoàn thành toàn bộ trận vòng bảng trước khi sinh bracket.</div>
             @if (isOwner)
             {
                 <form method="post" action="/Tournament/SinhBracket">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="giaiDauId" value="@Model.Id" />
-                    <button type="submit" class="btn-primary-glow">
-                        🏆 Sinh Bracket Knock-out ngay
-                    </button>
+                    <button type="submit" class="tour-btn tour-btn--primary">🏆 Sinh Bracket Knock-out ngay</button>
                 </form>
             }
         </div>
     }
     else
     {
-        <!-- BRACKET TREE -->
-        <div class="bracket-wrap">
-            <div class="bracket">
+        <div class="tour-card" style="padding:14px">
+            <div class="bracket-wrap">
+                <div class="bracket">
 
-                @* Cột Tứ kết *@
-                @if (tranTuKet.Any())
-                {
-                    <div class="bracket-round">
-                        <div class="round-title">⚔️ Tứ kết</div>
-                        @foreach (var t in tranTuKet)
-                        {
-                            @await Html.PartialAsync("_BracketMatch",
-                            new ViewDataDictionary(ViewData) {
-                                { "tran", t },
-                                { "isOwner", isOwner },
-                                { "khungGios", khungGios }
-                                })
-                                }
-                    </div>
-                }
-
-                @* Cột Bán kết *@
-                @if (tranBanKet.Any())
-                {
-                    <div class="bracket-round">
-                        <div class="round-title">🥊 Bán kết</div>
-                        @foreach (var t in tranBanKet)
-                        {
-                            @await Html.PartialAsync("_BracketMatch",
-                            new ViewDataDictionary(ViewData) {
-                                { "tran", t },
-                                { "isOwner", isOwner },
-                                { "khungGios", khungGios }
-                                })
-                                }
-                    </div>
-                }
-
-                @* Cột Chung kết *@
-                <div class="bracket-round">
-                    <div class="round-title">🏆 Chung kết</div>
-                    @if (tranChungKet != null)
+                    @if (tranTuKet.Any())
                     {
-                        @if (tranChungKet.TrangThai == "Closed" && tranChungKet.BanThangNha.HasValue)
-                        {
-                            @* Hiện nhà vô địch *@
-                            var vodichdId = tranChungKet.BanThangNha > tranChungKet.BanThangKhach
-                            ? tranChungKet.DoiNhaId : tranChungKet.DoiKhachId;
-                            var vodich = Model.DoiBongs?.FirstOrDefault(d => d.Id == vodichdId);
-                            <div class="champion-box">
-                                <div class="champion-icon">🏆</div>
-                                <div class="champion-name">@(vodich?.TenDoi ?? "—")</div>
-                                <div style="font-size:12px;color:var(--muted);margin-top:4px">
-                                    VÔ ĐỊCH
-                                </div>
-                            </div>
-                        }
-                        else
-                        {
-                            @await Html.PartialAsync("_BracketMatch",
-                            new ViewDataDictionary(ViewData) {
-                                { "tran", tranChungKet },
-                                { "isOwner", isOwner },
-                                { "khungGios", khungGios }
-                                })
-                                }
+                        <div class="bracket-round">
+                            <div class="round-title">⚔️ Tứ kết</div>
+                            @foreach (var t in tranTuKet)
+                            {
+                                @await Html.PartialAsync("Shared/_BracketMatch",
+                                    new ViewDataDictionary(ViewData) {
+                                        { "tran", t }, { "isOwner", isOwner }, { "khungGios", khungGios }
+                                    })
+                            }
+                        </div>
                     }
+
+                    @if (tranBanKet.Any())
+                    {
+                        <div class="bracket-round">
+                            <div class="round-title">🥊 Bán kết</div>
+                            @foreach (var t in tranBanKet)
+                            {
+                                @await Html.PartialAsync("Shared/_BracketMatch",
+                                    new ViewDataDictionary(ViewData) {
+                                        { "tran", t }, { "isOwner", isOwner }, { "khungGios", khungGios }
+                                    })
+                            }
+                        </div>
+                    }
+
+                    <div class="bracket-round">
+                        <div class="round-title">🏆 Chung kết</div>
+                        @if (tranChungKet != null)
+                        {
+                            @if (tranChungKet.TrangThai == "Closed" && tranChungKet.BanThangNha.HasValue)
+                            {
+                                var vodichdId = tranChungKet.BanThangNha > tranChungKet.BanThangKhach
+                                    ? tranChungKet.DoiNhaId : tranChungKet.DoiKhachId;
+                                var vodich = Model.DoiBongs?.FirstOrDefault(d => d.Id == vodichdId);
+                                <div class="champion-box">
+                                    <div class="champion-icon">🏆</div>
+                                    <div class="champion-name">@(vodich?.TenDoi ?? "—")</div>
+                                    <div style="font-size:12px;color:var(--db-muted);margin-top:4px">VÔ ĐỊCH</div>
+                                </div>
+                            }
+                            else
+                            {
+                                @await Html.PartialAsync("Shared/_BracketMatch",
+                                    new ViewDataDictionary(ViewData) {
+                                        { "tran", tranChungKet }, { "isOwner", isOwner }, { "khungGios", khungGios }
+                                    })
+                            }
+                        }
+                    </div>
                 </div>
             </div>
         </div>
@@ -327,50 +188,34 @@
 <!-- Modal gán khung giờ -->
 <div class="modal fade" id="modalGanGio" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius:var(--r-lg);border:1px solid var(--border)">
-            <div class="modal-header" style="border-bottom:1px solid var(--border)">
-                <h5 class="modal-title" style="font-family:var(--ff-h)">
-                    ⏰ GÁN KHUNG GIỜ THI ĐẤU
-                </h5>
+        <div class="modal-content" style="border-radius:16px;border:1px solid var(--db-border)">
+            <div class="modal-header" style="border-bottom:1px solid var(--db-border)">
+                <h5 class="modal-title" style="font-weight:700">⏰ GÁN KHUNG GIỜ THI ĐẤU</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p style="color:var(--muted);font-size:14px" id="ggInfo"></p>
+                <p style="color:var(--db-muted);font-size:14px" id="ggInfo"></p>
                 <div class="mb-3">
-                    <label style="font-size:12px;font-weight:700;text-transform:uppercase;
-                                  color:var(--muted);display:block;margin-bottom:6px">
-                        Ngày thi đấu *
-                    </label>
-                    <input type="date" id="ggNgay" class="form-control"
+                    <label class="tour-lbl">Ngày thi đấu *</label>
+                    <input type="date" id="ggNgay" class="tour-inp"
                            min="@Model.NgayBatDau.ToString("yyyy-MM-dd")"
                            max="@Model.NgayKetThuc.ToString("yyyy-MM-dd")" />
                 </div>
                 <div class="mb-3">
-                    <label style="font-size:12px;font-weight:700;text-transform:uppercase;
-                                  color:var(--muted);display:block;margin-bottom:6px">
-                        Khung giờ *
-                    </label>
-                    <select id="ggKhungGio" class="form-select">
+                    <label class="tour-lbl">Khung giờ *</label>
+                    <select id="ggKhungGio" class="tour-inp">
                         <option value="">-- Chọn khung giờ --</option>
                         @foreach (var kg in khungGios.OrderBy(k => k.GioBatDau))
                         {
-                            <option value="@kg.Id">
-                                @kg.GioBatDau.ToString("HH:mm") – @kg.GioKetThuc.ToString("HH:mm")
-                            </option>
+                            <option value="@kg.Id">@kg.GioBatDau.ToString(@"hh\:mm") – @kg.GioKetThuc.ToString(@"hh\:mm")</option>
                         }
                     </select>
                 </div>
-                <div id="ggError" class="text-danger" style="font-size:13px;display:none"></div>
+                <div id="ggError" style="font-size:13px;color:#b91c1c;display:none"></div>
             </div>
-            <div class="modal-footer" style="border-top:1px solid var(--border)">
-                <button type="button" class="btn btn-outline-secondary rounded-pill"
-                        data-bs-dismiss="modal">
-                    Hủy
-                </button>
-                <button type="button" class="btn btn-success rounded-pill"
-                        onclick="xacNhanGanGio()">
-                    ✅ Xác nhận
-                </button>
+            <div class="modal-footer" style="border-top:1px solid var(--db-border)">
+                <button type="button" class="tour-btn" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="tour-btn tour-btn--primary" onclick="xacNhanGanGio()">✅ Xác nhận</button>
             </div>
         </div>
     </div>
@@ -378,9 +223,7 @@
 
 @section Scripts {
     <script>
-        var curTranId = null;
-        var modal     = null;
-
+        var curTranId = null, modal = null;
         function moModalGanGio(tranId, tenNha, tenKhach) {
             curTranId = tranId;
             document.getElementById('ggInfo').textContent = tenNha + ' vs ' + tenKhach;
@@ -388,46 +231,33 @@
             modal = new bootstrap.Modal(document.getElementById('modalGanGio'));
             modal.show();
         }
-
         async function xacNhanGanGio() {
-            var ngay     = document.getElementById('ggNgay').value;
+            var ngay = document.getElementById('ggNgay').value;
             var khungGio = document.getElementById('ggKhungGio').value;
-            var errEl    = document.getElementById('ggError');
-
+            var errEl = document.getElementById('ggError');
             if (!ngay || !khungGio) {
-                errEl.textContent  = 'Vui lòng chọn đầy đủ ngày và khung giờ!';
-                errEl.style.display = 'block';
-                return;
+                errEl.textContent = 'Vui lòng chọn đầy đủ ngày và khung giờ!';
+                errEl.style.display = 'block'; return;
             }
-
             var fd = new FormData();
-            fd.append('tranDauId',     curTranId);
-            fd.append('khungGioId',    khungGio);
+            fd.append('tranDauId', curTranId);
+            fd.append('khungGioId', khungGio);
             fd.append('ngayThiDauStr', ngay);
             fd.append('__RequestVerificationToken',
                 document.querySelector('input[name="__RequestVerificationToken"]')?.value || '');
-
-            var res  = await fetch('/Tournament/GanKhungGio', { method: 'POST', body: fd });
+            var res = await fetch('/Tournament/GanKhungGio', { method: 'POST', body: fd });
             var data = await res.json();
-
-            if (!data.ok) {
-                errEl.textContent   = data.message;
-                errEl.style.display = 'block';
-                return;
-            }
-
+            if (!data.ok) { errEl.textContent = data.message; errEl.style.display = 'block'; return; }
             modal?.hide();
-            // Cập nhật UI
             var metaEl = document.getElementById('meta-' + curTranId);
             if (metaEl) metaEl.textContent = data.gioBD + ' – ' + data.gioKT + ' | ' + data.ngay;
-
             var assignBtn = document.getElementById('assign-' + curTranId);
             if (assignBtn) {
-                assignBtn.textContent  = '✅ ' + data.gioBD + ' – ' + data.ngay;
-                assignBtn.style.background = 'rgba(14,168,106,.15)';
+                assignBtn.textContent = '✅ ' + data.gioBD + ' – ' + data.ngay;
+                assignBtn.style.background = 'var(--db-green)';
+                assignBtn.style.color = '#fff';
             }
         }
     </script>
-    @* Token cho AJAX *@
     <form style="display:none">@Html.AntiForgeryToken()</form>
 }

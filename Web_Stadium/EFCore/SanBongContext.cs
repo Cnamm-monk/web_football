@@ -623,6 +623,18 @@ public partial class SanBongContext : DbContext
             entity.HasOne(d => d.Owner).WithMany()
                 .HasForeignKey(d => d.OwnerId)
                 .OnDelete(DeleteBehavior.NoAction);
+            // Staff phụ trách toàn giải (Owner gán)
+            entity.HasOne(d => d.StaffPhuTrach).WithMany()
+                .HasForeignKey(d => d.StaffPhuTrachId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // Dummy Booking khóa slot sân cho giải đấu (giai đoạn 1 blueprint)
+        modelBuilder.Entity<DatSan>(entity => {
+            entity.HasOne(d => d.GiaiDau)
+                .WithMany(g => g.DatSans)
+                .HasForeignKey(d => d.GiaiDauId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<BangDau>(entity => {

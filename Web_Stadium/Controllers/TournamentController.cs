@@ -1,19 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
 using Web_Stadium.Services;
 
 namespace Web_Stadium.Controllers
 {
-    /// <summary>
-    /// Tournament Controller — chỉ làm 3 việc:
-    /// 1. Nhận request HTTP
-    /// 2. Gọi Service xử lý
-    /// 3. Trả về View hoặc redirect
-    /// KHÔNG chứa logic nghiệp vụ
-    /// </summary>
-    [YeuCauDangNhap]
+    [YeuCauDangNhap("Owner")]
     public class TournamentController : Controller
     {
         private readonly SanBongContext _context;
@@ -48,7 +42,8 @@ namespace Web_Stadium.Controllers
                 DoiTuong = doiTuong,
                 DoiTuongId = id,
                 MoTa = moTa,
-                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                ThoiGian = DateTime.Now
             });
             await _context.SaveChangesAsync();
         }
@@ -60,6 +55,7 @@ namespace Web_Stadium.Controllers
                 .Include(g => g.SanBong)
                 .Include(g => g.DoiBongs)
                 .Include(g => g.TranDaus)
+                .Include(g => g.StaffPhuTrach)
                 .Where(g => g.OwnerId == OwnerId())
                 .OrderByDescending(g => g.ThoiGianTao)
                 .ToListAsync();
@@ -98,11 +94,36 @@ namespace Web_Stadium.Controllers
             return RedirectToAction("Details", new { id = giai.Id });
         }
 
+        // ── GET /Tournament/LayKhungGioJson?sanId=...&tu=...&den=... ─
+        // Trả JSON khung giờ của sân để FullCalendar render
+        [HttpGet]
+        public async Task<IActionResult> LayKhungGioJson(int sanId)
+        {
+            var san = await _context.SanBongs.FirstOrDefaultAsync(s =>
+                s.Id == sanId && s.OwnerId == OwnerId() && s.TrangThaiDuyet == "DaDuyet");
+            if (san == null) return Json(new { ok = false, message = "Sân không hợp lệ!" });
+
+            var khungGios = await _context.KhungGios
+                .Where(k => k.SanBongId == sanId)
+                .OrderBy(k => k.GioBatDau)
+                .Select(k => new
+                {
+                    id = k.Id,
+                    gioBatDau = k.GioBatDau.ToString(@"hh\:mm"),
+                    gioKetThuc = k.GioKetThuc.ToString(@"hh\:mm"),
+                    gia = k.Gia,
+                    loaiNgay = k.LoaiNgay
+                })
+                .ToListAsync();
+            return Json(new { ok = true, khungGios });
+        }
+
         // ── GET /Tournament/Details/5 ────────────────────────────
         public async Task<IActionResult> Details(int id)
         {
+            var ownerId = OwnerId();
             var giai = await _context.GiaiDaus
-                .Include(g => g.SanBong)
+                .Include(g => g.SanBong).ThenInclude(s => s!.KhungGios)
                 .Include(g => g.BangDaus)
                 .Include(g => g.DoiBongs).ThenInclude(d => d.ThanhViens)
                 .Include(g => g.DoiBongs).ThenInclude(d => d.Bang)
@@ -110,12 +131,22 @@ namespace Web_Stadium.Controllers
                 .Include(g => g.TranDaus).ThenInclude(t => t.DoiNha)
                 .Include(g => g.TranDaus).ThenInclude(t => t.DoiKhach)
                 .Include(g => g.TranDaus).ThenInclude(t => t.SuKiens)
-                .FirstOrDefaultAsync(g => g.Id == id && g.OwnerId == OwnerId());
+                .Include(g => g.TranDaus).ThenInclude(t => t.KhungGio)
+                .Include(g => g.StaffPhuTrach)
+                .FirstOrDefaultAsync(g => g.Id == id && g.OwnerId == ownerId);
 
             if (giai == null) return NotFound();
 
-            // BXH do StandingService tính — View chỉ render
             ViewBag.BangXepHang = await _standingService.GetStandings(id);
+
+            // Staff khả dụng (được phân công tại sân của giải)
+            ViewBag.StaffKhaDung = await _context.StaffSanPhanCongs
+                .Include(p => p.Staff)
+                .Where(p => p.SanBongId == giai.SanBongId && p.Staff.IsActive)
+                .Select(p => p.Staff)
+                .Distinct()
+                .ToListAsync();
+
             return View(giai);
         }
 
@@ -141,6 +172,41 @@ namespace Web_Stadium.Controllers
             await GhiLog("DongDangKy", "GiaiDau", id, "Đóng đăng ký giải");
             TempData["Success"] = "Đã đóng đăng ký! Tiến hành chia bảng.";
             return RedirectToAction("ChiaBang", new { id });
+        }
+
+        // ── POST /Tournament/XacNhanThanhToanDoi ─────────────────
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> XacNhanThanhToanDoi(int doiId)
+        {
+            var (ok, error, doi) = await _tournamentService.XacNhanThanhToanDoi(doiId, OwnerId());
+            if (!ok)
+            {
+                TempData["Error"] = error;
+                var giai = await _context.DoiBongs.Where(d => d.Id == doiId).Select(d => d.GiaiDauId).FirstOrDefaultAsync();
+                return RedirectToAction("Details", new { id = giai });
+            }
+
+            await GhiLog("XacNhanThanhToan", "DoiBong", doiId,
+                $"Xác nhận thanh toán cho đội '{doi!.TenDoi}'");
+            TempData["Success"] = $"Đã xác nhận thanh toán cho đội '{doi.TenDoi}'!";
+            return RedirectToAction("Details", new { id = doi.GiaiDauId });
+        }
+
+        // ── POST /Tournament/HuyDangKyDoi ────────────────────────
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> HuyDangKyDoi(int doiId, string lyDo)
+        {
+            var (ok, error, giaiId) = await _tournamentService.HuyDangKyDoi(doiId, lyDo ?? "", OwnerId());
+            if (!ok)
+            {
+                TempData["Error"] = error;
+                var gid = await _context.DoiBongs.Where(d => d.Id == doiId).Select(d => d.GiaiDauId).FirstOrDefaultAsync();
+                return RedirectToAction("Details", new { id = gid });
+            }
+
+            await GhiLog("HuyDangKyDoi", "DoiBong", doiId, $"Hủy đội. Lý do: {lyDo}");
+            TempData["Success"] = "Đã hủy đăng ký đội.";
+            return RedirectToAction("Details", new { id = giaiId });
         }
 
         // ── GET /Tournament/ChiaBang/5 ───────────────────────────
@@ -187,6 +253,103 @@ namespace Web_Stadium.Controllers
             await GhiLog("KhoiTaoGiai", "GiaiDau", id, "Khởi tạo giải và sinh lịch thi đấu");
             TempData["Success"] = "Khởi tạo thành công! Email lịch đấu đã gửi cho các đội.";
             return RedirectToAction("Details", new { id });
+        }
+
+        // ── POST /Tournament/GanStaff ────────────────────────────
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> GanStaff(int giaiDauId, int staffId)
+        {
+            var (ok, error) = await _tournamentService.GanStaffPhuTrach(giaiDauId, staffId, OwnerId());
+            if (!ok) { TempData["Error"] = error; }
+            else
+            {
+                await GhiLog("GanStaff", "GiaiDau", giaiDauId, $"Gán Staff {staffId} phụ trách giải");
+                TempData["Success"] = "Đã gán Staff phụ trách!";
+            }
+            return RedirectToAction("Details", new { id = giaiDauId });
+        }
+
+        // ── POST /Tournament/GanKhungGio (AJAX) ──────────────────
+        [HttpPost]
+        public async Task<IActionResult> GanKhungGio(int tranDauId, int khungGioId, string ngayThiDauStr)
+        {
+            if (!DateTime.TryParse(ngayThiDauStr, out var ngay))
+                return Json(new { ok = false, message = "Ngày không hợp lệ!" });
+
+            var (ok, error, kg, ng) = await _tournamentService.GanKhungGioTran(tranDauId, khungGioId, ngay, OwnerId());
+            if (!ok) return Json(new { ok = false, message = error });
+
+            return Json(new
+            {
+                ok = true,
+                gioBD = kg!.GioBatDau.ToString(@"hh\:mm"),
+                gioKT = kg.GioKetThuc.ToString(@"hh\:mm"),
+                ngay = ng.ToString("dd/MM/yyyy")
+            });
+        }
+
+        // ── POST /Tournament/SinhBracket ─────────────────────────
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> SinhBracket(int giaiDauId)
+        {
+            var (ok, error) = await _tournamentService.SinhVongKnockOut(giaiDauId, OwnerId());
+            if (!ok) { TempData["Error"] = error; return RedirectToAction("Details", new { id = giaiDauId }); }
+
+            await GhiLog("SinhBracket", "GiaiDau", giaiDauId, "Sinh vòng knock-out");
+            TempData["Success"] = "Đã sinh lịch vòng knock-out!";
+            return RedirectToAction("Bracket", new { id = giaiDauId });
+        }
+
+        // ── GET /Tournament/Bracket/5 ────────────────────────────
+        public async Task<IActionResult> Bracket(int id)
+        {
+            var giai = await _context.GiaiDaus
+                .Include(g => g.DoiBongs)
+                .Include(g => g.TranDaus).ThenInclude(t => t.DoiNha)
+                .Include(g => g.TranDaus).ThenInclude(t => t.DoiKhach)
+                .Include(g => g.TranDaus).ThenInclude(t => t.KhungGio)
+                .Include(g => g.SanBong).ThenInclude(s => s!.KhungGios)
+                .FirstOrDefaultAsync(g => g.Id == id && g.OwnerId == OwnerId());
+            if (giai == null) return NotFound();
+
+            ViewBag.IsOwner = true;
+            ViewBag.KhungGios = giai.SanBong?.KhungGios.OrderBy(k => k.GioBatDau).ToList()
+                                ?? new List<KhungGio>();
+            return View(giai);
+        }
+
+        // ── GET /Tournament/LichBlock/5 ──────────────────────────
+        public async Task<IActionResult> LichBlock(int id)
+        {
+            var giai = await _context.GiaiDaus
+                .Include(g => g.SanBong).ThenInclude(s => s!.KhungGios)
+                .FirstOrDefaultAsync(g => g.Id == id && g.OwnerId == OwnerId());
+            if (giai == null) return NotFound();
+            return View(giai);
+        }
+
+        // ── POST /Tournament/LuuLichBlock (AJAX) ─────────────────
+        [HttpPost]
+        public async Task<IActionResult> LuuLichBlock(int giaiId, string lichBlockJson)
+        {
+            List<ScheduleService.SlotKhungGio>? lichBlock;
+            try
+            {
+                lichBlock = JsonSerializer.Deserialize<List<ScheduleService.SlotKhungGio>>(
+                    lichBlockJson ?? "[]",
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch
+            {
+                return Json(new { ok = false, message = "Dữ liệu không hợp lệ!" });
+            }
+            if (lichBlock == null) lichBlock = new();
+
+            var (ok, error) = await _tournamentService.CapNhatLichBlock(giaiId, OwnerId(), lichBlock);
+            if (!ok) return Json(new { ok = false, message = error });
+
+            await GhiLog("CapNhatLichBlock", "GiaiDau", giaiId, $"Cập nhật {lichBlock.Count} slot block");
+            return Json(new { ok = true, soSlot = lichBlock.Count });
         }
 
         // ── POST /Tournament/KetThuc ─────────────────────────────
@@ -236,140 +399,3 @@ namespace Web_Stadium.Controllers
         }
     }
 }
-
-// ══════════════════════════════════════════════════════════════
-// THÊM VÀO Program.cs — Đăng ký tất cả Tournament Services
-// Đặt sau dòng: builder.Services.AddScoped<EmailService>();
-// ══════════════════════════════════════════════════════════════
-
-/*
-builder.Services.AddScoped<ScheduleService>();
-builder.Services.AddScoped<StandingService>();
-builder.Services.AddScoped<SuspensionService>();
-builder.Services.AddScoped<TournamentNotificationService>();
-builder.Services.AddScoped<TournamentExcelService>();
-builder.Services.AddScoped<TournamentService>();
-*/
-
-// ══════════════════════════════════════════════════════════════
-// PATCH: Thêm các action sau vào TournamentController
-// ══════════════════════════════════════════════════════════════
-
-/*
-// ── POST /Tournament/GanKhungGio — Owner gán slot sân cho trận ──
-[HttpPost]
-public async Task<IActionResult> GanKhungGio(
-    int tranDauId, int khungGioId, string ngayThiDauStr)
-{
-    var tran = await _context.TranDaus
-        .Include(t => t.GiaiDau)
-        .FirstOrDefaultAsync(t => t.Id == tranDauId
-                               && t.GiaiDau.OwnerId == OwnerId());
-    if (tran == null)
-        return Json(new { ok = false, message = "Không tìm thấy trận!" });
-
-    if (tran.TrangThai != "Scheduled")
-        return Json(new { ok = false, message = "Trận đã bắt đầu, không thể đổi giờ!" });
-
-    if (!DateTime.TryParse(ngayThiDauStr, out var ngay))
-        return Json(new { ok = false, message = "Ngày không hợp lệ!" });
-
-    // Kiểm tra slot còn trống
-    var kg = await _context.KhungGios
-        .Include(k => k.SanBong)
-        .FirstOrDefaultAsync(k => k.Id == khungGioId
-                              && k.SanBong.Id == tran.GiaiDau.SanBongId);
-    if (kg == null)
-        return Json(new { ok = false, message = "Khung giờ không thuộc sân này!" });
-
-    // Kiểm tra slot ngày đó chưa bị trận khác dùng
-    var trungLich = await _context.TranDaus.AnyAsync(t =>
-        t.Id != tranDauId &&
-        t.GiaiDauId == tran.GiaiDauId &&
-        t.KhungGioId == khungGioId &&
-        t.NgayThiDau.Date == ngay.Date);
-
-    if (trungLich)
-        return Json(new { ok = false, message = "Khung giờ này đã có trận khác trong cùng ngày!" });
-
-    tran.KhungGioId  = khungGioId;
-    tran.NgayThiDau  = ngay;
-    await _context.SaveChangesAsync();
-
-    return Json(new {
-        ok    = true,
-        gioBD = kg.GioBatDau.ToString("HH:mm"),
-        gioKT = kg.GioKetThuc.ToString("HH:mm"),
-        ngay  = ngay.ToString("dd/MM/yyyy")
-    });
-}
-
-// ── POST /Tournament/GanStaff — Owner gán Staff phụ trách giải ─
-[HttpPost, ValidateAntiForgeryToken]
-public async Task<IActionResult> GanStaff(int giaiDauId, int staffId)
-{
-    var giai = await _context.GiaiDaus
-        .Include(g => g.TranDaus)
-        .FirstOrDefaultAsync(g => g.Id == giaiDauId && g.OwnerId == OwnerId());
-    if (giai == null) return NotFound();
-
-    // Validate Staff thuộc sân của Owner
-    var sanCuaToi = await _context.SanBongs
-        .Where(s => s.OwnerId == OwnerId())
-        .Select(s => s.Id)
-        .ToListAsync();
-
-    var staffHopLe = await _context.StaffSanPhanCongs
-        .AnyAsync(p => p.StaffId == staffId && sanCuaToi.Contains(p.SanBongId));
-
-    if (!staffHopLe)
-    {
-        TempData["Error"] = "Staff không được phân công tại sân của bạn!";
-        return RedirectToAction("Details", new { id = giaiDauId });
-    }
-
-    // Gán Staff cho tất cả trận chưa có người phụ trách
-    foreach (var tran in giai.TranDaus.Where(t => t.StaffPhuTrachId == null))
-        tran.StaffPhuTrachId = staffId;
-
-    await _context.SaveChangesAsync();
-    await GhiLog("GanStaff", "GiaiDau", giaiDauId, $"Gán Staff {staffId} phụ trách giải");
-
-    TempData["Success"] = "Đã gán Staff phụ trách toàn bộ trận đấu!";
-    return RedirectToAction("Details", new { id = giaiDauId });
-}
-
-// ── POST /Tournament/SinhBracket — Sinh vòng knock-out sau vòng bảng ─
-[HttpPost, ValidateAntiForgeryToken]
-public async Task<IActionResult> SinhBracket(int giaiDauId)
-{
-    var giai = await _context.GiaiDaus
-        .Include(g => g.BangDaus)
-        .Include(g => g.DoiBongs)
-        .Include(g => g.TranDaus)
-        .FirstOrDefaultAsync(g => g.Id == giaiDauId && g.OwnerId == OwnerId());
-
-    if (giai == null) return NotFound();
-
-    // Kiểm tra tất cả trận vòng bảng đã Closed
-    var tranBangChuaXong = giai.TranDaus
-        .Count(t => t.LoaiVong == "VongBang" && t.TrangThai != "Closed");
-    if (tranBangChuaXong > 0)
-    {
-        TempData["Error"] = $"Còn {tranBangChuaXong} trận vòng bảng chưa kết thúc!";
-        return RedirectToAction("Details", new { id = giaiDauId });
-    }
-
-    // Gọi service sinh bracket
-    var bracket = await _tournamentService.SinhVongKnockOut(giaiDauId);
-    if (!bracket.ok)
-    {
-        TempData["Error"] = bracket.error;
-        return RedirectToAction("Details", new { id = giaiDauId });
-    }
-
-    await GhiLog("SinhBracket", "GiaiDau", giaiDauId, "Sinh vòng knock-out");
-    TempData["Success"] = "Đã sinh lịch vòng knock-out!";
-    return RedirectToAction("Details", new { id = giaiDauId });
-}
-*/
