@@ -33,6 +33,8 @@ namespace Web_Stadium.End
         {
             _logger.LogInformation("TournamentBackgroundService started.");
 
+            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
