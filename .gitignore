@@ -361,3 +361,12 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Node.js
+node_modules/
+node-service/node_modules/
+npm-debug.log*
+.env
+
+# Thừa / sinh tự động
+crash_log.txt
+test.pdf
