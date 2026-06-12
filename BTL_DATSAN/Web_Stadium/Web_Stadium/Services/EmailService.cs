@@ -276,6 +276,142 @@ namespace Web_Stadium.Services
         }
 
         // ══════════════════════════════════════════════════════════
+        // 5. EMAIL HỦY ĐƠN TỰ ĐỘNG (không check-in sau 2 tiếng)
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailHuyDonTuDong(
+            string toEmail, string toName,
+            string tenSan, DateTime ngayThiDau,
+            string gioBatDau, string gioKetThuc,
+            string maXacNhan)
+        {
+            var ngayStr = ngayThiDau.ToString("dd/MM/yyyy");
+            var body = $@"
+<!DOCTYPE html>
+<html lang='vi'>
+<head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;
+            box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+
+  <div style='background:linear-gradient(135deg,#1a0a0a,#2a1010);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+    <div style='color:#e74c3c;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>ĐƠN ĐẶT SÂN ĐÃ BỊ HỦY</div>
+  </div>
+
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{toName}</strong>,</p>
+    <p style='color:#333;line-height:1.6;'>
+      Đơn đặt sân <strong style='color:#e74c3c;'>{maXacNhan}</strong> của bạn đã bị hủy tự động
+      vì không có check-in trong vòng 2 tiếng kể từ giờ bắt đầu.
+    </p>
+
+    <div style='background:#fff8f0;border:1px solid #e74c3c;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;border-collapse:collapse;font-size:.9rem;'>
+        <tr><td style='color:#888;padding:6px 0;width:130px;'>🏟 Sân</td>
+            <td style='color:#111;font-weight:700;'>{tenSan}</td></tr>
+        <tr><td style='color:#888;padding:6px 0;'>📅 Ngày</td>
+            <td style='color:#111;font-weight:600;'>{ngayStr}</td></tr>
+        <tr><td style='color:#888;padding:6px 0;'>⏰ Khung giờ</td>
+            <td style='color:#111;font-weight:600;'>{gioBatDau} – {gioKetThuc}</td></tr>
+        <tr><td style='color:#888;padding:6px 0;'>❌ Lý do</td>
+            <td style='color:#e74c3c;'>Không check-in sau 2 tiếng</td></tr>
+      </table>
+    </div>
+
+    <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:12px;padding:18px;text-align:center;'>
+      <div style='font-size:1.2rem;margin-bottom:8px;'>⚽ Muốn đặt sân khác?</div>
+      <p style='color:#555;font-size:.85rem;margin:0;line-height:1.6;'>
+        Bạn có thể đặt lại sân bất kỳ lúc nào trên PitchHub.<br>
+        Nếu có thắc mắc, liên hệ <a href='mailto:support@pitchhub.vn' style='color:#1ed760;'>support@pitchhub.vn</a>
+      </p>
+    </div>
+  </div>
+
+  <div style='background:#f8f8f8;padding:16px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+
+            await GuiEmailAsync(toEmail, toName,
+                $"[PitchHub] Đơn đặt sân {maXacNhan} đã bị hủy tự động", body);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 6. EMAIL NHẮC CHECK-IN (30 phút trước giờ bắt đầu)
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailNhacCheckIn(
+            string toEmail, string toName,
+            string tenSan, DateTime ngayThiDau,
+            string gioBatDau, string maXacNhan)
+        {
+            var ngayStr = ngayThiDau.ToString("dd/MM/yyyy");
+            var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={maXacNhan}";
+
+            var body = $@"
+<!DOCTYPE html>
+<html lang='vi'>
+<head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;
+            box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+
+  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+    <div style='color:#ffc107;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>SẮP ĐẾN GIỜ CHECK-IN!</div>
+  </div>
+
+  <div style='padding:28px;'>
+    <div style='font-size:2.5rem;text-align:center;margin-bottom:12px;'>⏰</div>
+    <p style='color:#333;font-size:1rem;text-align:center;margin-bottom:20px;'>
+      Xin chào <strong>{toName}</strong>,<br>
+      <span style='color:#e74c3c;font-weight:700;'>Còn khoảng 30 phút</span> nữa là đến giờ đá của bạn!<br>
+      Hãy chuẩn bị ra sân nhé 💪
+    </p>
+
+    <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:12px;padding:20px;margin-bottom:20px;'>
+      <table style='width:100%;border-collapse:collapse;font-size:.9rem;'>
+        <tr><td style='color:#888;padding:6px 0;width:130px;'>🏟 Sân</td>
+            <td style='color:#111;font-weight:700;'>{tenSan}</td></tr>
+        <tr><td style='color:#888;padding:6px 0;'>📅 Ngày</td>
+            <td style='color:#111;font-weight:600;'>{ngayStr}</td></tr>
+        <tr><td style='color:#888;padding:6px 0;'>⏰ Giờ bắt đầu</td>
+            <td style='color:#e74c3c;font-weight:700;font-size:1rem;'>{gioBatDau}</td></tr>
+      </table>
+    </div>
+
+    <div style='background:#0f1f14;border-radius:12px;padding:18px;text-align:center;margin-bottom:20px;'>
+      <div style='color:#888;font-size:.75rem;letter-spacing:1.5px;margin-bottom:8px;'>MÃ CHECK-IN CỦA BẠN</div>
+      <div style='font-family:monospace;font-size:1.5rem;font-weight:900;color:#1ed760;letter-spacing:3px;'>
+        {maXacNhan}
+      </div>
+      <div style='color:#555;font-size:.75rem;margin-top:6px;'>Đưa mã hoặc QR code này cho Staff khi đến sân</div>
+    </div>
+
+    <div style='text-align:center;margin-bottom:20px;'>
+      <img src='{qrUrl}' width='140' height='140'
+           style='border-radius:10px;border:3px solid #1ed760;' alt='QR Check-in' />
+    </div>
+
+    <div style='background:#fff3cd;border:1px solid #ffc107;border-radius:10px;padding:14px;text-align:center;'>
+      <p style='color:#856404;font-size:.85rem;margin:0;'>
+        ⚠️ Vui lòng check-in trong vòng <strong>2 tiếng</strong> kể từ giờ bắt đầu.<br>
+        Quá thời gian, đơn sẽ bị hủy tự động.
+      </p>
+    </div>
+  </div>
+
+  <div style='background:#f8f8f8;padding:16px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn &nbsp;·&nbsp; support@pitchhub.vn</p>
+  </div>
+</div>
+</body></html>";
+
+            await GuiEmailAsync(toEmail, toName,
+                $"[PitchHub] Nhắc nhở: Còn 30 phút nữa đến giờ check-in tại {tenSan}!", body);
+        }
+
+        // ══════════════════════════════════════════════════════════
         // 4. EMAIL THÔNG BÁO HỦY ĐƠN
         // ══════════════════════════════════════════════════════════
         public async Task GuiEmailHuyDon(

@@ -1,5 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
+using Web_Stadium.Hubs;
 
 namespace Web_Stadium.Services
 {
@@ -7,16 +9,19 @@ namespace Web_Stadium.Services
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<BackgroundJobService> _logger;
+        private readonly IHubContext<SanBongHub> _hubContext;
 
-        // Chạy mỗi 5 phút
         private static readonly TimeSpan _interval = TimeSpan.FromMinutes(5);
+        private int _tickCount = 0;
 
         public BackgroundJobService(
             IServiceScopeFactory scopeFactory,
-            ILogger<BackgroundJobService> logger)
+            ILogger<BackgroundJobService> logger,
+            IHubContext<SanBongHub> hubContext)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
+            _hubContext = hubContext;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -27,6 +32,7 @@ namespace Web_Stadium.Services
             {
                 try
                 {
+                    _tickCount++;
                     await using var scope = _scopeFactory.CreateAsyncScope();
                     var context = scope.ServiceProvider.GetRequiredService<SanBongContext>();
                     var email = scope.ServiceProvider.GetRequiredService<EmailService>();
@@ -36,6 +42,11 @@ namespace Web_Stadium.Services
                     await GuiNhacLich24h(context, email);
                     await GuiNhacLich1h(context, email);
                     await GuiMoiDanhGia(context, email);
+                    await GuiNhacCheckIn30phut(context, email);
+
+                    // Chạy mỗi 15 phút (mỗi 3 tick × 5 phút)
+                    if (_tickCount % 3 == 0)
+                        await XuLyHuyKhongCheckIn(context, email);
                 }
                 catch (Exception ex)
                 {
@@ -68,7 +79,6 @@ namespace Web_Stadium.Services
 
                 _logger.LogInformation("⏰ Tự hủy đơn {Ma} — quá 6h Owner không duyệt", don.MaXacNhan);
 
-                // Gửi email thông báo cho User
                 if (don.User != null && !string.IsNullOrEmpty(don.User.Email))
                 {
                     var tenSan = don.KhungGio?.SanBong?.TenSan ?? "Không rõ";
@@ -78,7 +88,7 @@ namespace Web_Stadium.Services
                         tenSan,
                         don.NgayThiDau.ToString("dd/MM/yyyy"),
                         lyDo: "Owner không xác nhận trong 6 giờ — hệ thống tự động hủy",
-                        soTienHoan: don.TienCoc // hoàn 100%
+                        soTienHoan: don.TienCoc
                     );
                 }
             }
@@ -104,11 +114,9 @@ namespace Web_Stadium.Services
             {
                 if (don.KhungGio == null) continue;
 
-                // Tính giờ bắt đầu trận
                 var gioBD = don.KhungGio.GioBatDau.ToTimeSpan();
                 var gioBatDauTran = don.NgayThiDau.Date.Add(gioBD);
 
-                // Quá 30 phút kể từ giờ bắt đầu mà vẫn chưa check-in
                 if (now >= gioBatDauTran.AddMinutes(30))
                 {
                     don.TrangThai = "DaHuy";
@@ -131,7 +139,7 @@ namespace Web_Stadium.Services
         private async Task GuiNhacLich24h(SanBongContext context, EmailService email)
         {
             var now = DateTime.Now;
-            var tu24h = now.AddHours(23).AddMinutes(45); // window 23h45 → 24h15
+            var tu24h = now.AddHours(23).AddMinutes(45);
             var den24h = now.AddHours(24).AddMinutes(15);
 
             var donSapToi = await context.DatSans
@@ -149,10 +157,8 @@ namespace Web_Stadium.Services
 
                 if (gioBatDauTran >= tu24h && gioBatDauTran <= den24h)
                 {
-                    // Kiểm tra chưa gửi (dùng GhiChuSuCo tạm, hoặc dùng AuditLog)
                     var daGui = await context.AuditLogs
-                        .AnyAsync(a => a.DoiTuongId == don.Id
-                                    && a.HanhDong == "NhacLich24h");
+                        .AnyAsync(a => a.DoiTuongId == don.Id && a.HanhDong == "NhacLich24h");
                     if (daGui) continue;
 
                     var tenSan = don.KhungGio.SanBong?.TenSan ?? "";
@@ -165,7 +171,6 @@ namespace Web_Stadium.Services
                         don.NgayThiDau.ToString("dd/MM/yyyy"),
                         don.MaXacNhan, la24h: true);
 
-                    // Ghi log để không gửi lại
                     context.AuditLogs.Add(new AuditLog
                     {
                         UserId = don.UserId,
@@ -208,8 +213,7 @@ namespace Web_Stadium.Services
                 if (gioBatDauTran >= tu1h && gioBatDauTran <= den1h)
                 {
                     var daGui = await context.AuditLogs
-                        .AnyAsync(a => a.DoiTuongId == don.Id
-                                    && a.HanhDong == "NhacLich1h");
+                        .AnyAsync(a => a.DoiTuongId == don.Id && a.HanhDong == "NhacLich1h");
                     if (daGui) continue;
 
                     var tenSan = don.KhungGio.SanBong?.TenSan ?? "";
@@ -245,11 +249,7 @@ namespace Web_Stadium.Services
         private async Task GuiMoiDanhGia(SanBongContext context, EmailService email)
         {
             var now = DateTime.Now;
-            // Tìm đơn HoanThanh trong khoảng 30-60 phút trước (để không bỏ sót)
-            var tuGio = now.AddMinutes(-60);
-            var denGio = now.AddMinutes(-30);
 
-            // Lấy đơn HoanThanh nhưng chưa được gửi email mời đánh giá
             var donHoanThanh = await context.DatSans
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Include(d => d.User)
@@ -260,22 +260,16 @@ namespace Web_Stadium.Services
             {
                 if (don.User == null || don.KhungGio?.SanBong == null) continue;
 
-                // Kiểm tra đã gửi chưa
                 var daGui = await context.AuditLogs
-                    .AnyAsync(a => a.DoiTuongId == don.Id
-                                && a.HanhDong == "GuiMoiDanhGia");
+                    .AnyAsync(a => a.DoiTuongId == don.Id && a.HanhDong == "GuiMoiDanhGia");
                 if (daGui) continue;
 
-                // Tính thời điểm kết thúc trận (giờ kết thúc của ngày thi đấu)
                 var gioKT = don.KhungGio.GioKetThuc.ToTimeSpan();
                 var gioKetThucTran = don.NgayThiDau.Date.Add(gioKT);
 
-                // Chỉ gửi khi đã qua 30 phút kể từ kết thúc trận
                 if (now < gioKetThucTran.AddMinutes(30)) continue;
 
-                // Kiểm tra user chưa đánh giá đơn này
-                var daDanhGia = await context.DanhGias
-                    .AnyAsync(dg => dg.DatSanId == don.Id);
+                var daDanhGia = await context.DanhGias.AnyAsync(dg => dg.DatSanId == don.Id);
                 if (daDanhGia) continue;
 
                 await email.GuiEmailMoiDanhGia(
@@ -295,6 +289,137 @@ namespace Web_Stadium.Services
                 });
 
                 _logger.LogInformation("📧 Mời đánh giá → {Email} | đơn {Ma}", don.User.Email, don.MaXacNhan);
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // JOB 6: Tự hủy đơn DaXacNhan chưa check-in sau 2 tiếng
+        //        + SignalR mở lại khung giờ + email thông báo khách
+        //        (chạy mỗi 15 phút)
+        // ══════════════════════════════════════════════════════════
+        private async Task XuLyHuyKhongCheckIn(SanBongContext context, EmailService email)
+        {
+            var donHomNay = await context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.User)
+                .Where(d =>
+                    d.TrangThai == "DaXacNhan" &&
+                    d.StaffCheckInId == null &&
+                    d.NgayThiDau.Date == DateTime.Today)
+                .ToListAsync();
+
+            // Lọc trong C#: giờ bắt đầu + 2 tiếng < giờ hiện tại
+            var now = DateTime.Now;
+            var donCanHuy = donHomNay.Where(d =>
+            {
+                if (d.KhungGio == null) return false;
+                var gioBatDau = d.NgayThiDau.Date.Add(d.KhungGio.GioBatDau.ToTimeSpan());
+                return gioBatDau.AddHours(2) < now;
+            }).ToList();
+
+            foreach (var don in donCanHuy)
+            {
+                don.TrangThai = "DaHuy";
+                don.GhiChuSuCo = "Tự động hủy: khách không check-in sau 2 tiếng";
+
+                if (don.KhungGio != null)
+                {
+                    don.KhungGio.TrangThai = "Trong";
+                    don.KhungGio.ThoiGianHetGiuCho = null;
+
+                    // Cập nhật realtime cho tất cả client đang xem sân
+                    await _hubContext.Clients
+                        .Group($"san_{don.KhungGio.SanBongId}")
+                        .SendAsync("CapNhatKhungGio", new
+                        {
+                            khungGioId = don.KhungGio.Id,
+                            trangThai = "Trong",
+                            hetHan = (DateTime?)null
+                        });
+                }
+
+                _logger.LogInformation(
+                    "⏰ Tự hủy đơn {Ma} — không check-in sau 2 tiếng | Sân: {San}",
+                    don.MaXacNhan, don.KhungGio?.SanBong?.TenSan ?? "?");
+
+                // Gửi email thông báo cho khách
+                if (don.User?.Email != null && don.KhungGio != null)
+                {
+                    var tenSan = don.KhungGio.SanBong?.TenSan ?? "";
+                    await email.GuiEmailHuyDonTuDong(
+                        don.User.Email,
+                        don.User.HoTen,
+                        tenSan,
+                        don.NgayThiDau,
+                        don.KhungGio.GioBatDau.ToString(@"hh\:mm"),
+                        don.KhungGio.GioKetThuc.ToString(@"hh\:mm"),
+                        don.MaXacNhan);
+                }
+            }
+
+            if (donCanHuy.Any())
+                await context.SaveChangesAsync();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // JOB 7: Nhắc check-in trước 30 phút
+        //        (chạy mỗi 5 phút)
+        // ══════════════════════════════════════════════════════════
+        private async Task GuiNhacCheckIn30phut(SanBongContext context, EmailService email)
+        {
+            var now = DateTime.Now;
+            var sap25phut = now.AddMinutes(25);
+            var sap35phut = now.AddMinutes(35);
+
+            var donHomNay = await context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.User)
+                .Where(d =>
+                    d.TrangThai == "DaXacNhan" &&
+                    d.NgayThiDau.Date == DateTime.Today)
+                .ToListAsync();
+
+            // Lọc: giờ bắt đầu nằm trong khoảng 25–35 phút tới
+            var donSapDen = donHomNay.Where(d =>
+            {
+                if (d.KhungGio == null) return false;
+                var gioBatDau = d.NgayThiDau.Date.Add(d.KhungGio.GioBatDau.ToTimeSpan());
+                return gioBatDau >= sap25phut && gioBatDau <= sap35phut;
+            }).ToList();
+
+            foreach (var don in donSapDen)
+            {
+                if (don.User == null || don.KhungGio == null) continue;
+
+                // Kiểm tra chưa gửi nhắc (dùng AuditLog)
+                var daGui = await context.AuditLogs
+                    .AnyAsync(a => a.DoiTuongId == don.Id && a.HanhDong == "NhacCheckIn30phut");
+                if (daGui) continue;
+
+                var tenSan = don.KhungGio.SanBong?.TenSan ?? "";
+                await email.GuiEmailNhacCheckIn(
+                    don.User.Email,
+                    don.User.HoTen,
+                    tenSan,
+                    don.NgayThiDau,
+                    don.KhungGio.GioBatDau.ToString(@"hh\:mm"),
+                    don.MaXacNhan);
+
+                context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = don.UserId,
+                    VaiTro = "System",
+                    HanhDong = "NhacCheckIn30phut",
+                    DoiTuong = "DatSan",
+                    DoiTuongId = don.Id,
+                    MoTa = $"Đã gửi nhắc check-in 30 phút: {tenSan}"
+                });
+
+                _logger.LogInformation(
+                    "📧 Nhắc check-in 30 phút → {Email} | đơn {Ma}",
+                    don.User.Email, don.MaXacNhan);
             }
 
             await context.SaveChangesAsync();

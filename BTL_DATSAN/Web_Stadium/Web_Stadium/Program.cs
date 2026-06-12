@@ -62,6 +62,7 @@ namespace Web_Stadium
 
             builder.Services.AddHostedService<Web_Stadium.End.MatchmakingAutoCleanupService>();
             builder.Services.AddHostedService<Web_Stadium.End.TournamentBackgroundService>();
+            builder.Services.AddHostedService<Web_Stadium.Services.BackgroundJobService>();
             builder.Services.AddScoped<Web_Stadium.Services.EmailService>();
             builder.Services.AddScoped<Web_Stadium.Services.ScheduleService>();
             builder.Services.AddScoped<Web_Stadium.Services.StandingService>();
