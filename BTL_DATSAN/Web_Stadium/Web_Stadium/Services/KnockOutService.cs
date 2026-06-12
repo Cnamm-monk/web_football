@@ -186,21 +186,20 @@ namespace Web_Stadium.Services
         // Owner sẽ cập nhật đội sau khi có kết quả Tứ kết
         private List<TranDau> SinhBanKetPlaceholder(int giaiDauId, DateTime ngay)
         {
-            // Dùng DoiNhaId = 0 làm placeholder (TBD)
             return new List<TranDau> {
                 new TranDau {
                     GiaiDauId  = giaiDauId,
-                    DoiNhaId   = 0, // TBD — cập nhật sau tứ kết
-                    DoiKhachId = 0,
+                    DoiNhaId   = null,
+                    DoiKhachId = null,
                     VongDau    = 20,
                     LoaiVong   = "BanKet",
                     NgayThiDau = ngay,
-                    TrangThai  = "Pending" // Chờ xác định đội
+                    TrangThai  = "Pending"
                 },
                 new TranDau {
                     GiaiDauId  = giaiDauId,
-                    DoiNhaId   = 0,
-                    DoiKhachId = 0,
+                    DoiNhaId   = null,
+                    DoiKhachId = null,
                     VongDau    = 20,
                     LoaiVong   = "BanKet",
                     NgayThiDau = ngay,
@@ -215,8 +214,8 @@ namespace Web_Stadium.Services
             return new TranDau
             {
                 GiaiDauId = giaiDauId,
-                DoiNhaId = 0,
-                DoiKhachId = 0,
+                DoiNhaId = null,
+                DoiKhachId = null,
                 VongDau = 30,
                 LoaiVong = "ChungKet",
                 NgayThiDau = ngay,
@@ -237,9 +236,10 @@ namespace Web_Stadium.Services
             if (tran == null || tran.TrangThai != "Closed") return;
             if (!tran.BanThangNha.HasValue) return;
 
-            // Xác định đội thắng và thua
-            int doiThang = tran.BanThangNha > tran.BanThangKhach
+            // Xác định đội thắng
+            int? doiThang = tran.BanThangNha > tran.BanThangKhach
                 ? tran.DoiNhaId : tran.DoiKhachId;
+            if (!doiThang.HasValue) return;
 
             // Tìm trận Pending tiếp theo trong giải (theo thứ tự VongDau)
             var vongTiepTheo = tran.LoaiVong switch
@@ -259,11 +259,11 @@ namespace Web_Stadium.Services
             if (tranPending == null) return;
 
             // Điền đội vào slot còn trống
-            if (tranPending.DoiNhaId == 0)
-                tranPending.DoiNhaId = doiThang;
-            else if (tranPending.DoiKhachId == 0)
+            if (tranPending.DoiNhaId == null)
+                tranPending.DoiNhaId = doiThang.Value;
+            else if (tranPending.DoiKhachId == null)
             {
-                tranPending.DoiKhachId = doiThang;
+                tranPending.DoiKhachId = doiThang.Value;
                 tranPending.TrangThai = "Scheduled"; // Đủ 2 đội → mở lịch
             }
 

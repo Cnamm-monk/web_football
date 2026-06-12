@@ -47,11 +47,12 @@ namespace Web_Stadium.Services
                 foreach (var tran in transClosed)
                 {
                     if (!tran.BanThangNha.HasValue || !tran.BanThangKhach.HasValue) continue;
-                    if (!stats.ContainsKey(tran.DoiNhaId) ||
-                        !stats.ContainsKey(tran.DoiKhachId)) continue;
+                    if (tran.DoiNhaId == null || tran.DoiKhachId == null) continue;
+                    if (!stats.ContainsKey(tran.DoiNhaId.Value) ||
+                        !stats.ContainsKey(tran.DoiKhachId.Value)) continue;
 
-                    var nha = stats[tran.DoiNhaId];
-                    var khach = stats[tran.DoiKhachId];
+                    var nha = stats[tran.DoiNhaId.Value];
+                    var khach = stats[tran.DoiKhachId.Value];
 
                     nha.SoTran++; khach.SoTran++;
                     nha.BanThang += tran.BanThangNha.Value;
@@ -114,8 +115,9 @@ namespace Web_Stadium.Services
                 // Tính đối đầu trực tiếp trong nhóm
                 var doiIds = doiCungDiem.Select(d => d.DoiId).ToHashSet();
                 var tranDoiDau = tatCaTran.Where(t =>
-                    doiIds.Contains(t.DoiNhaId) &&
-                    doiIds.Contains(t.DoiKhachId)).ToList();
+                    t.DoiNhaId.HasValue && t.DoiKhachId.HasValue &&
+                    doiIds.Contains(t.DoiNhaId.Value) &&
+                    doiIds.Contains(t.DoiKhachId.Value)).ToList();
 
                 var doiDauStats = doiCungDiem.ToDictionary(d => d.DoiId, _ => new {
                     diem = 0,
@@ -129,9 +131,9 @@ namespace Web_Stadium.Services
 
                 foreach (var t in tranDoiDau)
                 {
-                    if (!t.BanThangNha.HasValue) continue;
-                    var nha = ddStats[t.DoiNhaId];
-                    var khach = ddStats[t.DoiKhachId];
+                    if (!t.BanThangNha.HasValue || !t.DoiNhaId.HasValue || !t.DoiKhachId.HasValue) continue;
+                    var nha = ddStats[t.DoiNhaId.Value];
+                    var khach = ddStats[t.DoiKhachId.Value];
 
                     nha.BanThang += t.BanThangNha.Value;
                     nha.BanThua += t.BanThangKhach.Value;

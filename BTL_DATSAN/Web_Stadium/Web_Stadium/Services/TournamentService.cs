@@ -95,15 +95,18 @@ namespace Web_Stadium.Services
         }
 
         // ══════════════════════════════════════════════════════════
-        // Mở đăng ký: Draft / Approved → RegistrationOpen
+        // Mở đăng ký: Approved → RegistrationOpen
         // ══════════════════════════════════════════════════════════
         public async Task<(bool ok, string error)> MoiDangKy(int giaiId, int ownerId)
         {
             var giai = await LayGiaiCuaOwner(giaiId, ownerId);
             if (giai == null) return (false, "Không tìm thấy giải!");
 
-            if (giai.TrangThai is not ("Draft" or "Approved"))
-                return (false, "Chỉ mở đăng ký khi giải ở trạng thái Draft hoặc Approved!");
+            if (giai.TrangThai == "Draft")
+                return (false, "Giải đấu chưa được Admin phê duyệt, vui lòng chờ Admin duyệt trước");
+
+            if (giai.TrangThai != "Approved")
+                return (false, "Chỉ mở đăng ký khi giải đã được Admin phê duyệt!");
 
             giai.TrangThai = "RegistrationOpen";
             await _context.SaveChangesAsync();
