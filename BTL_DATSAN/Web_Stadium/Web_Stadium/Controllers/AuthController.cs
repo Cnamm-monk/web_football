@@ -127,5 +127,12 @@ namespace Web_Stadium.Controllers
             TempData["Success"] = "Đã đăng xuất thành công!";
             return RedirectToAction("Login");
         }
+
+        // GET /Auth/ForgotPassword
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            return View();
+        }
     }
 }
