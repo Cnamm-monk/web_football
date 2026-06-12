@@ -210,6 +210,7 @@ function _capNhatSlot(s) {
 
     var isDaDat = s.trangThai === 'DaDat';
     var isDangGiu = s.trangThai === 'DangGiu';
+    var isTrong = !isDaDat && !isDangGiu;
 
     if (isDaDat) el.classList.add('s-dadat');
     else if (isDangGiu) el.classList.add('s-giucho');
@@ -222,6 +223,15 @@ function _capNhatSlot(s) {
                 : 'C\u00f2n tr\u1ed1ng';
         statusEl.className = 'gio-status ' +
             (isDaDat ? 's-dadat' : isDangGiu ? 's-giucho' : 's-trong');
+    }
+
+    // Khi slot tr\u1edf v\u1ec1 Trong: x\u00f3a daqua + countdown c\u0169, r\u1ed3i re-check th\u1eddi gian
+    if (isTrong) {
+        el.classList.remove('daqua');
+        var cdWrap = el.querySelector('.countdown-wrap');
+        if (cdWrap) cdWrap.remove();
+        // capNhatDaQua \u0111\u01b0\u1ee3c \u0111\u1ecbnh ngh\u0129a trong Details.cshtml (global scope)
+        if (typeof capNhatDaQua === 'function') capNhatDaQua();
     }
 
     if (isDaDat && parseInt(s.khungGioId) === _selectedKhungGioId) {
