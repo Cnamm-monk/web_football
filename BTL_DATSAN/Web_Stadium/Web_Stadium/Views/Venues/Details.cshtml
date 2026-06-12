@@ -496,6 +496,24 @@
                     <span class="live-label">LIVE</span>
                 </div>
                 <div class="section-card-body">
+                    <!-- Date picker -->
+                    <div style="display:flex;align-items:center;gap:12px;
+                                margin-bottom:16px;padding:12px 16px;
+                                background:var(--bg3);border:1px solid var(--border);
+                                border-radius:8px;">
+                        <span>📅</span>
+                        <label for="ngayThiDau" style="color:var(--muted);font-size:13px;white-space:nowrap;">
+                            Ngày thi đấu
+                        </label>
+                        <input type="date" id="ngayThiDau"
+                               min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                               max="@DateTime.Today.AddDays(30).ToString("yyyy-MM-dd")"
+                               value="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")"
+                               style="border:none;background:transparent;color:var(--text);
+                                      font-size:15px;font-weight:600;cursor:pointer;
+                                      outline:none;margin-left:auto;" />
+                    </div>
+
                     <div class="gio-grid" id="khungGioGrid">
                         @foreach (var kg in Model.KhungGios.OrderBy(k => k.GioBatDau))
                         {
@@ -731,10 +749,8 @@
                         <span class="slot-badge">Đã chọn</span>
                         <div class="slot-time" id="slotTime" style="font-family:'Segoe UI',Arial,sans-serif;font-size:22px;font-weight:700;font-style:normal;color:var(--green);letter-spacing:-0.5px;margin-bottom:10px;">—</div>
                         <div class="date-label">Ngày thi đấu</div>
-                        <input type="date" id="ngayThiDau"
-                               class="form-input"
-                               min="@DateTime.Today.ToString("yyyy-MM-dd")"
-                               value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                        <div id="selectedDateDisplay"
+                             style="font-size:15px;font-weight:600;color:var(--text);margin-top:4px;"></div>
                     </div>
 
                     <!-- Price breakdown -->
@@ -900,22 +916,19 @@
             var dateInput = document.getElementById('ngayThiDau');
             var ngayChon = dateInput ? dateInput.value : '';
             var now = new Date();
-            // Dùng client-side để tránh lệch timezone server vs browser
-            var ngayHomNay = now.toISOString().split('T')[0]; // "yyyy-mm-dd"
+            var ngayHomNay = now.toISOString().split('T')[0];
 
             document.querySelectorAll('#khungGioGrid .gio-item').forEach(function (el) {
-                var batDau = el.dataset.batdau; // "HH:mm"
+                var batDau = el.dataset.batdau;
                 var statusEl = el.querySelector('.gio-status');
                 var isPast = false;
 
                 if (ngayChon === ngayHomNay && batDau) {
-                    // Chỉ xét hôm nay — slot "Trong" có giờ đã qua
                     var parts = batDau.split(':');
                     var slotTime = new Date();
                     slotTime.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
                     isPast = el.dataset.status === 'Trong' && slotTime < now;
                 }
-                // Ngày khác hôm nay → isPast luôn false → bỏ hết lock
 
                 if (isPast) {
                     el.classList.add('daqua');
@@ -933,10 +946,24 @@
             });
         }
 
+        function _capNhatHienThiNgay() {
+            var val = document.getElementById('ngayThiDau')?.value;
+            var el = document.getElementById('selectedDateDisplay');
+            if (!el || !val) return;
+            var p = val.split('-');
+            el.textContent = p[2] + '/' + p[1] + '/' + p[0]; // dd/MM/yyyy
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             capNhatDaQua();
+            _capNhatHienThiNgay();
             var ngayEl = document.getElementById('ngayThiDau');
-            if (ngayEl) ngayEl.addEventListener('change', capNhatDaQua);
+            if (ngayEl) {
+                ngayEl.addEventListener('change', function () {
+                    capNhatDaQua();
+                    _capNhatHienThiNgay();
+                });
+            }
         });
     </script>
 }
