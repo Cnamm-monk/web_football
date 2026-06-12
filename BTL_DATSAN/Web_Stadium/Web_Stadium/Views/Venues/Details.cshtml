@@ -896,29 +896,27 @@
     </script>
 
     <script>
-        // Đánh dấu khung giờ đã qua khi chọn ngày hôm nay
-        var _todayStr = '@DateTime.Today.ToString("yyyy-MM-dd")';
-
         function capNhatDaQua() {
             var dateInput = document.getElementById('ngayThiDau');
-            var selectedDate = dateInput ? dateInput.value : _todayStr;
-            var isToday = selectedDate === _todayStr;
+            var ngayChon = dateInput ? dateInput.value : '';
             var now = new Date();
+            // Dùng client-side để tránh lệch timezone server vs browser
+            var ngayHomNay = now.toISOString().split('T')[0]; // "yyyy-mm-dd"
 
             document.querySelectorAll('#khungGioGrid .gio-item').forEach(function (el) {
-                if (el.dataset.status !== 'Trong') return;
-
                 var batDau = el.dataset.batdau; // "HH:mm"
+                var statusEl = el.querySelector('.gio-status');
                 var isPast = false;
 
-                if (isToday && batDau) {
+                if (ngayChon === ngayHomNay && batDau) {
+                    // Chỉ xét hôm nay — slot "Trong" có giờ đã qua
                     var parts = batDau.split(':');
                     var slotTime = new Date();
                     slotTime.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
-                    isPast = slotTime < now;
+                    isPast = el.dataset.status === 'Trong' && slotTime < now;
                 }
+                // Ngày khác hôm nay → isPast luôn false → bỏ hết lock
 
-                var statusEl = el.querySelector('.gio-status');
                 if (isPast) {
                     el.classList.add('daqua');
                     if (statusEl) {
