@@ -51,10 +51,13 @@ namespace Web_Stadium.Controllers
             return View(list);
         }
 
-        //GET /Matchmaking/Create? datSanId=1
+        //GET /Matchmaking/Create?datSanId=1  (datSanId optional — view handles null gracefully)
         [YeuCauDangNhap]
-        public async Task<IActionResult> Create(int datSanId)
+        public async Task<IActionResult> Create(int? datSanId)
         {
+            if (datSanId == null || datSanId == 0)
+                return View();
+
             var userId = TokenHelper.LayUserId(Request, _config);
             var datSan = await _context.DatSans
                 .Include(d => d.KhungGio)
@@ -69,7 +72,6 @@ namespace Web_Stadium.Controllers
                 return RedirectToAction("Index");
             }
 
-            //Kiểm tra đã đăng tin chưa
             var daCoTin = await _context.Matchmakings
                 .AnyAsync(m => m.DatSanId == datSanId &&
                                m.TrangThai == "DangTim");

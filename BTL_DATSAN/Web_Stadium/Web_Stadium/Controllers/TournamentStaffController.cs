@@ -44,6 +44,30 @@ namespace Web_Stadium.Controllers
                 .ToListAsync();
 
         // ══════════════════════════════════════════════════════════
+        // GET /TournamentStaff/TranDau/{id} — Chi tiết trận đấu
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> TranDau(int id)
+        {
+            var tran = await _context.TranDaus
+                .Include(t => t.GiaiDau).ThenInclude(g => g.SanBong)
+                .Include(t => t.BangDau)
+                .Include(t => t.DoiNha).ThenInclude(d => d.ThanhViens)
+                .Include(t => t.DoiKhach).ThenInclude(d => d.ThanhViens)
+                .Include(t => t.SuKiens).ThenInclude(s => s.ThanhVien)
+                .Include(t => t.SuKiens).ThenInclude(s => s.Doi)
+                .Include(t => t.StaffPhuTrach)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (tran == null) return NotFound();
+
+            var sanIds = await SanDuocGiao();
+            if (!sanIds.Contains(tran.GiaiDau.SanBongId))
+                return Forbid();
+
+            return View(tran);
+        }
+
+        // ══════════════════════════════════════════════════════════
         // GET /TournamentStaff/DanhSach — Danh sách trận phân công
         // Filter: hôm nay / tuần này / tất cả + trạng thái
         // ══════════════════════════════════════════════════════════

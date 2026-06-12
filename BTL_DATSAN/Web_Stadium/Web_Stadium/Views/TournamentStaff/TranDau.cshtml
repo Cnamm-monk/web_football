@@ -1,0 +1,279 @@
+@model Web_Stadium.EFCore.TranDau
+@{
+    ViewData["Title"] = "Chi tiết trận đấu";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var banThangNha    = Model.BanThangNha ?? 0;
+    var banThangKhach  = Model.BanThangKhach ?? 0;
+    var suKienBanThang = Model.SuKiens.Where(s => s.LoaiSuKien == "BanThang").OrderBy(s => s.Phut).ToList();
+    var suKienTheVang  = Model.SuKiens.Where(s => s.LoaiSuKien == "TheVang").OrderBy(s => s.Phut).ToList();
+    var suKienTheDo    = Model.SuKiens.Where(s => s.LoaiSuKien == "TheDo").OrderBy(s => s.Phut).ToList();
+}
+
+@section Styles {
+<style>
+.match-hero {
+    background: linear-gradient(135deg, #0a2a1a 0%, #0d3b23 100%);
+    padding: 100px 0 40px; border-bottom: 1px solid var(--border);
+}
+.score-board {
+    display: flex; align-items: center; justify-content: center; gap: 24px;
+    margin: 24px 0 8px;
+}
+.team-score-block { text-align: center; flex: 1; max-width: 220px; }
+.team-name-lg {
+    font-family: var(--ff-h); font-size: 1.1rem; text-transform: uppercase;
+    color: #fff; margin-bottom: 8px; line-height: 1.1;
+}
+.score-num {
+    font-family: var(--ff-h); font-size: 4rem; font-weight: 900;
+    line-height: 1; color: var(--green);
+}
+.score-sep {
+    font-family: var(--ff-h); font-size: 2.5rem; color: rgba(255,255,255,.3);
+    margin-top: 8px;
+}
+.match-meta-bar {
+    display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;
+    font-size: 12px; color: rgba(255,255,255,.55); letter-spacing: .5px;
+    margin-top: 14px;
+}
+.status-pill {
+    display: inline-block; padding: 4px 14px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+}
+.sp-scheduled  { background: rgba(14,168,106,.15); color: var(--green); border: 1px solid rgba(14,168,106,.3); }
+.sp-inprogress { background: rgba(59,130,246,.15); color: #60a5fa;      border: 1px solid rgba(59,130,246,.3); }
+.sp-closed     { background: rgba(100,116,139,.15); color: #94a3b8;     border: 1px solid rgba(100,116,139,.3); }
+
+.section-title {
+    font-family: var(--ff-h); font-size: 11px; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 16px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+.event-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+}
+.event-row:last-child { border-bottom: none; }
+.event-min {
+    font-family: var(--ff-h); font-size: 12px; color: var(--green);
+    min-width: 36px; text-align: center;
+}
+.event-icon { font-size: 1.1rem; }
+.event-name { flex: 1; color: var(--text); }
+.event-team { font-size: 11px; color: var(--muted); }
+.info-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+}
+@@media (max-width: 576px) { .info-grid { grid-template-columns: 1fr; } }
+.info-item { font-size: 13px; }
+.info-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .5px; margin-bottom: 3px; }
+.info-val { color: var(--text); font-weight: 600; }
+</style>
+}
+
+<!-- HERO -->
+<div class="match-hero">
+    <div class="container">
+        <a href="/TournamentStaff/DanhSach" style="display:inline-flex;align-items:center;
+            gap:6px;font-size:12px;color:rgba(255,255,255,.45);text-decoration:none;
+            letter-spacing:1.5px;text-transform:uppercase;margin-bottom:20px;">
+            ← Danh sách trận
+        </a>
+
+        <div style="text-align:center;margin-bottom:4px;">
+            <span class="status-pill @(Model.TrangThai == "Scheduled" ? "sp-scheduled" : Model.TrangThai == "InProgress" ? "sp-inprogress" : "sp-closed")">
+                @(Model.TrangThai == "Scheduled" ? "Chưa bắt đầu" : Model.TrangThai == "InProgress" ? "Đang diễn ra" : "Đã kết thúc")
+            </span>
+        </div>
+
+        <div class="score-board">
+            <div class="team-score-block">
+                <div class="team-name-lg">@(Model.DoiNha?.TenDoi ?? "—")</div>
+                <div class="score-num">@(Model.TrangThai == "Scheduled" ? "-" : banThangNha.ToString())</div>
+            </div>
+            <div class="score-sep">VS</div>
+            <div class="team-score-block">
+                <div class="team-name-lg">@(Model.DoiKhach?.TenDoi ?? "—")</div>
+                <div class="score-num">@(Model.TrangThai == "Scheduled" ? "-" : banThangKhach.ToString())</div>
+            </div>
+        </div>
+
+        <div class="match-meta-bar">
+            <span>⚽ @Model.GiaiDau.TenGiai</span>
+            @if (Model.BangDau != null) { <span>📊 @Model.BangDau.TenBang</span> }
+            <span>🔢 Vòng @Model.VongDau</span>
+            <span>📅 @Model.NgayThiDau.ToString("dd/MM/yyyy HH:mm")</span>
+            @if (Model.GiaiDau.SanBong != null) { <span>🏟️ @Model.GiaiDau.SanBong.TenSan</span> }
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row g-4">
+
+        <!-- SỰ KIỆN TRẬN ĐẤU -->
+        <div class="col-lg-8">
+
+            @if (Model.SuKiens.Any())
+            {
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);padding:22px;margin-bottom:20px;">
+                    <div class="section-title">⚡ Sự kiện trận đấu</div>
+
+                    @if (suKienBanThang.Any())
+                    {
+                        <div style="margin-bottom:16px;">
+                            <div style="font-size:11px;color:var(--green);font-weight:700;letter-spacing:1px;
+                                        text-transform:uppercase;margin-bottom:8px;">⚽ Bàn thắng</div>
+                            @foreach (var sk in suKienBanThang)
+                            {
+                                <div class="event-row">
+                                    <span class="event-min">@(sk.Phut.HasValue ? sk.Phut + "'" : "—")</span>
+                                    <span class="event-icon">⚽</span>
+                                    <span class="event-name">@(sk.ThanhVien?.HoTen ?? "Không rõ")</span>
+                                    <span class="event-team">@(sk.Doi?.TenDoi ?? "")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (suKienTheVang.Any())
+                    {
+                        <div style="margin-bottom:16px;">
+                            <div style="font-size:11px;color:#F59E0B;font-weight:700;letter-spacing:1px;
+                                        text-transform:uppercase;margin-bottom:8px;">🟨 Thẻ vàng</div>
+                            @foreach (var sk in suKienTheVang)
+                            {
+                                <div class="event-row">
+                                    <span class="event-min">@(sk.Phut.HasValue ? sk.Phut + "'" : "—")</span>
+                                    <span class="event-icon">🟨</span>
+                                    <span class="event-name">@(sk.ThanhVien?.HoTen ?? "Không rõ")</span>
+                                    <span class="event-team">@(sk.Doi?.TenDoi ?? "")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (suKienTheDo.Any())
+                    {
+                        <div>
+                            <div style="font-size:11px;color:#EF4444;font-weight:700;letter-spacing:1px;
+                                        text-transform:uppercase;margin-bottom:8px;">🟥 Thẻ đỏ</div>
+                            @foreach (var sk in suKienTheDo)
+                            {
+                                <div class="event-row">
+                                    <span class="event-min">@(sk.Phut.HasValue ? sk.Phut + "'" : "—")</span>
+                                    <span class="event-icon">🟥</span>
+                                    <span class="event-name">@(sk.ThanhVien?.HoTen ?? "Không rõ")</span>
+                                    <span class="event-team">@(sk.Doi?.TenDoi ?? "")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);
+                            padding:40px;text-align:center;margin-bottom:20px;color:var(--muted);">
+                    <div style="font-size:2.5rem;margin-bottom:10px;">📋</div>
+                    <div>Chưa có sự kiện nào được ghi nhận</div>
+                </div>
+            }
+
+            <!-- DANH SÁCH ĐỘI -->
+            <div class="row g-3">
+                @foreach (var (doi, label) in new[] { (Model.DoiNha, "Đội nhà"), (Model.DoiKhach, "Đội khách") })
+                {
+                    if (doi == null) continue;
+                    <div class="col-md-6">
+                        <div style="background:var(--card);border:1px solid var(--border);
+                                    border-radius:var(--r-lg);padding:18px;">
+                            <div class="section-title">👥 @label — @doi.TenDoi</div>
+                            @if (doi.ThanhViens.Any())
+                            {
+                                @foreach (var tv in doi.ThanhViens.OrderBy(t => t.SoAo))
+                                {
+                                    <div style="display:flex;align-items:center;gap:10px;
+                                                padding:7px 0;border-bottom:1px solid var(--border);
+                                                font-size:13px;">
+                                        <span style="font-family:var(--ff-h);color:var(--green);
+                                                     min-width:24px;text-align:center;">
+                                            #@tv.SoAo
+                                        </span>
+                                        <span style="flex:1;color:var(--text);">@tv.HoTen</span>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div style="color:var(--muted);font-size:13px;">Chưa có thành viên</div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- THÔNG TIN TRẬN -->
+        <div class="col-lg-4">
+            <div style="background:var(--card);border:1px solid var(--border);
+                        border-radius:var(--r-lg);padding:22px;margin-bottom:16px;">
+                <div class="section-title">ℹ️ Thông tin trận</div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-lbl">Vòng đấu</div>
+                        <div class="info-val">Vòng @Model.VongDau — @Model.LoaiVong</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-lbl">Ngày thi đấu</div>
+                        <div class="info-val">@Model.NgayThiDau.ToString("dd/MM/yyyy")</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-lbl">Giờ</div>
+                        <div class="info-val">@Model.NgayThiDau.ToString("HH:mm")</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-lbl">Trạng thái</div>
+                        <div class="info-val">@Model.TrangThai</div>
+                    </div>
+                    @if (Model.StaffPhuTrach != null)
+                    {
+                        <div class="info-item" style="grid-column:1/-1">
+                            <div class="info-lbl">Staff phụ trách</div>
+                            <div class="info-val">@Model.StaffPhuTrach.HoTen</div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- ACTIONS -->
+            @if (Model.TrangThai == "Scheduled")
+            {
+                <a href="/TournamentStaff/CheckIn/@Model.Id"
+                   class="btn btn-success w-100 rounded-pill mb-2">
+                    ▶ Bắt đầu Check-in
+                </a>
+            }
+            @if (Model.TrangThai == "InProgress")
+            {
+                <a href="/TournamentStaff/SuKien/@Model.Id"
+                   class="btn btn-primary w-100 rounded-pill mb-2">
+                    ⚡ Ghi sự kiện
+                </a>
+                <a href="/TournamentStaff/KetThuc/@Model.Id"
+                   class="btn btn-outline-warning w-100 rounded-pill mb-2">
+                    🏁 Kết thúc trận
+                </a>
+            }
+            <a href="/TournamentStaff/DanhSach"
+               class="btn btn-outline-secondary w-100 rounded-pill">
+                ← Quay lại danh sách
+            </a>
+        </div>
+
+    </div>
+</div>

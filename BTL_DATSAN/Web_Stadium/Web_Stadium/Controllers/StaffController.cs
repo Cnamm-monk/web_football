@@ -237,6 +237,7 @@ namespace Web_Stadium.Controllers
         // ══════════════════════════════════════════════════════════
         // 4. CHECK-OUT — Thu tiền + chuyển DangSuDung → HoanThanh
         // ══════════════════════════════════════════════════════════
+        [HttpGet("Staff/CheckOut/{datSanId}")]
         public async Task<IActionResult> CheckOut(int datSanId)
         {
             var sanIds = await GetSanDuocGiaoAsync();
