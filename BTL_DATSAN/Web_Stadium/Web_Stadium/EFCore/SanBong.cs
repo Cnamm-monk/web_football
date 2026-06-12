@@ -35,6 +35,8 @@ public partial class SanBong
 
     public bool IsHidden { get; set; }
 
+    public string? SoDienThoai { get; set; }
+
     public int OwnerId { get; set; }
 
     public bool DaKyHopDong { get; set; }
