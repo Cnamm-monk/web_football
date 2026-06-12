@@ -195,9 +195,6 @@ namespace Web_Stadium.Services
             giai.TrangThai = "Active";
             await _context.SaveChangesAsync();
 
-            // 4. Gửi email lịch đấu (fire & forget — không rollback nếu lỗi)
-            _ = _notificationService.GuiEmailLichDau(giaiId);
-
             return (true, "");
         }
 

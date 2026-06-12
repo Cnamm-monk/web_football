@@ -21,19 +21,22 @@ namespace Web_Stadium.Controllers
         private readonly TournamentService _tournamentService;
         private readonly StandingService _standingService;
         private readonly TournamentExcelService _excelService;
+        private readonly TournamentNotificationService _notificationService;
 
         public TournamentController(
             SanBongContext context,
             IConfiguration config,
             TournamentService tournamentService,
             StandingService standingService,
-            TournamentExcelService excelService)
+            TournamentExcelService excelService,
+            TournamentNotificationService notificationService)
         {
             _context = context;
             _config = config;
             _tournamentService = tournamentService;
             _standingService = standingService;
             _excelService = excelService;
+            _notificationService = notificationService;
         }
 
         private int OwnerId() => TokenHelper.LayUserId(Request, _config)!.Value;
@@ -185,6 +188,7 @@ namespace Web_Stadium.Controllers
             if (!ok) { TempData["Error"] = error; return RedirectToAction("ChiaBang", new { id }); }
 
             await GhiLog("KhoiTaoGiai", "GiaiDau", id, "Khởi tạo giải và sinh lịch thi đấu");
+            _ = _notificationService.GuiEmailLichDau(id);
             TempData["Success"] = "Khởi tạo thành công! Email lịch đấu đã gửi cho các đội.";
             return RedirectToAction("Details", new { id });
         }
