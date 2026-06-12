@@ -75,7 +75,10 @@ namespace Web_Stadium.Services
             {
                 don.TrangThai = "DaHuy";
                 if (don.KhungGio != null)
+                {
                     don.KhungGio.TrangThai = "Trong";
+                    don.KhungGio.ThoiGianHetGiuCho = null;
+                }
 
                 _logger.LogInformation("⏰ Tự hủy đơn {Ma} — quá 6h Owner không duyệt", don.MaXacNhan);
 
@@ -123,7 +126,10 @@ namespace Web_Stadium.Services
                     don.LoaiSuCo = "NoShow";
                     don.GhiChuSuCo = "Tự động ghi nhận No-show sau 30 phút";
                     if (don.KhungGio != null)
+                    {
                         don.KhungGio.TrangThai = "Trong";
+                        don.KhungGio.ThoiGianHetGiuCho = null;
+                    }
 
                     _logger.LogInformation("🚫 No-show: đơn {Ma}", don.MaXacNhan);
                 }
