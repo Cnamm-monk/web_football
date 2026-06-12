@@ -265,7 +265,7 @@ h4 {
     list-style: none !important;
     margin: 0;
     padding: 0;
-    gap: 2px;
+    gap: 19px;
     flex-wrap: nowrap;
 }
 
@@ -1274,7 +1274,7 @@ h4 {
     display: flex !important;
     justify-content: center;
     align-items: center;
-    gap: 2px;
+    gap: 19px;
     list-style: none !important;
     margin: 0;
     padding: 0;
@@ -1289,7 +1289,7 @@ h4 {
         font-family: var(--ff-b);
         font-size: 13px;
         font-weight: 600;
-        padding: 7px 10px;
+        padding: 7px 20px;
         border-radius: var(--r);
         transition: color 0.2s, background 0.2s;
         text-decoration: none;
