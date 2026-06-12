@@ -256,6 +256,16 @@
     color: var(--yellow);
 }
 
+.s-daqua {
+    background: rgba(100,116,139,.10);
+    color: #94a3b8;
+}
+
+.gio-item.daqua {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
 /* COUNTDOWN */
 .countdown-wrap {
     background: rgba(251,191,36,.07);

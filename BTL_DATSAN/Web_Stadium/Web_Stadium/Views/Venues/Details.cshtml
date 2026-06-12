@@ -894,4 +894,51 @@
             } catch(e) { console.error(e); }
         }
     </script>
+
+    <script>
+        // Đánh dấu khung giờ đã qua khi chọn ngày hôm nay
+        var _todayStr = '@DateTime.Today.ToString("yyyy-MM-dd")';
+
+        function capNhatDaQua() {
+            var dateInput = document.getElementById('ngayThiDau');
+            var selectedDate = dateInput ? dateInput.value : _todayStr;
+            var isToday = selectedDate === _todayStr;
+            var now = new Date();
+
+            document.querySelectorAll('#khungGioGrid .gio-item').forEach(function (el) {
+                if (el.dataset.status !== 'Trong') return;
+
+                var batDau = el.dataset.batdau; // "HH:mm"
+                var isPast = false;
+
+                if (isToday && batDau) {
+                    var parts = batDau.split(':');
+                    var slotTime = new Date();
+                    slotTime.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+                    isPast = slotTime < now;
+                }
+
+                var statusEl = el.querySelector('.gio-status');
+                if (isPast) {
+                    el.classList.add('daqua');
+                    if (statusEl) {
+                        statusEl.className = 'gio-status s-daqua';
+                        statusEl.textContent = 'Đã qua';
+                    }
+                } else {
+                    el.classList.remove('daqua');
+                    if (statusEl && statusEl.textContent === 'Đã qua') {
+                        statusEl.className = 'gio-status s-trong';
+                        statusEl.textContent = 'Còn trống';
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            capNhatDaQua();
+            var ngayEl = document.getElementById('ngayThiDau');
+            if (ngayEl) ngayEl.addEventListener('change', capNhatDaQua);
+        });
+    </script>
 }

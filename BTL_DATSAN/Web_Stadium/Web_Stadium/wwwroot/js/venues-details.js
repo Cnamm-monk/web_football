@@ -54,6 +54,7 @@ function initVenuesDetails(sanId, tenSan) {
 // ── Chọn khung giờ ───────────────────────────────────────────
 function chonKhungGio(el) {
     if (el.dataset.status === 'DaDat') return;
+    if (el.classList.contains('daqua')) return;
     if (el.dataset.status === 'DangGiu') {
         alert('Khung gi\u1edd n\u00e0y \u0111ang \u0111\u01b0\u1ee3c gi\u1eef ch\u1ed7. Vui l\u00f2ng ch\u1ecdn khung gi\u1edd kh\u00e1c!');
         return;
