@@ -815,6 +815,10 @@
                         <span class="lbl">Địa chỉ</span>
                         <span class="val">@Model.DiaChi, @Model.Quan</span>
                     </div>
+                    <div class="venue-info-row">
+                        <span class="lbl">📞 SĐT liên hệ</span>
+                        <span class="val">@(string.IsNullOrWhiteSpace(Model.SoDienThoai) ? "Chưa cập nhật" : Model.SoDienThoai)</span>
+                    </div>
                 </div>
 
             </div>

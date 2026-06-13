@@ -457,5 +457,157 @@ namespace Web_Stadium.Services
             await GuiEmailAsync(toEmail, toName,
                 $"❌ Đơn đặt sân {tenSan} đã bị hủy", body);
         }
+
+        // ══════════════════════════════════════════════════════════
+        // 5. THÔNG BÁO YÊU CẦU ĐỔI GIỜ MỚI → STAFF
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailYeuCauMoiChoStaff(
+            string staffEmail, string staffName,
+            string tenKhach, string tenSan,
+            string gioMoi, string ngayMoi, string lyDo)
+        {
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+    <div style='color:#ffc107;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>YÊU CẦU ĐỔI KHUNG GIỜ</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{staffName}</strong>,</p>
+    <p style='color:#555;'>Khách hàng <strong>{tenKhach}</strong> vừa gửi yêu cầu đổi khung giờ tại sân của bạn. Vui lòng xem xét và xử lý.</p>
+    <div style='background:#fffde7;border:1px solid #ffc107;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:130px;'>🏟 Sân</td><td style='color:#111;font-weight:700;'>{tenSan}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày mới</td><td style='color:#111;font-weight:600;'>{ngayMoi}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Khung giờ mới</td><td style='color:#e65100;font-weight:700;'>{gioMoi}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>💬 Lý do</td><td style='color:#333;font-style:italic;'>{lyDo}</td></tr>
+      </table>
+    </div>
+    <p style='color:#555;font-size:.9rem;'>Hãy đăng nhập vào hệ thống để xử lý yêu cầu này (Chuyển Owner duyệt hoặc Từ chối).</p>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(staffEmail, staffName,
+                $"[PitchHub] Yêu cầu đổi giờ từ {tenKhach} — {tenSan}", body);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 6. THÔNG BÁO CHUYỂN OWNER XEM XÉT
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailChuyenChoOwner(
+            string ownerEmail, string ownerName,
+            string tenKhach, string tenSan,
+            string gioMoi, string ngayMoi, string ghiChuStaff)
+        {
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+    <div style='color:#1ed760;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>YÊU CẦU ĐỔI GIỜ — CHỜ PHÊ DUYỆT</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{ownerName}</strong>,</p>
+    <p style='color:#555;'>Staff đã chuyển yêu cầu đổi giờ của khách hàng <strong>{tenKhach}</strong> để bạn phê duyệt.</p>
+    <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:130px;'>🏟 Sân</td><td style='color:#111;font-weight:700;'>{tenSan}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày mới</td><td style='color:#111;font-weight:600;'>{ngayMoi}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Khung giờ mới</td><td style='color:#0EA86A;font-weight:700;'>{gioMoi}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📝 Ghi chú Staff</td><td style='color:#333;font-style:italic;'>{ghiChuStaff}</td></tr>
+      </table>
+    </div>
+    <p style='color:#555;font-size:.9rem;'>Đăng nhập vào Owner Portal để phê duyệt hoặc từ chối yêu cầu này.</p>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(ownerEmail, ownerName,
+                $"[PitchHub] Yêu cầu đổi giờ cần phê duyệt — {tenSan}", body);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 7. XÁC NHẬN ĐỔI GIỜ THÀNH CÔNG → KHÁCH
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailDoiGioPheDuyet(
+            string userEmail, string userName,
+            string tenSan, string gioMoi, string ngayMoi, string maXacNhan)
+        {
+            var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={maXacNhan}";
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+    <div style='color:#1ed760;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>ĐỔI KHUNG GIỜ THÀNH CÔNG ✅</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{userName}</strong>,</p>
+    <p style='color:#555;'>Yêu cầu đổi khung giờ đặt sân của bạn đã được Owner phê duyệt! Chi tiết đơn mới:</p>
+    <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:130px;'>🏟 Sân</td><td style='color:#111;font-weight:700;'>{tenSan}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày mới</td><td style='color:#0EA86A;font-weight:700;'>{ngayMoi}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Khung giờ mới</td><td style='color:#0EA86A;font-weight:700;'>{gioMoi}</td></tr>
+      </table>
+    </div>
+    <div style='background:#0f1f14;border-radius:12px;padding:18px;text-align:center;margin-bottom:20px;'>
+      <div style='color:#888;font-size:.75rem;letter-spacing:1.5px;margin-bottom:8px;'>MÃ CHECK-IN</div>
+      <div style='font-family:monospace;font-size:1.5rem;font-weight:900;color:#1ed760;letter-spacing:3px;'>{maXacNhan}</div>
+    </div>
+    <div style='text-align:center;margin-bottom:16px;'>
+      <img src='{qrUrl}' width='140' height='140' style='border-radius:10px;border:3px solid #1ed760;' />
+    </div>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(userEmail, userName,
+                $"[PitchHub] ✅ Đổi khung giờ thành công — {tenSan}", body);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 8. THÔNG BÁO TỪ CHỐI ĐỔI GIỜ → KHÁCH
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailDoiGioTuChoi(
+            string userEmail, string userName,
+            string tenSan, string lyDo)
+        {
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#7f0000,#1a0000);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#ef4444;'>HUB</span>⚽</div>
+    <div style='color:#ef4444;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>YÊU CẦU ĐỔI GIỜ BỊ TỪ CHỐI</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{userName}</strong>,</p>
+    <p style='color:#555;'>Rất tiếc, yêu cầu đổi khung giờ tại sân <strong>{tenSan}</strong> của bạn không được chấp thuận.</p>
+    <div style='background:#fff5f5;border:1px solid #ef4444;border-radius:12px;padding:16px;margin:20px 0;'>
+      <div style='color:#888;font-size:.8rem;margin-bottom:6px;'>Lý do từ chối:</div>
+      <div style='color:#333;font-style:italic;'>{lyDo}</div>
+    </div>
+    <p style='color:#555;font-size:.9rem;'>Đơn đặt sân gốc của bạn vẫn được giữ nguyên. Nếu có thắc mắc, vui lòng liên hệ hỗ trợ.</p>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(userEmail, userName,
+                $"[PitchHub] Yêu cầu đổi giờ tại {tenSan} không được chấp thuận", body);
+        }
     }
 }

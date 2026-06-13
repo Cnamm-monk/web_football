@@ -1116,5 +1116,71 @@ namespace Web_Stadium.Controllers
 
             return View();
         }
+
+        // ══════════════════════════════════════════════════════════
+        // GIÁM SÁT YÊU CẦU ĐỔI GIỜ
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> YeuCauDoiGio(string? trangThai)
+        {
+            var query = _context.YeuCauDoiGios
+                .Include(y => y.DatSan)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.KhungGioMoi)
+                .Include(y => y.StaffXuLy)
+                .Include(y => y.OwnerXuLy)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(trangThai))
+                query = query.Where(y => y.TrangThai == trangThai);
+
+            var list = await query.OrderByDescending(y => y.ThoiGianTao).ToListAsync();
+            ViewBag.FilterTT = trangThai;
+            return View(list);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> GhiDeYeuCau(int yeuCauId, string hanhDong, string? ghiChuAdmin)
+        {
+            var adminId = GetAdminId();
+            var yc = await _context.YeuCauDoiGios
+                .Include(y => y.DatSan)
+                    .ThenInclude(d => d.KhungGio)
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.KhungGioMoi)
+                .FirstOrDefaultAsync(y => y.Id == yeuCauId);
+
+            if (yc == null) return NotFound();
+
+            yc.AdminXuLyId = adminId;
+            yc.GhiChuAdmin = ghiChuAdmin?.Trim();
+            yc.ThoiGianXuLy = DateTime.Now;
+
+            if (hanhDong == "PheDuyet" && yc.TrangThai != "DaPheDuyet")
+            {
+                var kgMoi = await _context.KhungGios.FindAsync(yc.KhungGioMoiId);
+                if (kgMoi != null && kgMoi.TrangThai == "Trong")
+                {
+                    var kgCu = yc.DatSan.KhungGio;
+                    kgCu.TrangThai = "Trong";
+                    kgCu.ThoiGianHetGiuCho = null;
+                    kgMoi.TrangThai = "DaDat";
+                    yc.DatSan.KhungGioId = yc.KhungGioMoiId;
+                    yc.DatSan.NgayThiDau = yc.NgayMoi;
+                }
+                yc.TrangThai = "DaPheDuyet";
+                await GhiLog("AdminPheDuyetDoiGio", "YeuCauDoiGio", yc.Id, $"Admin ghi đè phê duyệt đổi giờ đơn {yc.DatSan.MaXacNhan}");
+                TempData["Success"] = "Admin đã ghi đè — phê duyệt đổi giờ thành công.";
+            }
+            else if (hanhDong == "TuChoi" && yc.TrangThai != "TuChoi")
+            {
+                yc.TrangThai = "TuChoi";
+                await GhiLog("AdminTuChoiDoiGio", "YeuCauDoiGio", yc.Id, $"Admin ghi đè từ chối đổi giờ đơn {yc.DatSan.MaXacNhan}");
+                TempData["Success"] = "Admin đã ghi đè — từ chối yêu cầu đổi giờ.";
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction("YeuCauDoiGio");
+        }
     }
 }

@@ -30,6 +30,20 @@
         <a href="/Staff" class="btn btn-sm btn-success rounded-pill">📋 Ca trực</a>
         <a href="/Staff/CheckIn" class="btn btn-sm btn-outline-warning rounded-pill">✅ Check-in</a>
         <a href="/Staff/SuCo" class="btn btn-sm btn-outline-danger rounded-pill">⚠️ Báo sự cố</a>
+        @{
+            var soYCDG = (int)(ViewBag.SoYeuCauDoiGio ?? 0);
+        }
+        <a href="/Staff/YeuCauDoiGio"
+           class="btn btn-sm rounded-pill @(soYCDG > 0 ? "btn-warning" : "btn-outline-secondary")"
+           style="position:relative;">
+            🔄 Đổi giờ
+            @if (soYCDG > 0)
+            {
+                <span style="position:absolute;top:-5px;right:-5px;background:#fff;color:#f59e0b;
+                             font-size:.6rem;width:16px;height:16px;border-radius:50%;
+                             display:flex;align-items:center;justify-content:center;font-weight:700;">@soYCDG</span>
+            }
+        </a>
     </div>
 </div>
 

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Web_Stadium.EFCore;
 
@@ -11,9 +12,11 @@ using Web_Stadium.EFCore;
 namespace Web_Stadium.Migrations
 {
     [DbContext(typeof(SanBongContext))]
-    partial class SanBongContextModelSnapshot : ModelSnapshot
+    [Migration("20260612030040_FixSuKienShadowProps")]
+    partial class FixSuKienShadowProps
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -925,9 +928,6 @@ namespace Web_Stadium.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("SoDienThoai")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("TenSan")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1426,80 +1426,6 @@ namespace Web_Stadium.Migrations
                     b.ToTable("VungKhuVucs");
                 });
 
-            modelBuilder.Entity("Web_Stadium.EFCore.YeuCauDoiGio", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("AdminXuLyId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("DatSanId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("GhiChuAdmin")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GhiChuOwner")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GhiChuStaff")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("KhungGioMoiId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("LyDo")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("NgayMoi")
-                        .HasColumnType("datetime");
-
-                    b.Property<int?>("OwnerXuLyId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("StaffXuLyId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("ThoiGianTao")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime")
-                        .HasDefaultValueSql("(getdate())");
-
-                    b.Property<DateTime?>("ThoiGianXuLy")
-                        .HasColumnType("datetime");
-
-                    b.Property<string>("TrangThai")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("ChoXuLy");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AdminXuLyId");
-
-                    b.HasIndex("DatSanId");
-
-                    b.HasIndex("KhungGioMoiId");
-
-                    b.HasIndex("OwnerXuLyId");
-
-                    b.HasIndex("StaffXuLyId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("YeuCauDoiGios");
-                });
-
             modelBuilder.Entity("Web_Stadium.EFCore.AnhSanBong", b =>
                 {
                     b.HasOne("Web_Stadium.EFCore.SanBong", "SanBong")
@@ -1938,54 +1864,6 @@ namespace Web_Stadium.Migrations
                     b.Navigation("User");
 
                     b.Navigation("Voucher");
-                });
-
-            modelBuilder.Entity("Web_Stadium.EFCore.YeuCauDoiGio", b =>
-                {
-                    b.HasOne("Web_Stadium.EFCore.User", "AdminXuLy")
-                        .WithMany()
-                        .HasForeignKey("AdminXuLyId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.HasOne("Web_Stadium.EFCore.DatSan", "DatSan")
-                        .WithMany()
-                        .HasForeignKey("DatSanId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("Web_Stadium.EFCore.KhungGio", "KhungGioMoi")
-                        .WithMany()
-                        .HasForeignKey("KhungGioMoiId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("Web_Stadium.EFCore.User", "OwnerXuLy")
-                        .WithMany()
-                        .HasForeignKey("OwnerXuLyId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.HasOne("Web_Stadium.EFCore.User", "StaffXuLy")
-                        .WithMany()
-                        .HasForeignKey("StaffXuLyId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.HasOne("Web_Stadium.EFCore.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("AdminXuLy");
-
-                    b.Navigation("DatSan");
-
-                    b.Navigation("KhungGioMoi");
-
-                    b.Navigation("OwnerXuLy");
-
-                    b.Navigation("StaffXuLy");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Web_Stadium.EFCore.BangDau", b =>

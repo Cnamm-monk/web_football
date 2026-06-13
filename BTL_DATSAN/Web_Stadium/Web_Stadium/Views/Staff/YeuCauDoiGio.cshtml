@@ -1,0 +1,101 @@
+@model List<Web_Stadium.EFCore.YeuCauDoiGio>
+@{
+    ViewData["Title"] = "Yêu cầu đổi giờ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Nhân viên trực sân</div>
+        <h1 style="font-style:italic;line-height:0.9;margin:0">YÊU CẦU<br><span class="text-green">ĐỔI KHUNG GIỜ</span></h1>
+    </div>
+</div>
+
+<!-- MENU STAFF -->
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2 flex-wrap">
+        <a href="/Staff" class="btn btn-sm btn-outline-success rounded-pill">📋 Ca trực</a>
+        <a href="/Staff/CheckIn" class="btn btn-sm btn-outline-warning rounded-pill">✅ Check-in</a>
+        <a href="/Staff/SuCo" class="btn btn-sm btn-outline-danger rounded-pill">⚠️ Báo sự cố</a>
+        <a href="/Staff/YeuCauDoiGio" class="btn btn-sm btn-warning rounded-pill">🔄 Đổi giờ @(Model.Count > 0 ? $"({Model.Count})" : "")</a>
+    </div>
+</div>
+
+<div class="container py-4">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">✅ @TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">⚠️ @TempData["Error"]</div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="section-card text-center" style="padding:48px;">
+            <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
+            <div style="color:var(--muted);">Không có yêu cầu đổi giờ nào đang chờ xử lý.</div>
+        </div>
+    }
+    else
+    {
+        foreach (var yc in Model)
+        {
+            var don = yc.DatSan;
+            var user = don?.User;
+            var kgCu = don?.KhungGio;
+            var kgMoi = yc.KhungGioMoi;
+            var san = kgCu?.SanBong;
+            <div class="section-card mb-3" style="border-left:4px solid #f59e0b;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+                    <div>
+                        <div style="font-weight:700;color:var(--text);font-size:.95rem;">@user?.HoTen <span style="color:var(--muted);font-size:.8rem;">· @user?.SoDienThoai</span></div>
+                        <div style="font-size:.8rem;color:var(--muted);">Sân: @san?.TenSan &nbsp;·&nbsp; Đơn: <span style="font-family:monospace;color:var(--green)">@don?.MaXacNhan</span></div>
+                    </div>
+                    <div style="font-size:.75rem;color:var(--muted);">@yc.ThoiGianTao.ToString("dd/MM HH:mm")</div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                    <div style="background:var(--bg3);border-radius:10px;padding:12px;">
+                        <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;">⏰ Giờ hiện tại</div>
+                        <div style="font-weight:700;color:var(--text);">@(kgCu != null ? $"{kgCu.GioBatDau:hh\\:mm} – {kgCu.GioKetThuc:hh\\:mm}" : "N/A")</div>
+                        <div style="font-size:.78rem;color:var(--muted);">@don?.NgayThiDau.ToString("dd/MM/yyyy")</div>
+                    </div>
+                    <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:12px;">
+                        <div style="font-size:.75rem;color:#f59e0b;margin-bottom:4px;">🔄 Giờ muốn đổi sang</div>
+                        <div style="font-weight:700;color:#f59e0b;">@(kgMoi != null ? $"{kgMoi.GioBatDau:hh\\:mm} – {kgMoi.GioKetThuc:hh\\:mm}" : "N/A")</div>
+                        <div style="font-size:.78rem;color:var(--muted);">@yc.NgayMoi.ToString("dd/MM/yyyy")</div>
+                    </div>
+                </div>
+
+                <div style="background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:16px;">
+                    <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;">💬 Lý do khách</div>
+                    <div style="font-size:.88rem;color:var(--text);">@yc.LyDo</div>
+                </div>
+
+                <form method="post" action="/Staff/XuLyYeuCau" style="display:flex;flex-direction:column;gap:10px;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="yeuCauId" value="@yc.Id" />
+                    <textarea name="ghiChuStaff" rows="2"
+                              style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+                                     color:var(--text);padding:8px 12px;font-size:.85rem;resize:none;"
+                              placeholder="Ghi chú cho Owner (tuỳ chọn)..."></textarea>
+                    <div style="display:flex;gap:10px;">
+                        <button type="submit" name="hanhDong" value="ChuyenOwner"
+                                style="flex:1;padding:10px;background:var(--green);color:#000;border:none;
+                                       border-radius:8px;font-weight:700;cursor:pointer;">
+                            📤 Chuyển Owner duyệt
+                        </button>
+                        <button type="submit" name="hanhDong" value="TuChoi"
+                                style="flex:1;padding:10px;background:transparent;color:#ef4444;
+                                       border:1px solid #ef4444;border-radius:8px;font-weight:700;cursor:pointer;"
+                                onclick="return confirm('Xác nhận từ chối yêu cầu này?')">
+                            ❌ Từ chối
+                        </button>
+                    </div>
+                </form>
+            </div>
+        }
+    }
+</div>

@@ -689,6 +689,16 @@
                                     <a href="/Booking/Details/@don.Id" class="btn-outline-green" style="font-size:.75rem; padding:4px 12px;">Chi tiết</a>
                                 </div>
                             }
+                            @if (don.TrangThai == "DaXacNhan")
+                            {
+                                <div class="mt-1">
+                                    <a href="/Booking/YeuCauDoiGio/@don.Id"
+                                       style="font-size:.72rem;padding:3px 10px;border:1px solid #f59e0b;border-radius:6px;
+                                              color:#f59e0b;text-decoration:none;display:inline-block;">
+                                        🔄 Đổi giờ
+                                    </a>
+                                </div>
+                            }
                         </div>
                     </div>
                 }

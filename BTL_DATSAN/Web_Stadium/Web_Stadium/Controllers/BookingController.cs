@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Web_Stadium.EFCore;
 using Web_Stadium.Filters;
 using Web_Stadium.Hubs;
+using Web_Stadium.Services;
 
 namespace Web_Stadium.Controllers
 {
@@ -14,19 +15,22 @@ namespace Web_Stadium.Controllers
         private readonly IRepository<KhungGio> _khungGioRepo;
         private readonly IConfiguration _config;
         private readonly IHubContext<SanBongHub> _hub;
+        private readonly EmailService _emailService;
 
         public BookingController(
             SanBongContext context,
             IRepository<DatSan> datSanRepo,
             IRepository<KhungGio> khungGioRepo,
             IConfiguration config,
-            IHubContext<SanBongHub> hub)
+            IHubContext<SanBongHub> hub,
+            EmailService emailService)
         {
             _context = context;
             _datSanRepo = datSanRepo;
             _khungGioRepo = khungGioRepo;
             _config = config;
             _hub = hub;
+            _emailService = emailService;
         }
 
         // ══════════════════════════════════════════════════════════
@@ -407,6 +411,144 @@ namespace Web_Stadium.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Đã gửi khiếu nại! Admin sẽ xem xét và phản hồi sớm nhất.";
+            return RedirectToAction("MyBookings");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/KhungGioTrong — AJAX endpoint
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> KhungGioTrong(int sanId, string ngay, int khungGioHienTaiId)
+        {
+            if (!DateTime.TryParse(ngay, out var ngayParse)) ngayParse = DateTime.Today;
+            var list = await _context.KhungGios
+                .Where(k => k.SanBongId == sanId && k.TrangThai == "Trong" && k.Id != khungGioHienTaiId)
+                .OrderBy(k => k.GioBatDau)
+                .Select(k => new {
+                    id = k.Id,
+                    gioBatDau = k.GioBatDau.ToString(),
+                    gioKetThuc = k.GioKetThuc.ToString(),
+                    gia = k.Gia.ToString("N0")
+                })
+                .ToListAsync();
+            return Json(list);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/YeuCauDoiGio/{datSanId}
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> YeuCauDoiGio(int datSanId)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var don = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
+
+            if (don == null) return NotFound();
+            if (don.TrangThai != "DaXacNhan")
+            {
+                TempData["Error"] = "Chỉ có thể yêu cầu đổi giờ với đơn đã xác nhận.";
+                return RedirectToAction("MyBookings");
+            }
+
+            var daCo = await _context.YeuCauDoiGios
+                .AnyAsync(y => y.DatSanId == datSanId && y.TrangThai == "ChoXuLy");
+            if (daCo)
+            {
+                TempData["Error"] = "Đơn này đã có yêu cầu đổi giờ đang chờ xử lý.";
+                return RedirectToAction("MyBookings");
+            }
+
+            var sanId = don.KhungGio.SanBongId;
+            var khungGioTrong = await _context.KhungGios
+                .Where(k => k.SanBongId == sanId && k.TrangThai == "Trong" && k.Id != don.KhungGioId)
+                .OrderBy(k => k.GioBatDau)
+                .ToListAsync();
+
+            ViewBag.DatSan = don;
+            ViewBag.KhungGioList = khungGioTrong;
+            ViewBag.SanBong = don.KhungGio.SanBong;
+            return View();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // POST /Booking/GuiYeuCauDoiGio
+        // ══════════════════════════════════════════════════════════
+        [HttpPost]
+        [YeuCauDangNhap]
+        public async Task<IActionResult> GuiYeuCauDoiGio(
+            int datSanId, int khungGioMoiId, string ngayMoiStr, string lyDo)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var don = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.User)
+                .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
+
+            if (don == null) return NotFound();
+            if (don.TrangThai != "DaXacNhan")
+            {
+                TempData["Error"] = "Chỉ có thể yêu cầu đổi giờ với đơn đã xác nhận.";
+                return RedirectToAction("MyBookings");
+            }
+
+            if (string.IsNullOrWhiteSpace(lyDo) || lyDo.Trim().Length < 20)
+            {
+                TempData["Error"] = "Lý do đổi giờ phải ít nhất 20 ký tự.";
+                return RedirectToAction("YeuCauDoiGio", new { datSanId });
+            }
+
+            if (khungGioMoiId == don.KhungGioId)
+            {
+                TempData["Error"] = "Khung giờ mới phải khác khung giờ hiện tại.";
+                return RedirectToAction("YeuCauDoiGio", new { datSanId });
+            }
+
+            if (!DateTime.TryParse(ngayMoiStr, out var ngayMoi))
+                ngayMoi = don.NgayThiDau;
+
+            var daCo = await _context.YeuCauDoiGios
+                .AnyAsync(y => y.DatSanId == datSanId && y.TrangThai == "ChoXuLy");
+            if (daCo)
+            {
+                TempData["Error"] = "Đơn này đã có yêu cầu đổi giờ đang chờ xử lý.";
+                return RedirectToAction("MyBookings");
+            }
+
+            var yeuCau = new YeuCauDoiGio
+            {
+                DatSanId = datSanId,
+                UserId = userId!.Value,
+                KhungGioMoiId = khungGioMoiId,
+                NgayMoi = ngayMoi,
+                LyDo = lyDo.Trim(),
+                TrangThai = "ChoXuLy",
+                ThoiGianTao = DateTime.Now
+            };
+            _context.YeuCauDoiGios.Add(yeuCau);
+            await _context.SaveChangesAsync();
+
+            // Gửi email cho Staff của sân này
+            var sanId = don.KhungGio.SanBongId;
+            var staffList = await _context.StaffSanPhanCongs
+                .Include(s => s.Staff)
+                .Where(s => s.SanBongId == sanId)
+                .ToListAsync();
+            var kg = await _context.KhungGios.FindAsync(khungGioMoiId);
+            var gioMoi = kg != null
+                ? $"{kg.GioBatDau:hh\\:mm} – {kg.GioKetThuc:hh\\:mm}"
+                : "N/A";
+            foreach (var sp in staffList)
+            {
+                if (!string.IsNullOrEmpty(sp.Staff?.Email))
+                    _ = Task.Run(() => _emailService.GuiEmailYeuCauMoiChoStaff(
+                        sp.Staff.Email, sp.Staff.HoTen ?? "Staff",
+                        don.User?.HoTen ?? "Khách", don.KhungGio.SanBong?.TenSan ?? "",
+                        gioMoi, ngayMoi.ToString("dd/MM/yyyy"), lyDo.Trim()));
+            }
+
+            TempData["Success"] = "Đã gửi yêu cầu đổi khung giờ! Staff sẽ xem xét và phản hồi sớm.";
             return RedirectToAction("MyBookings");
         }
     }

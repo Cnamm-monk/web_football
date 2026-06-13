@@ -66,6 +66,13 @@ namespace Web_Stadium.Controllers
             ViewBag.SanIds = sanIds;
             ViewBag.Now = now;
 
+            // Badge yêu cầu đổi giờ chưa xử lý (ChoXuLy, chưa qua Staff)
+            ViewBag.SoYeuCauDoiGio = await _context.YeuCauDoiGios
+                .Include(y => y.DatSan).ThenInclude(d => d.KhungGio)
+                .CountAsync(y => sanIds.Contains(y.DatSan.KhungGio.SanBongId)
+                              && y.TrangThai == "ChoXuLy"
+                              && y.StaffXuLyId == null);
+
             return View(donHomNay);
         }
 
@@ -502,6 +509,89 @@ namespace Web_Stadium.Controllers
             ViewBag.DichVuBySan = dichVuBySan;
             ViewBag.Tab = tab;
             return View(user);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // YÊU CẦU ĐỔI GIỜ — Staff xem và xử lý
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> YeuCauDoiGio()
+        {
+            var sanIds = await GetSanDuocGiaoAsync();
+            var list = await _context.YeuCauDoiGios
+                .Include(y => y.DatSan)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.KhungGioMoi)
+                .Where(y => sanIds.Contains(y.DatSan.KhungGio.SanBongId) && y.TrangThai == "ChoXuLy")
+                .OrderByDescending(y => y.ThoiGianTao)
+                .ToListAsync();
+            return View(list);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> XuLyYeuCau(int yeuCauId, string ghiChuStaff, string hanhDong)
+        {
+            var staffId = GetStaffId();
+            var sanIds = await GetSanDuocGiaoAsync();
+            var yc = await _context.YeuCauDoiGios
+                .Include(y => y.DatSan)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.KhungGioMoi)
+                .FirstOrDefaultAsync(y => y.Id == yeuCauId
+                    && sanIds.Contains(y.DatSan.KhungGio.SanBongId)
+                    && y.TrangThai == "ChoXuLy");
+
+            if (yc == null) return NotFound();
+
+            yc.StaffXuLyId = staffId;
+            yc.GhiChuStaff = ghiChuStaff?.Trim();
+            yc.ThoiGianXuLy = DateTime.Now;
+
+            if (hanhDong == "TuChoi")
+            {
+                yc.TrangThai = "TuChoi";
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = staffId, VaiTro = "Staff", HanhDong = "TuChoiDoiGio",
+                    DoiTuong = "YeuCauDoiGio", DoiTuongId = yc.Id,
+                    MoTa = $"Từ chối đổi giờ cho đơn {yc.DatSan.MaXacNhan}"
+                });
+                await _context.SaveChangesAsync();
+                var lyDoTuChoi = string.IsNullOrWhiteSpace(ghiChuStaff) ? "Staff từ chối yêu cầu." : ghiChuStaff;
+                _ = Task.Run(() => _emailService.GuiEmailDoiGioTuChoi(
+                    yc.DatSan.User!.Email, yc.DatSan.User.HoTen ?? "Khách",
+                    yc.DatSan.KhungGio.SanBong?.TenSan ?? "", lyDoTuChoi));
+                TempData["Success"] = "Đã từ chối yêu cầu và thông báo cho khách.";
+            }
+            else // ChuyenOwner
+            {
+                // Chuyển cho Owner — TrangThai vẫn là ChoXuLy, nhưng StaffXuLyId đã có
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = staffId, VaiTro = "Staff", HanhDong = "ChuyenOwnerDoiGio",
+                    DoiTuong = "YeuCauDoiGio", DoiTuongId = yc.Id,
+                    MoTa = $"Chuyển Owner xử lý đổi giờ cho đơn {yc.DatSan.MaXacNhan}"
+                });
+                await _context.SaveChangesAsync();
+                var san = yc.DatSan.KhungGio.SanBong;
+                if (san != null)
+                {
+                    var owner = await _context.Users.FindAsync(san.OwnerId);
+                    if (owner != null && !string.IsNullOrEmpty(owner.Email))
+                    {
+                        var gioMoi = $"{yc.KhungGioMoi.GioBatDau:hh\\:mm} – {yc.KhungGioMoi.GioKetThuc:hh\\:mm}";
+                        _ = Task.Run(() => _emailService.GuiEmailChuyenChoOwner(
+                            owner.Email, owner.HoTen ?? "Owner",
+                            yc.DatSan.User!.HoTen ?? "Khách", san.TenSan,
+                            gioMoi, yc.NgayMoi.ToString("dd/MM/yyyy"),
+                            ghiChuStaff ?? ""));
+                    }
+                }
+                TempData["Success"] = "Đã chuyển yêu cầu cho Owner xem xét.";
+            }
+
+            return RedirectToAction("YeuCauDoiGio");
         }
     }
 }

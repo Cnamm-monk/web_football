@@ -56,7 +56,10 @@ public partial class SanBongContext : DbContext
     public virtual DbSet<UserVoucher> UserVouchers { get; set; }
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
-    // - V6: 6 bang moi 
+    // - V7: Yêu cầu đổi giờ
+    public virtual DbSet<YeuCauDoiGio> YeuCauDoiGios { get; set; }
+
+    // - V6: 6 bang moi
     public virtual DbSet<BangDau> BangDaus { get; set; }
     public virtual DbSet<DoiBong> DoiBongs { get; set; }
     public virtual DbSet<GiaiDau> GiaiDaus { get; set; }
@@ -660,11 +663,42 @@ public partial class SanBongContext : DbContext
                 .WithMany(t => t.SuKiens)
                 .HasForeignKey(d => d.TranDauId)
                 .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(d => d.ThanhVien).WithMany()
+            entity.HasOne(d => d.ThanhVien).WithMany(t => t.SuKiens)
                 .HasForeignKey(d => d.ThanhVienId)
                 .OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(d => d.Doi).WithMany()
+            entity.HasOne(d => d.Doi).WithMany(b => b.SuKiens)
                 .HasForeignKey(d => d.DoiId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ── V7: YeuCauDoiGio ─────────────────────────────────────
+        modelBuilder.Entity<YeuCauDoiGio>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TrangThai).HasMaxLength(20).HasDefaultValue("ChoXuLy");
+            entity.Property(e => e.ThoiGianTao)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.ThoiGianXuLy).HasColumnType("datetime");
+            entity.Property(e => e.NgayMoi).HasColumnType("datetime");
+
+            entity.HasOne(e => e.DatSan).WithMany()
+                .HasForeignKey(e => e.DatSanId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.User).WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.KhungGioMoi).WithMany()
+                .HasForeignKey(e => e.KhungGioMoiId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.StaffXuLy).WithMany()
+                .HasForeignKey(e => e.StaffXuLyId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.OwnerXuLy).WithMany()
+                .HasForeignKey(e => e.OwnerXuLyId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.AdminXuLy).WithMany()
+                .HasForeignKey(e => e.AdminXuLyId)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 
