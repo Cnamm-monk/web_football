@@ -235,17 +235,17 @@
             animation: navFadeIn .2s ease;
         }
         .nav-dropdown:hover .nav-dropdown-menu { display: block; }
-        .nav-dd-item {
-            display: flex; align-items: center; gap: 10px;
-            padding: 12px 18px;
+        .nav-dropdown-menu a {
+            display: flex !important; align-items: center !important; gap: 10px;
+            padding: 10px 16px !important;
             color: #1f2937 !important; text-decoration: none !important;
-            text-transform: none !important;
-            font-size: 13px; font-weight: 600;
+            text-transform: none !important; height: auto !important;
+            font-size: 14px !important; font-weight: 500 !important;
             transition: background .15s, color .15s;
             border-bottom: 1px solid rgba(15,23,42,.05);
         }
-        .nav-dd-item:last-child { border-bottom: none; }
-        .nav-dd-item:hover { background: #f0fdf4 !important; color: #0ea86a !important; }
+        .nav-dropdown-menu a:last-child { border-bottom: none; }
+        .nav-dropdown-menu a:hover { background: #f0fdf4 !important; color: #0ea86a !important; }
         @@keyframes navFadeIn {
             from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
             to   { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -317,21 +317,28 @@
                     <li><a href="/Venues">TÌM SÂN</a></li>
 
                     <!-- CỘNG ĐỒNG dropdown -->
-                    <li class="nav-dropdown">
-                        <a href="/Matchmaking" class="nav-dropdown-toggle"
-                           onclick="return false;">
-                            CỘNG ĐỒNG <span class="nav-caret">▾</span>
-                        </a>
+                    <li class="nav-dropdown" style="position:relative;list-style:none;">
+                        <button class="nav-dd-toggle-btn" style="
+                            background:none; border:none; cursor:pointer;
+                            color:rgba(255,255,255,0.96); font-size:13px; font-weight:700;
+                            letter-spacing:0.8px; padding:8px 4px; font-family:inherit;
+                            display:flex; align-items:center; gap:5px; text-transform:uppercase;">
+                            CỘNG ĐỒNG
+                            <svg width="11" height="11" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="m6 9 6 6 6-6"/>
+                            </svg>
+                        </button>
                         <div class="nav-dropdown-menu">
-                            <a href="/Matchmaking" class="nav-dd-item">⚽ Tìm Đối Thủ</a>
-                            <a href="/ChuyenNhuong/Index" class="nav-dd-item">🔄 Chuyển Nhượng</a>
+                            <a href="/Matchmaking">⚽ Tìm Đối Thủ</a>
+                            <a href="/ChuyenNhuong/Index">🔄 Chuyển Nhượng</a>
                             @if (role == "Staff")
                             {
-                                <a href="/TournamentStaff/DanhSach" class="nav-dd-item">🏆 Giải Đấu</a>
+                                <a href="/TournamentStaff/DanhSach">🏆 Giải Đấu</a>
                             }
                             else
                             {
-                                <a href="/TournamentPublic" class="nav-dd-item">🏆 Giải Đấu</a>
+                                <a href="/TournamentPublic">🏆 Giải Đấu</a>
                             }
                         </div>
                     </li>
@@ -842,10 +849,12 @@
                         + '<div style="font-size:32px;margin-bottom:8px;">🔍</div>'
                         + 'Không tìm thấy kết quả cho "<strong>' + esc(q) + '</strong>"</div>';
                 } else {
-                    html += '<div style="padding:10px 16px;border-top:1px solid var(--border,#e2e8f0);text-align:center;">'
+                    html += '<div style="padding:10px 16px;border-top:1px solid var(--border,#e2e8f0);display:flex;gap:16px;justify-content:center;">'
                         + '<a href="/Venues?q=' + encodeURIComponent(q) + '" '
-                        + 'style="color:#0ea86a;font-size:13px;font-weight:600;text-decoration:none;">'
-                        + 'Xem tất cả kết quả →</a></div>';
+                        + 'style="color:#0ea86a;font-size:13px;font-weight:600;text-decoration:none;">🏟️ Xem tất cả sân →</a>'
+                        + '<a href="/TournamentPublic?keyword=' + encodeURIComponent(q) + '" '
+                        + 'style="color:#7c3aed;font-size:13px;font-weight:600;text-decoration:none;">🏆 Xem tất cả giải đấu →</a>'
+                        + '</div>';
                 }
 
                 document.getElementById('searchResults').innerHTML = html;
@@ -862,6 +871,30 @@
             // ESC đóng
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') panel.style.display = 'none';
+            });
+        })();
+    </script>
+
+    <script>
+        // ── CỘNG ĐỒNG DROPDOWN CLICK TOGGLE ───────────────────────
+        (function() {
+            document.querySelectorAll('.nav-dropdown').forEach(function(dd) {
+                var btn  = dd.querySelector('.nav-dd-toggle-btn');
+                var menu = dd.querySelector('.nav-dropdown-menu');
+                if (!btn || !menu) return;
+
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var isOpen = menu.style.display === 'block';
+                    document.querySelectorAll('.nav-dropdown-menu')
+                        .forEach(function(m) { m.style.display = 'none'; });
+                    menu.style.display = isOpen ? 'none' : 'block';
+                });
+            });
+
+            document.addEventListener('click', function() {
+                document.querySelectorAll('.nav-dropdown-menu')
+                    .forEach(function(m) { m.style.display = 'none'; });
             });
         })();
     </script>
