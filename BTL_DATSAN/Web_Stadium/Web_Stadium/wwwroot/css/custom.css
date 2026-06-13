@@ -1873,3 +1873,62 @@ h4 {
         justify-content: center;
     }
 }
+
+/* ── SEARCH DROPDOWN UI ─────────────────────────────── */
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    text-decoration: none;
+    color: #111827;
+    transition: background 0.15s;
+    border-bottom: 1px solid #f3f4f6;
+}
+.search-result-item:hover {
+    background: #f0fdf4;
+    color: #0ea86a;
+}
+.search-result-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    background: #f3f4f6;
+}
+.search-section-header {
+    padding: 10px 16px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: #f9fafb;
+}
+.search-highlight {
+    background: #dcfce7;
+    color: #16a34a;
+    border-radius: 3px;
+    padding: 0 2px;
+    font-weight: 600;
+}
+.search-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+.search-footer a {
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    color: #0ea86a;
+}
+.search-footer a:hover {
+    text-decoration: underline;
+}

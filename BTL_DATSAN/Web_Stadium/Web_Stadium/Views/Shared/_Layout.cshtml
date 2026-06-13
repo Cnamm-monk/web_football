@@ -222,7 +222,7 @@
         .nav-dropdown-menu {
             display: none;
             position: absolute;
-            top: calc(100% + 12px);
+            top: calc(100% + 2px);
             left: 50%;
             transform: translateX(-50%);
             background: #fff;
@@ -320,9 +320,10 @@
                     <li class="nav-dropdown" style="position:relative;list-style:none;">
                         <button class="nav-dd-toggle-btn" style="
                             background:none; border:none; cursor:pointer;
-                            color:rgba(255,255,255,0.96); font-size:13px; font-weight:700;
-                            letter-spacing:0.8px; padding:8px 4px; font-family:inherit;
-                            display:flex; align-items:center; gap:5px; text-transform:uppercase;">
+                            color:rgba(255,255,255,0.96); font-size:13px; font-weight:600;
+                            letter-spacing:0.8px; padding:7px 15px; font-family:inherit;
+                            display:flex; align-items:center; gap:5px; text-transform:uppercase;
+                            border-radius:var(--r,6px);">
                             CỘNG ĐỒNG
                             <svg width="11" height="11" viewBox="0 0 24 24"
                                  fill="none" stroke="currentColor" stroke-width="2.5">
@@ -780,82 +781,81 @@
                     });
             }
 
-            function item(href, icon, title, sub) {
-                return '<a href="' + href + '" style="display:flex;align-items:center;gap:12px;padding:10px 16px;'
-                    + 'text-decoration:none;color:var(--text,#0f172a);transition:background .15s;" '
-                    + 'onmouseover="this.style.background=\'var(--bg3,#f8fafc)\'" '
-                    + 'onmouseout="this.style.background=\'transparent\'">'
-                    + '<span style="font-size:20px;flex-shrink:0;">' + icon + '</span>'
-                    + '<div style="min-width:0;">'
-                    + '<div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + title + '</div>'
-                    + '<div style="font-size:12px;color:var(--muted,#94a3b8);margin-top:2px;">' + sub + '</div>'
-                    + '</div></a>';
-            }
-
-            function section(label) {
-                return '<div style="padding:8px 16px 4px;font-size:11px;font-weight:700;color:var(--muted,#94a3b8);'
-                    + 'text-transform:uppercase;letter-spacing:1px;">' + label + '</div>';
-            }
-
-            function fmtDate(d) {
-                if (!d) return '';
-                return new Date(d).toLocaleDateString('vi-VN');
-            }
-
             function renderResults(data, q) {
                 var html = '';
 
+                function hi(text) {
+                    if (!text) return '';
+                    var safe = esc(text);
+                    var re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    return safe.replace(re, '<span class="search-highlight">$1</span>');
+                }
+
+                function fmt(d) { return d ? new Date(d).toLocaleDateString('vi-VN') : ''; }
+
                 if (data.sanBongs && data.sanBongs.length) {
-                    html += section('🏟️ Sân bóng');
+                    html += '<div class="search-section-header">🏟️ Sân bóng</div>';
                     data.sanBongs.forEach(function(s) {
-                        html += item('/Venues/Details/' + s.id, '🏟️',
-                            highlight(s.tenSan, q),
-                            esc(s.quan) + ' · ⭐ ' + (s.danhGia != null ? (+s.danhGia).toFixed(1) : 'Chưa có'));
+                        html += '<a href="/Venues/Details/' + s.id + '" class="search-result-item">'
+                            + '<div class="search-result-icon">🏟️</div>'
+                            + '<div><div style="font-size:14px;font-weight:600">' + hi(s.tenSan) + '</div>'
+                            + '<div style="font-size:12px;color:#6b7280;margin-top:2px">📍 ' + esc(s.quan)
+                            + ' · ⭐ ' + (s.danhGia != null ? (+s.danhGia).toFixed(1) : 'Chưa có đánh giá') + '</div>'
+                            + '</div></a>';
                     });
                 }
 
                 if (data.giaiDaus && data.giaiDaus.length) {
-                    html += section('🏆 Giải đấu');
+                    html += '<div class="search-section-header">🏆 Giải đấu</div>';
                     data.giaiDaus.forEach(function(g) {
-                        html += item('/TournamentPublic/Details/' + g.id, '🏆',
-                            highlight(g.tenGiai, q),
-                            esc(g.trangThai) + ' · ' + fmtDate(g.ngayBatDau));
+                        html += '<a href="/TournamentPublic/Details/' + g.id + '" class="search-result-item">'
+                            + '<div class="search-result-icon">🏆</div>'
+                            + '<div><div style="font-size:14px;font-weight:600">' + hi(g.tenGiai) + '</div>'
+                            + '<div style="font-size:12px;color:#6b7280;margin-top:2px">📅 ' + fmt(g.ngayBatDau)
+                            + ' · ' + esc(g.trangThai) + '</div>'
+                            + '</div></a>';
                     });
                 }
 
                 if (data.matchmakings && data.matchmakings.length) {
-                    html += section('⚽ Tìm đối thủ');
+                    html += '<div class="search-section-header">⚽ Tìm đối thủ</div>';
                     data.matchmakings.forEach(function(m) {
-                        html += item('/Matchmaking/Index', '⚽',
-                            highlight(m.tieuDe, q),
-                            esc(m.tenSan) + ' · ' + fmtDate(m.ngayThiDau));
+                        html += '<a href="/Matchmaking/Index" class="search-result-item">'
+                            + '<div class="search-result-icon">⚽</div>'
+                            + '<div><div style="font-size:14px;font-weight:600">' + hi(m.tieuDe) + '</div>'
+                            + '<div style="font-size:12px;color:#6b7280;margin-top:2px">🏟️ ' + esc(m.tenSan)
+                            + ' · 📅 ' + fmt(m.ngayThiDau) + '</div>'
+                            + '</div></a>';
                     });
                 }
 
                 if (data.chuyenNhuongs && data.chuyenNhuongs.length) {
-                    html += section('🔄 Chuyển nhượng');
+                    html += '<div class="search-section-header">🔄 Chuyển nhượng</div>';
                     data.chuyenNhuongs.forEach(function(c) {
                         var giaTxt = c.giaChuyenNhuong === 0
-                            ? '<span style="color:#0ea86a;font-weight:700;">Miễn phí</span>'
+                            ? '<span style="color:#0ea86a;font-weight:600">Miễn phí</span>'
                             : (+c.giaChuyenNhuong).toLocaleString('vi-VN') + ' đ';
-                        html += item('/ChuyenNhuong/ChiTiet/' + c.id, '🔄',
-                            highlight(c.tieuDe, q),
-                            esc(c.tenSan) + ' · ' + giaTxt);
+                        html += '<a href="/ChuyenNhuong/ChiTiet/' + c.id + '" class="search-result-item">'
+                            + '<div class="search-result-icon">🔄</div>'
+                            + '<div><div style="font-size:14px;font-weight:600">' + hi(c.tieuDe) + '</div>'
+                            + '<div style="font-size:12px;color:#6b7280;margin-top:2px">🏟️ ' + esc(c.tenSan)
+                            + ' · 💰 ' + giaTxt + '</div>'
+                            + '</div></a>';
                     });
                 }
 
                 if (!html) {
-                    html = '<div style="padding:40px;text-align:center;color:var(--muted,#94a3b8);">'
-                        + '<div style="font-size:32px;margin-bottom:8px;">🔍</div>'
-                        + 'Không tìm thấy kết quả cho "<strong>' + esc(q) + '</strong>"</div>';
-                } else {
-                    html += '<div style="padding:10px 16px;border-top:1px solid var(--border,#e2e8f0);display:flex;gap:16px;justify-content:center;">'
-                        + '<a href="/Venues?q=' + encodeURIComponent(q) + '" '
-                        + 'style="color:#0ea86a;font-size:13px;font-weight:600;text-decoration:none;">🏟️ Xem tất cả sân →</a>'
-                        + '<a href="/TournamentPublic?keyword=' + encodeURIComponent(q) + '" '
-                        + 'style="color:#7c3aed;font-size:13px;font-weight:600;text-decoration:none;">🏆 Xem tất cả giải đấu →</a>'
+                    html = '<div style="padding:32px;text-align:center;color:#6b7280">'
+                        + '<div style="font-size:36px;margin-bottom:8px">🔍</div>'
+                        + '<div style="font-weight:600;margin-bottom:4px">Không tìm thấy kết quả</div>'
+                        + '<div style="font-size:13px">Thử từ khóa khác như tên sân, giải đấu...</div>'
                         + '</div>';
                 }
+
+                html += '<div class="search-footer">'
+                    + '<a href="/Venues?q=' + encodeURIComponent(q) + '">🏟️ Tất cả sân →</a>'
+                    + '<a href="/TournamentPublic?keyword=' + encodeURIComponent(q) + '">🏆 Tất cả giải đấu →</a>'
+                    + '</div>';
 
                 document.getElementById('searchResults').innerHTML = html;
             }
