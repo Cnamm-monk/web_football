@@ -6,6 +6,7 @@
     var diemLogs = ViewBag.DiemLogs as List<Web_Stadium.EFCore.DiemThuongLog> ?? new();
     var vouchers = ViewBag.Vouchers as List<Web_Stadium.EFCore.UserVoucher> ?? new();
     var vouchersCoTheDoi = ViewBag.VouchersCoTheDoi as List<Web_Stadium.EFCore.Voucher> ?? new();
+    var datSanDaCoCn = ViewBag.DatSanDaCoCn as HashSet<int> ?? new HashSet<int>();
 
     string TrangThaiClass(string t) => t switch
     {
@@ -707,6 +708,21 @@
                                               color:var(--green);text-decoration:none;display:inline-block;">
                                         ⚽ Ghép trận
                                     </a>
+                                    @if (!datSanDaCoCn.Contains(don.Id))
+                                    {
+                                        <a href="/ChuyenNhuong/DangBai/@don.Id"
+                                           style="font-size:.72rem;padding:3px 10px;border:1px solid #a855f7;border-radius:6px;
+                                                  color:#a855f7;text-decoration:none;display:inline-block;">
+                                            📢 Chuyển nhượng
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size:.72rem;padding:3px 10px;border:1px solid var(--border);
+                                                     border-radius:6px;color:var(--muted);display:inline-block;">
+                                            📢 Đã đăng CN
+                                        </span>
+                                    }
                                 </div>
                             }
                         </div>

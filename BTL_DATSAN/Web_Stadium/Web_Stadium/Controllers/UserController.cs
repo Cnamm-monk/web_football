@@ -64,6 +64,17 @@ namespace Web_Stadium.Controllers
                 .OrderBy(v => v.DiemCanDoi)
                 .ToListAsync();
 
+            // DatSanIds đã có bài đăng chuyển nhượng (còn active hoặc hoàn tất)
+            var datSanIds = lichSu.Select(d => d.Id).ToList();
+            var daCoCn = await _context.ChuyenNhuongs
+                .Where(c => datSanIds.Contains(c.DatSanId)
+                    && c.TrangThai != "TuChoi"
+                    && c.TrangThai != "DaHuy")
+                .Select(c => c.DatSanId)
+                .Distinct()
+                .ToListAsync();
+            ViewBag.DatSanDaCoCn = daCoCn.ToHashSet();
+
             ViewBag.Tab = tab;
             ViewBag.LichSu = lichSu;
             ViewBag.DiemLogs = diemLogs;
