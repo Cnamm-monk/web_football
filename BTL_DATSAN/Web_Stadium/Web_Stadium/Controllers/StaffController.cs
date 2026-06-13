@@ -593,5 +593,67 @@ namespace Web_Stadium.Controllers
 
             return RedirectToAction("YeuCauDoiGio");
         }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Staff/ChuyenNhuong
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> ChuyenNhuong()
+        {
+            var list = await _context.ChuyenNhuongs
+                .Include(c => c.DatSan)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(c => c.UserA)
+                .Include(c => c.UserB)
+                .Where(c => c.TrangThai == "ChoStaff")
+                .OrderByDescending(c => c.ThoiGianXuLy)
+                .ToListAsync();
+            return View(list);
+        }
+
+        // POST /Staff/XuLyChuyenNhuong
+        [HttpPost]
+        public async Task<IActionResult> XuLyChuyenNhuong(int chuyenNhuongId, string hanhDong, string? ghiChu)
+        {
+            var staffId = GetStaffId();
+            var cn = await _context.ChuyenNhuongs
+                .Include(c => c.DatSan).ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(c => c.UserA)
+                .Include(c => c.UserB)
+                .FirstOrDefaultAsync(c => c.Id == chuyenNhuongId && c.TrangThai == "ChoStaff");
+
+            if (cn == null) return NotFound();
+
+            cn.StaffXuLyId = staffId;
+            cn.GhiChuStaff = ghiChu;
+            cn.ThoiGianXuLy = DateTime.Now;
+
+            if (hanhDong == "TuChoi")
+            {
+                cn.TrangThai = "TuChoi";
+                await _context.SaveChangesAsync();
+
+                var san = cn.DatSan?.KhungGio?.SanBong;
+                var ngay = cn.DatSan?.NgayThiDau.ToString("dd/MM/yyyy") ?? "";
+                var gio = $"{cn.DatSan?.KhungGio?.GioBatDau:HH\\:mm}–{cn.DatSan?.KhungGio?.GioKetThuc:HH\\:mm}";
+                foreach (var (email, ten) in new[] {
+                    (cn.UserA?.Email ?? "", cn.UserA?.HoTen ?? ""),
+                    (cn.UserB?.Email ?? "", cn.UserB?.HoTen ?? "")
+                })
+                {
+                    if (!string.IsNullOrEmpty(email))
+                        _ = Task.Run(() => _emailService.GuiEmailChuyenNhuongTuChoi(
+                            email, ten, san?.TenSan ?? "", ngay, gio, ghiChu ?? "Không đáp ứng điều kiện"));
+                }
+                TempData["Success"] = "Đã từ chối yêu cầu chuyển nhượng.";
+            }
+            else // ChuyenChoOwner
+            {
+                cn.TrangThai = "ChoOwner";
+                await _context.SaveChangesAsync();
+                TempData["Success"] = "Đã chuyển cho Owner xem xét.";
+            }
+
+            return RedirectToAction("ChuyenNhuong");
+        }
     }
 }

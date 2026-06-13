@@ -918,5 +918,178 @@ namespace Web_Stadium.Services
             await GuiMot(emailA, tenUserA);
             await GuiMot(emailB, tenUserB);
         }
+
+        // ══════════════════════════════════════════════════════════
+        // 16. CÓ NGƯỜI TIẾP NHẬN CHUYỂN NHƯỢNG → USER A
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailCoNguoiTiepNhan(
+            string emailA, string tenUserA, string tenUserB,
+            string tenSan, string ngay, string gio)
+        {
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+    <div style='color:#1ed760;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>CÓ NGƯỜI MUỐN TIẾP NHẬN ĐƠN 🔔</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{tenUserA}</strong>,</p>
+    <p style='color:#555;'><strong style='color:#0EA86A;'>{tenUserB}</strong> muốn tiếp nhận chuyển nhượng đơn đặt sân của bạn!</p>
+    <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:120px;'>🏟 Sân</td><td style='color:#333;font-weight:700;'>{tenSan}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày</td><td style='color:#0EA86A;font-weight:700;'>{ngay}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Giờ</td><td style='color:#0EA86A;font-weight:700;'>{gio}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>👤 Người nhận</td><td style='color:#333;font-weight:700;'>{tenUserB}</td></tr>
+      </table>
+    </div>
+    <p style='color:#555;'>Hãy đăng nhập và xác nhận hoặc từ chối yêu cầu này.</p>
+    <div style='text-align:center;margin-top:20px;'>
+      <a href='https://localhost:7000/ChuyenNhuong/Index'
+         style='background:#0EA86A;color:#fff;text-decoration:none;padding:12px 28px;
+                border-radius:999px;font-weight:700;font-size:.95rem;display:inline-block;'>
+        Xem và xác nhận →
+      </a>
+    </div>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(emailA, tenUserA,
+                $"[PitchHub] 🔔 {tenUserB} muốn tiếp nhận đơn sân {tenSan} — {ngay}", body);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 17. CHUYỂN NHƯỢNG HOÀN TẤT → CẢ A VÀ B
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailChuyenNhuongHoanTat(
+            string emailA, string tenUserA,
+            string emailB, string tenUserB,
+            string tenSan, string ngay, string gio, string maXacNhan)
+        {
+            async Task GuiMot(string email, string ten, string vai)
+            {
+                var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#0f4c1e,#1a7a35);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#a8ffc4;'>HUB</span>⚽</div>
+    <div style='color:#a8ffc4;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>CHUYỂN NHƯỢNG HOÀN TẤT ✅</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{ten}</strong>,</p>
+    <p style='color:#555;'>Chuyển nhượng đơn đặt sân đã được hoàn tất thành công! Bạn là <strong>{vai}</strong>.</p>
+    <div style='background:#f0fff6;border:1px solid #0EA86A;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:130px;'>🏟 Sân</td><td style='color:#333;font-weight:700;'>{tenSan}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày</td><td style='color:#0EA86A;font-weight:700;'>{ngay}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Giờ</td><td style='color:#0EA86A;font-weight:700;'>{gio}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📋 Mã xác nhận</td><td style='color:#333;font-weight:700;'>{maXacNhan}</td></tr>
+      </table>
+    </div>
+    <p style='color:#888;font-size:.85rem;'>⚠️ Mọi giao dịch tài chính liên quan được thực hiện ngoài hệ thống theo thỏa thuận giữa hai bên.</p>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+                await GuiEmailAsync(email, ten,
+                    $"[PitchHub] ✅ Chuyển nhượng hoàn tất — {tenSan} {ngay}", body);
+            }
+            await GuiMot(emailA, tenUserA, "bên chuyển nhượng");
+            await GuiMot(emailB, tenUserB, "bên tiếp nhận");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 18. CHUYỂN NHƯỢNG BỊ TỪ CHỐI → CÁ NHÂN
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailChuyenNhuongTuChoi(
+            string email, string tenUser,
+            string tenSan, string ngay, string gio, string lyDo)
+        {
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#1a0a0a,#3a1a1a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#ef4444;'>HUB</span>⚽</div>
+    <div style='color:#ef4444;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>CHUYỂN NHƯỢNG BỊ TỪ CHỐI</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{tenUser}</strong>,</p>
+    <p style='color:#555;'>Yêu cầu chuyển nhượng đơn đặt sân dưới đây không được chấp thuận.</p>
+    <div style='background:#fff5f5;border:1px solid #ef4444;border-radius:12px;padding:16px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:100px;'>🏟 Sân</td><td style='color:#333;'>{tenSan}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày</td><td style='color:#333;'>{ngay}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Giờ</td><td style='color:#333;'>{gio}</td></tr>
+      </table>
+      <div style='margin-top:12px;padding-top:10px;border-top:1px solid #fecaca;'>
+        <div style='color:#888;font-size:.8rem;margin-bottom:4px;'>Lý do:</div>
+        <div style='color:#333;font-style:italic;'>{lyDo}</div>
+      </div>
+    </div>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(email, tenUser,
+                $"[PitchHub] Chuyển nhượng đơn sân {tenSan} không được chấp thuận", body);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 19. CHUYỂN NHƯỢNG CHỜ STAFF → STAFF
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailChuyenNhuongChoStaff(
+            string emailStaff, string tenStaff,
+            string tenUserA, string tenUserB,
+            string tenSan, string ngay, string gio, decimal gia)
+        {
+            var giaHien = gia == 0 ? "Miễn phí" : $"{gia:N0} đ (thỏa thuận ngoài hệ thống)";
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#1e3a5f,#0f2540);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#60a5fa;'>HUB</span>⚽</div>
+    <div style='color:#60a5fa;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>YÊU CẦU KIỂM DUYỆT CHUYỂN NHƯỢNG</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{tenStaff}</strong>,</p>
+    <p style='color:#555;'>Có yêu cầu chuyển nhượng đơn đặt sân cần kiểm duyệt.</p>
+    <div style='background:#f0f7ff;border:1px solid #60a5fa;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:130px;'>👤 Bên chuyển</td><td style='color:#333;font-weight:700;'>{tenUserA}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>👤 Bên nhận</td><td style='color:#333;font-weight:700;'>{tenUserB}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>🏟 Sân</td><td style='color:#333;'>{tenSan}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày</td><td style='color:#333;'>{ngay}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Giờ</td><td style='color:#333;'>{gio}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>💰 Giá</td><td style='color:#333;'>{giaHien}</td></tr>
+      </table>
+    </div>
+    <div style='text-align:center;margin-top:20px;'>
+      <a href='https://localhost:7000/Staff/ChuyenNhuong'
+         style='background:#3b82f6;color:#fff;text-decoration:none;padding:12px 28px;
+                border-radius:999px;font-weight:700;font-size:.95rem;display:inline-block;'>
+        Kiểm duyệt ngay →
+      </a>
+    </div>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(emailStaff, tenStaff,
+                $"[PitchHub] 📋 Kiểm duyệt chuyển nhượng: {tenSan} — {tenUserA} → {tenUserB}", body);
+        }
     }
 }

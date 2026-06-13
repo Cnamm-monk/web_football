@@ -63,6 +63,9 @@ public partial class SanBongContext : DbContext
     // - V8: Ghép trận
     public virtual DbSet<GhepTran> GhepTrans { get; set; }
 
+    // - V9: Chuyển nhượng đơn đặt sân
+    public virtual DbSet<ChuyenNhuong> ChuyenNhuongs { get; set; }
+
     // - V6: 6 bang moi
     public virtual DbSet<BangDau> BangDaus { get; set; }
     public virtual DbSet<DoiBong> DoiBongs { get; set; }
@@ -759,6 +762,24 @@ public partial class SanBongContext : DbContext
             entity.HasOne(e => e.KhungGioChon).WithMany()
                 .HasForeignKey(e => e.KhungGioChonId)
                 .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ── V9: ChuyenNhuong ─────────────────────────────────────
+        modelBuilder.Entity<ChuyenNhuong>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TrangThai).HasMaxLength(20).HasDefaultValue("DangTim");
+            entity.Property(e => e.GiaChuyenNhuong).HasColumnType("decimal(18,0)");
+            entity.HasOne(e => e.DatSan).WithMany()
+                .HasForeignKey(e => e.DatSanId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.UserA).WithMany()
+                .HasForeignKey(e => e.UserAId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.UserB).WithMany()
+                .HasForeignKey(e => e.UserBId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.StaffXuLy).WithMany()
+                .HasForeignKey(e => e.StaffXuLyId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.OwnerXuLy).WithMany()
+                .HasForeignKey(e => e.OwnerXuLyId).OnDelete(DeleteBehavior.NoAction);
         });
 
         OnModelCreatingPartial(modelBuilder);

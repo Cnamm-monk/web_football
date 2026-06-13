@@ -1,0 +1,147 @@
+@model Web_Stadium.EFCore.ChuyenNhuong
+@{
+    ViewData["Title"] = "Chi tiết chuyển nhượng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currentUserId = ViewBag.CurrentUserId as int?;
+    var san = Model.DatSan?.KhungGio?.SanBong;
+    var kg = Model.DatSan?.KhungGio;
+    var isOwner = currentUserId.HasValue && Model.UserAId == currentUserId.Value;
+    var canTiepNhan = currentUserId.HasValue && !isOwner && Model.TrangThai == "DangTim";
+    var daDangNhap = currentUserId.HasValue;
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container d-flex justify-content-between align-items-end">
+        <div>
+            <div class="section-label">Marketplace</div>
+            <h1 style="font-style:italic;line-height:0.9;margin:0">
+                CHI TIẾT<br><span class="text-green">CHUYỂN NHƯỢNG</span>
+            </h1>
+        </div>
+        <a href="/ChuyenNhuong/Index" class="btn btn-outline-secondary rounded-pill" style="font-size:13px">← Danh sách</a>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:720px">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">✅ @TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">❌ @TempData["Error"]</div>
+    }
+
+    <!-- Tiêu đề + trạng thái -->
+    <div class="section-card p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <h4 style="margin:0;font-weight:700">@Model.TieuDe</h4>
+            @{
+                var (badgeClass, badgeLabel) = Model.TrangThai switch {
+                    "DangTim"    => ("bg-success",           "Đang tìm"),
+                    "ChoXacNhan" => ("bg-warning text-dark", "Chờ xác nhận"),
+                    "ChoStaff"   => ("bg-info text-dark",    "Chờ Staff"),
+                    "ChoOwner"   => ("bg-primary",           "Chờ Owner"),
+                    "HoanTat"    => ("bg-success",           "Hoàn tất"),
+                    "TuChoi"     => ("bg-danger",            "Từ chối"),
+                    _            => ("bg-secondary",          Model.TrangThai)
+                };
+            }
+            <span class="badge @badgeClass">@badgeLabel</span>
+        </div>
+        @if (!string.IsNullOrEmpty(Model.MoTa))
+        {
+            <p style="color:var(--muted);font-size:14px;font-style:italic;margin-bottom:10px">"@Model.MoTa"</p>
+        }
+
+        <!-- Giá -->
+        <div style="text-align:center;padding:14px;background:var(--bg3);border-radius:10px;margin-bottom:14px">
+            @if (Model.GiaChuyenNhuong == 0)
+            {
+                <div style="font-size:1.4rem;font-weight:900;color:var(--green)">MIỄN PHÍ</div>
+                <div style="font-size:12px;color:var(--muted)">Cho tặng — không tính phí</div>
+            }
+            else
+            {
+                <div style="font-size:1.4rem;font-weight:900;color:#f59e0b">@Model.GiaChuyenNhuong.ToString("N0") đ</div>
+                <div style="font-size:12px;color:var(--muted)">⚠️ Giao dịch thực hiện ngoài hệ thống theo thỏa thuận</div>
+            }
+        </div>
+
+        <!-- Thông tin đơn -->
+        <div style="font-size:10px;color:var(--green);letter-spacing:1px;margin-bottom:10px">🏟️ THÔNG TIN ĐƠN ĐẶT SÂN</div>
+        <div class="row g-2" style="font-size:14px">
+            <div class="col-5" style="color:var(--muted)">Sân</div>
+            <div class="col-7"><strong>@(san?.TenSan ?? "—")</strong></div>
+            <div class="col-5" style="color:var(--muted)">Địa chỉ</div>
+            <div class="col-7" style="font-size:12px;color:var(--muted2)">@(san?.DiaChi ?? "—") — @(san?.Quan ?? "")</div>
+            <div class="col-5" style="color:var(--muted)">Ngày thi đấu</div>
+            <div class="col-7"><strong style="color:var(--green)">@Model.DatSan?.NgayThiDau.ToString("dd/MM/yyyy")</strong></div>
+            <div class="col-5" style="color:var(--muted)">Giờ</div>
+            <div class="col-7">@kg?.GioBatDau.ToString("HH:mm") – @kg?.GioKetThuc.ToString("HH:mm")</div>
+            <div class="col-5" style="color:var(--muted)">Loại sân</div>
+            <div class="col-7">Sân @(san?.LoaiSan) người — @(san?.LoaiCo)</div>
+        </div>
+
+        @if (Model.DatSan?.DatSanDichVus?.Any() == true)
+        {
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+                <div style="font-size:11px;color:var(--muted);margin-bottom:6px">🎁 Dịch vụ kèm theo:</div>
+                <div class="d-flex gap-2 flex-wrap">
+                    @foreach (var dv in Model.DatSan.DatSanDichVus)
+                    {
+                        <span class="badge bg-success" style="font-size:11px;">@dv.DichVu?.TenDichVu</span>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Người đăng + thời gian -->
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;color:var(--muted)">
+            <span>👤 Đăng bởi <strong>@(Model.UserA?.HoTen ?? "Ẩn danh")</strong></span>
+            <span>🕐 @Model.ThoiGianTao.ToString("dd/MM/yyyy HH:mm")</span>
+        </div>
+    </div>
+
+    <!-- Disclaimer rõ ràng -->
+    <div class="alert alert-warning" style="font-size:13px;border-radius:10px;border-left:4px solid #f59e0b;">
+        <strong>⚠️ Lưu ý quan trọng:</strong><br>
+        Mọi giao dịch tài chính (nếu có) giữa hai bên được thực hiện <strong>hoàn toàn ngoài hệ thống PitchHub</strong>.
+        Khi tiếp nhận, bạn xác nhận đã thỏa thuận với người chuyển nhượng.
+        PitchHub chỉ hỗ trợ thủ tục chuyển chủ đơn sau khi được Staff và Owner xét duyệt.
+    </div>
+
+    <!-- Nút hành động -->
+    @if (canTiepNhan)
+    {
+        <form method="post" action="/ChuyenNhuong/TiepNhan" class="section-card p-3">
+            <input type="hidden" name="chuyenNhuongId" value="@Model.Id" />
+            <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
+                Bấm nút bên dưới để tiếp nhận. Sau đó người chuyển nhượng sẽ xác nhận và chờ duyệt.
+            </div>
+            <button type="submit" class="btn btn-success rounded-pill px-4"
+                    onclick="return confirm('Bạn muốn tiếp nhận chuyển nhượng đơn sân này?')">
+                ✅ Tiếp nhận chuyển nhượng
+            </button>
+        </form>
+    }
+    else if (!daDangNhap && Model.TrangThai == "DangTim")
+    {
+        <div class="section-card p-3 text-center">
+            <div style="font-size:14px;color:var(--muted);margin-bottom:12px">Đăng nhập để tiếp nhận chuyển nhượng</div>
+            <a href="/Auth/Login?returnUrl=/ChuyenNhuong/ChiTiet/@Model.Id" class="btn btn-success rounded-pill px-4">
+                Đăng nhập
+            </a>
+        </div>
+    }
+    else if (isOwner && Model.TrangThai == "ChoXacNhan")
+    {
+        <div class="alert alert-info" style="font-size:13px;border-radius:10px">
+            🔔 Có người muốn tiếp nhận đơn của bạn!
+            <a href="/ChuyenNhuong/XacNhan/@Model.Id" class="btn btn-sm btn-info rounded-pill ms-2">
+                Xem và xác nhận →
+            </a>
+        </div>
+    }
+</div>

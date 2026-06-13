@@ -1,0 +1,134 @@
+@model List<Web_Stadium.EFCore.ChuyenNhuong>
+@{
+    ViewData["Title"] = "Quản lý chuyển nhượng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currentFilter = ViewBag.CurrentFilter as string;
+
+    var filters = new[]
+    {
+        ("", "Tất cả"),
+        ("DangTim",    "Đang tìm"),
+        ("ChoXacNhan", "Chờ xác nhận"),
+        ("ChoStaff",   "Chờ Staff"),
+        ("ChoOwner",   "Chờ Owner"),
+        ("HoanTat",    "Hoàn tất"),
+        ("TuChoi",     "Từ chối"),
+        ("DaHuy",      "Đã hủy"),
+    };
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container d-flex justify-content-between align-items-end">
+        <div>
+            <div class="section-label">Admin Dashboard</div>
+            <h1 style="font-style:italic;line-height:0.9;margin:0">
+                QUẢN LÝ<br><span class="text-green">CHUYỂN NHƯỢNG</span>
+            </h1>
+        </div>
+        <div style="font-size:13px;color:var(--muted)">@Model.Count bản ghi</div>
+    </div>
+</div>
+
+<div class="container py-4">
+
+    <!-- Filter tabs -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+        @foreach (var (val, label) in filters)
+        {
+            var active = currentFilter == val || (string.IsNullOrEmpty(val) && string.IsNullOrEmpty(currentFilter));
+            <a href="/Admin/ChuyenNhuong?trangThai=@val"
+               class="btn btn-sm rounded-pill"
+               style="font-size:12px;@(active ? "background:var(--green);color:#fff;" : "background:var(--bg3);color:var(--text);border:1px solid var(--border)")">
+                @label
+            </a>
+        }
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div style="text-align:center;padding:60px 0;color:var(--muted)">
+            <div style="font-size:2.5rem;margin-bottom:12px">📭</div>
+            <div>Không có dữ liệu</div>
+        </div>
+    }
+    else
+    {
+        <div style="overflow-x:auto">
+            <table class="table" style="font-size:13px;min-width:900px">
+                <thead>
+                    <tr style="font-size:11px;color:var(--muted);letter-spacing:0.5px;border-bottom:2px solid var(--border)">
+                        <th style="padding:8px 10px">#</th>
+                        <th style="padding:8px 10px">TIÊU ĐỀ</th>
+                        <th style="padding:8px 10px">SÂN</th>
+                        <th style="padding:8px 10px">NGÀY</th>
+                        <th style="padding:8px 10px">NGƯỜI A</th>
+                        <th style="padding:8px 10px">NGƯỜI B</th>
+                        <th style="padding:8px 10px">GIÁ</th>
+                        <th style="padding:8px 10px">TRẠNG THÁI</th>
+                        <th style="padding:8px 10px">TẠO LÚC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var cn in Model)
+                    {
+                        var san = cn.DatSan?.KhungGio?.SanBong;
+                        var (cls, lbl) = cn.TrangThai switch {
+                            "DangTim"    => ("bg-success",            "Đang tìm"),
+                            "ChoXacNhan" => ("bg-warning text-dark",  "Chờ xác nhận"),
+                            "ChoStaff"   => ("bg-info text-dark",     "Chờ Staff"),
+                            "ChoOwner"   => ("bg-primary",            "Chờ Owner"),
+                            "HoanTat"    => ("bg-success",            "Hoàn tất"),
+                            "TuChoi"     => ("bg-danger",             "Từ chối"),
+                            "DaHuy"      => ("bg-secondary",          "Đã hủy"),
+                            _            => ("bg-secondary",           cn.TrangThai)
+                        };
+
+                        <tr style="border-bottom:1px solid var(--border)">
+                            <td style="padding:10px;color:var(--muted)">@cn.Id</td>
+                            <td style="padding:10px">
+                                <a href="/ChuyenNhuong/ChiTiet/@cn.Id" style="color:var(--text);text-decoration:none;font-weight:600">
+                                    @cn.TieuDe
+                                </a>
+                            </td>
+                            <td style="padding:10px">@(san?.TenSan ?? "—")</td>
+                            <td style="padding:10px;white-space:nowrap;color:var(--green)">
+                                @cn.DatSan?.NgayThiDau.ToString("dd/MM/yy")
+                            </td>
+                            <td style="padding:10px">
+                                <div>@(cn.UserA?.HoTen ?? "—")</div>
+                                <div style="font-size:11px;color:var(--muted2)">@cn.UserA?.Email</div>
+                            </td>
+                            <td style="padding:10px">
+                                @if (cn.UserB != null)
+                                {
+                                    <div>@cn.UserB.HoTen</div>
+                                    <div style="font-size:11px;color:var(--muted2)">@cn.UserB.Email</div>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--muted)">Chưa có</span>
+                                }
+                            </td>
+                            <td style="padding:10px;white-space:nowrap">
+                                @if (cn.GiaChuyenNhuong == 0)
+                                {
+                                    <span class="badge bg-success" style="font-size:11px">MIỄN PHÍ</span>
+                                }
+                                else
+                                {
+                                    <span style="color:#f59e0b">@cn.GiaChuyenNhuong.ToString("N0")</span>
+                                }
+                            </td>
+                            <td style="padding:10px">
+                                <span class="badge @cls" style="font-size:11px">@lbl</span>
+                            </td>
+                            <td style="padding:10px;white-space:nowrap;color:var(--muted);font-size:12px">
+                                @cn.ThoiGianTao.ToString("dd/MM HH:mm")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

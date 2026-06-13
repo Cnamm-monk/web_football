@@ -1,0 +1,94 @@
+@{
+    ViewData["Title"] = "Đăng bài chuyển nhượng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var don = ViewBag.DatSan as Web_Stadium.EFCore.DatSan;
+    var san = don?.KhungGio?.SanBong;
+    var kg = don?.KhungGio;
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Marketplace</div>
+        <h1 style="font-style:italic;line-height:0.9;margin:0">
+            ĐĂNG BÀI<br><span class="text-green">CHUYỂN NHƯỢNG</span>
+        </h1>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:640px">
+
+    <!-- Thông tin đơn -->
+    <div class="section-card p-3 mb-4" style="border:1px solid var(--green)">
+        <div style="font-size:10px;color:var(--green);letter-spacing:1px;margin-bottom:10px">📋 THÔNG TIN ĐƠN ĐẶT SÂN</div>
+        <div class="row g-2" style="font-size:14px">
+            <div class="col-5" style="color:var(--muted)">Sân</div>
+            <div class="col-7"><strong>@(san?.TenSan ?? "—")</strong></div>
+            <div class="col-5" style="color:var(--muted)">Địa chỉ</div>
+            <div class="col-7" style="font-size:12px;color:var(--muted2)">@(san?.DiaChi ?? "—")</div>
+            <div class="col-5" style="color:var(--muted)">Ngày thi đấu</div>
+            <div class="col-7"><strong style="color:var(--green)">@don?.NgayThiDau.ToString("dd/MM/yyyy")</strong></div>
+            <div class="col-5" style="color:var(--muted)">Giờ</div>
+            <div class="col-7">@kg?.GioBatDau.ToString("HH:mm") – @kg?.GioKetThuc.ToString("HH:mm")</div>
+            <div class="col-5" style="color:var(--muted)">Mã đơn</div>
+            <div class="col-7" style="font-size:12px;color:var(--muted2)">@don?.MaXacNhan</div>
+        </div>
+        @if (don?.DatSanDichVus?.Any() == true)
+        {
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+                <div style="font-size:11px;color:var(--muted);margin-bottom:6px">🎁 Dịch vụ kèm theo:</div>
+                <div class="d-flex gap-2 flex-wrap">
+                    @foreach (var dv in don.DatSanDichVus)
+                    {
+                        <span class="badge bg-success" style="font-size:11px;">@dv.DichVu?.TenDichVu</span>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="alert alert-warning" style="font-size:13px;border-radius:10px;">
+        ⚠️ <strong>Lưu ý:</strong> Mọi giao dịch tài chính giữa hai bên thực hiện <strong>ngoài hệ thống</strong>. PitchHub chỉ hỗ trợ thủ tục chuyển chủ đơn đặt sân sau khi được kiểm duyệt.
+    </div>
+
+    <!-- Form đăng bài -->
+    <form method="post" action="/ChuyenNhuong/GuiBai">
+        <input type="hidden" name="datSanId" value="@don?.Id" />
+
+        <div class="section-card p-3 mb-3">
+            <div class="mb-3">
+                <label class="form-label fw-semibold" style="font-size:13px">📌 Tiêu đề bài đăng</label>
+                <input name="tieuDe" type="text" class="form-control"
+                       placeholder="VD: Cần chuyển nhượng gấp sân 5 người tối thứ 6"
+                       maxlength="100" required
+                       style="background:var(--bg3);border-color:var(--border);color:var(--text)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold" style="font-size:13px">💬 Mô tả / Lý do chuyển nhượng</label>
+                <textarea name="moTa" class="form-control" rows="3"
+                          placeholder="Ví dụ: Bận việc đột xuất, cần chuyển nhượng gấp..."
+                          maxlength="400"
+                          style="background:var(--bg3);border-color:var(--border);color:var(--text);resize:none"></textarea>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label fw-semibold" style="font-size:13px">💰 Giá chuyển nhượng (đ)</label>
+                <div class="input-group">
+                    <input name="giaChuyenNhuong" type="number" min="0" step="10000" value="0"
+                           class="form-control"
+                           style="background:var(--bg3);border-color:var(--border);color:var(--text)" />
+                    <span class="input-group-text" style="background:var(--bg3);border-color:var(--border);color:var(--muted)">đ</span>
+                </div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px">Nhập 0 nếu muốn chuyển miễn phí (cho tặng)</div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:10px">
+            <button type="submit" class="btn btn-success rounded-pill px-4">
+                📢 Đăng bài chuyển nhượng
+            </button>
+            <a href="/Booking/MyBookings" class="btn btn-outline-secondary rounded-pill px-4">Hủy</a>
+        </div>
+    </form>
+</div>

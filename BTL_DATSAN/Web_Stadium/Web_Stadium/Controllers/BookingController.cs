@@ -1249,6 +1249,49 @@ namespace Web_Stadium.Controllers
                 if (daDoc) read.Add(item); else unread.Add(item);
             }
 
+            // ── 4. Chuyển nhượng — UserA có người tiếp nhận (ChoXacNhan) ──
+            var cnChoXacNhan = await _context.ChuyenNhuongs
+                .Include(c => c.DatSan).ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(c => c.UserB)
+                .Where(c => c.UserAId == userId && c.TrangThai == "ChoXacNhan")
+                .OrderByDescending(c => c.ThoiGianTao)
+                .Take(5)
+                .ToListAsync();
+
+            foreach (var c in cnChoXacNhan)
+                unread.Add(new {
+                    loai = "ChuyenNhuong",
+                    tieuDe = "Có người muốn tiếp nhận đơn của bạn!",
+                    moTa = $"{c.UserB?.HoTen ?? "Ai đó"} muốn nhận đơn sân {c.DatSan?.KhungGio?.SanBong?.TenSan ?? ""}",
+                    thoiGian = TinhThoiGian(c.ThoiGianTao),
+                    url = "/ChuyenNhuong/XacNhan/" + c.Id,
+                    daDoc = false
+                });
+
+            // ── 5. Chuyển nhượng hoàn tất — UserA được thông báo ──
+            var cnHoanTat = await _context.ChuyenNhuongs
+                .Include(c => c.DatSan)
+                .Where(c => c.UserAId == userId
+                         && c.TrangThai == "HoanTat"
+                         && c.ThoiGianXuLy >= nguong48h)
+                .OrderByDescending(c => c.ThoiGianXuLy)
+                .Take(3)
+                .ToListAsync();
+
+            foreach (var c in cnHoanTat)
+            {
+                var daDoc = c.ThoiGianXuLy < now.AddHours(-2);
+                var item = new {
+                    loai = "ChuyenNhuong",
+                    tieuDe = "Chuyển nhượng đơn hoàn tất!",
+                    moTa = $"Đơn {c.DatSan?.MaXacNhan} đã được chuyển nhượng thành công.",
+                    thoiGian = TinhThoiGian(c.ThoiGianXuLy ?? c.ThoiGianTao),
+                    url = "/Booking/MyBookings",
+                    daDoc
+                };
+                if (daDoc) read.Add(item); else unread.Add(item);
+            }
+
             return Json(unread.Concat(read));
         }
     }

@@ -1269,5 +1269,24 @@ namespace Web_Stadium.Controllers
             ViewBag.TrangThaiFilter = trangThai;
             return View(await query.OrderByDescending(g => g.ThoiGianTao).ToListAsync());
         }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Admin/ChuyenNhuong
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> ChuyenNhuong(string? trangThai)
+        {
+            var query = _context.ChuyenNhuongs
+                .Include(c => c.DatSan)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(c => c.UserA)
+                .Include(c => c.UserB)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(trangThai))
+                query = query.Where(c => c.TrangThai == trangThai);
+
+            ViewBag.TrangThaiFilter = trangThai;
+            return View(await query.OrderByDescending(c => c.ThoiGianTao).ToListAsync());
+        }
     }
 }

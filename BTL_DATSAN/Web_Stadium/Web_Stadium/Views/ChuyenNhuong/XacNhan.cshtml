@@ -1,0 +1,106 @@
+@model Web_Stadium.EFCore.ChuyenNhuong
+@{
+    ViewData["Title"] = "Xác nhận chuyển nhượng";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var san = Model.DatSan?.KhungGio?.SanBong;
+    var kg = Model.DatSan?.KhungGio;
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Marketplace</div>
+        <h1 style="font-style:italic;line-height:0.9;margin:0">
+            XÁC NHẬN<br><span class="text-green">CHUYỂN NHƯỢNG</span>
+        </h1>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:680px">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">✅ @TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">❌ @TempData["Error"]</div>
+    }
+
+    <div class="alert alert-info" style="font-size:14px;border-radius:10px;margin-bottom:20px">
+        🔔 <strong>@(Model.UserB?.HoTen ?? "Một người dùng")</strong> muốn tiếp nhận đơn đặt sân của bạn.
+        Hãy xem lại thông tin và chọn hành động phù hợp.
+    </div>
+
+    <!-- Thông tin bài đăng -->
+    <div class="section-card p-3 mb-4">
+        <div style="font-size:10px;color:var(--green);letter-spacing:1px;margin-bottom:10px">🏟️ THÔNG TIN ĐƠN ĐẶT SÂN</div>
+        <div class="row g-2" style="font-size:14px">
+            <div class="col-5" style="color:var(--muted)">Sân</div>
+            <div class="col-7"><strong>@(san?.TenSan ?? "—")</strong></div>
+            <div class="col-5" style="color:var(--muted)">Địa chỉ</div>
+            <div class="col-7" style="font-size:12px;color:var(--muted2)">@(san?.DiaChi ?? "—")</div>
+            <div class="col-5" style="color:var(--muted)">Ngày thi đấu</div>
+            <div class="col-7"><strong style="color:var(--green)">@Model.DatSan?.NgayThiDau.ToString("dd/MM/yyyy")</strong></div>
+            <div class="col-5" style="color:var(--muted)">Giờ</div>
+            <div class="col-7">@kg?.GioBatDau.ToString("HH:mm") – @kg?.GioKetThuc.ToString("HH:mm")</div>
+            <div class="col-5" style="color:var(--muted)">Giá chuyển nhượng</div>
+            <div class="col-7">
+                @if (Model.GiaChuyenNhuong == 0)
+                {
+                    <span class="badge bg-success">MIỄN PHÍ</span>
+                }
+                else
+                {
+                    <strong style="color:#f59e0b">@Model.GiaChuyenNhuong.ToString("N0") đ</strong>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Thông tin người tiếp nhận -->
+    <div class="section-card p-3 mb-4" style="border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--green);letter-spacing:1px;margin-bottom:12px">👤 NGƯỜI MUỐN TIẾP NHẬN</div>
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--green),#097A4E);
+                        display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;font-weight:700">
+                @(Model.UserB?.HoTen?.Substring(0, 1).ToUpper() ?? "?")
+            </div>
+            <div>
+                <div style="font-weight:700;font-size:15px">@(Model.UserB?.HoTen ?? "Ẩn danh")</div>
+                <div style="font-size:12px;color:var(--muted)">@(Model.UserB?.Email ?? "")</div>
+                <div style="font-size:12px;color:var(--muted)">📞 @(Model.UserB?.SoDienThoai ?? "Chưa cập nhật")</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="alert alert-warning" style="font-size:13px;border-radius:10px;margin-bottom:20px">
+        ⚠️ Nếu xác nhận, đơn đặt sân sẽ được chuyển sang tên <strong>@(Model.UserB?.HoTen ?? "người tiếp nhận")</strong>
+        sau khi được Staff và Owner xét duyệt. Tiền cọc của bạn sẽ được quy đổi thành
+        <strong>điểm thưởng</strong> trong hệ thống.
+    </div>
+
+    <!-- Hành động -->
+    <div class="section-card p-3">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Chọn hành động của bạn:</div>
+        <div class="d-flex gap-3 flex-wrap">
+            <form method="post" action="/ChuyenNhuong/XacNhanChuyenNhuong" style="margin:0">
+                <input type="hidden" name="chuyenNhuongId" value="@Model.Id" />
+                <input type="hidden" name="hanhDong" value="XacNhan" />
+                <button type="submit" class="btn btn-success rounded-pill px-4"
+                        onclick="return confirm('Bạn chắc chắn muốn xác nhận chuyển nhượng cho @(Model.UserB?.HoTen ?? "người này")?')">
+                    ✅ Xác nhận chuyển nhượng
+                </button>
+            </form>
+
+            <form method="post" action="/ChuyenNhuong/XacNhanChuyenNhuong" style="margin:0">
+                <input type="hidden" name="chuyenNhuongId" value="@Model.Id" />
+                <input type="hidden" name="hanhDong" value="TuChoi" />
+                <button type="submit" class="btn btn-outline-danger rounded-pill px-4"
+                        onclick="return confirm('Từ chối người này? Bài đăng sẽ trở lại trạng thái Đang tìm.')">
+                    ❌ Từ chối — tìm người khác
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

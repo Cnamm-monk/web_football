@@ -1497,5 +1497,115 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
 
             return RedirectToAction("YeuCauDoiSan");
         }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Owner/ChuyenNhuong
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> ChuyenNhuong()
+        {
+            var ownerId = GetOwnerId();
+            var sanIds = await _context.SanBongs
+                .Where(s => s.OwnerId == ownerId)
+                .Select(s => s.Id)
+                .ToListAsync();
+
+            var list = await _context.ChuyenNhuongs
+                .Include(c => c.DatSan)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(c => c.UserA)
+                .Include(c => c.UserB)
+                .Where(c => c.TrangThai == "ChoOwner"
+                         && sanIds.Contains(c.DatSan.KhungGio.SanBongId))
+                .OrderByDescending(c => c.ThoiGianXuLy)
+                .ToListAsync();
+
+            return View(list);
+        }
+
+        // POST /Owner/XuLyChuyenNhuong
+        [HttpPost]
+        public async Task<IActionResult> XuLyChuyenNhuong(int chuyenNhuongId, string hanhDong, string? ghiChu)
+        {
+            var ownerId = GetOwnerId();
+            var cn = await _context.ChuyenNhuongs
+                .Include(c => c.DatSan)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(c => c.UserA)
+                .Include(c => c.UserB)
+                .FirstOrDefaultAsync(c => c.Id == chuyenNhuongId && c.TrangThai == "ChoOwner");
+
+            if (cn == null) return NotFound();
+
+            var san = cn.DatSan?.KhungGio?.SanBong;
+            var ngay = cn.DatSan?.NgayThiDau.ToString("dd/MM/yyyy") ?? "";
+            var gio = $"{cn.DatSan?.KhungGio?.GioBatDau:HH\\:mm}–{cn.DatSan?.KhungGio?.GioKetThuc:HH\\:mm}";
+
+            cn.OwnerXuLyId = ownerId;
+            cn.GhiChuOwner = ghiChu;
+            cn.ThoiGianXuLy = DateTime.Now;
+
+            if (hanhDong == "TuChoi")
+            {
+                cn.TrangThai = "TuChoi";
+                await _context.SaveChangesAsync();
+                foreach (var (email, ten) in new[] {
+                    (cn.UserA?.Email ?? "", cn.UserA?.HoTen ?? ""),
+                    (cn.UserB?.Email ?? "", cn.UserB?.HoTen ?? "")
+                })
+                {
+                    if (!string.IsNullOrEmpty(email))
+                        _ = Task.Run(() => _emailService.GuiEmailChuyenNhuongTuChoi(
+                            email, ten, san?.TenSan ?? "", ngay, gio, ghiChu ?? "Không được chấp thuận"));
+                }
+                TempData["Error"] = "Đã từ chối yêu cầu chuyển nhượng.";
+            }
+            else // PheDuyet
+            {
+                if (cn.UserBId == null)
+                {
+                    TempData["Error"] = "Không có người nhận.";
+                    return RedirectToAction("ChuyenNhuong");
+                }
+
+                // Đổi chủ đơn
+                var don = cn.DatSan;
+                var oldUserId = don.UserId;
+                don.UserId = cn.UserBId.Value;
+
+                // Đánh dấu hoàn tất
+                cn.TrangThai = "HoanTat";
+                cn.DaChuyenNhuong = true;
+
+                // Cộng điểm cho User A (TienCoc / 1000)
+                var userA = await _context.Users.FindAsync(cn.UserAId);
+                if (userA != null)
+                    userA.DiemHienTai += (int)(don.TienCoc / 1000);
+
+                await _context.SaveChangesAsync();
+
+                // AuditLog
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = ownerId,
+                    VaiTro = "Owner",
+                    HanhDong = "PheDuyetChuyenNhuong",
+                    DoiTuong = "ChuyenNhuong",
+                    DoiTuongId = cn.Id,
+                    MoTa = $"Phê duyệt chuyển nhượng đơn {don.MaXacNhan} từ User {cn.UserAId} → User {cn.UserBId}",
+                    ThoiGian = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+
+                // Email cả A và B
+                _ = Task.Run(() => _emailService.GuiEmailChuyenNhuongHoanTat(
+                    cn.UserA?.Email ?? "", cn.UserA?.HoTen ?? "Bên chuyển",
+                    cn.UserB?.Email ?? "", cn.UserB?.HoTen ?? "Bên nhận",
+                    san?.TenSan ?? "", ngay, gio, don.MaXacNhan));
+
+                TempData["Success"] = "Đã phê duyệt! Đơn đặt sân đã được chuyển nhượng thành công.";
+            }
+
+            return RedirectToAction("ChuyenNhuong");
+        }
     }
 }
