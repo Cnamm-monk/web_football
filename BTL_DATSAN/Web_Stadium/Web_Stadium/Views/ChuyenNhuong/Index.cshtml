@@ -19,6 +19,40 @@
 </div>
 
 <div class="container py-4">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success mb-3">✅ @TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger mb-3">❌ @TempData["Error"]</div>
+    }
+
+    <!-- Header action bar -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <h5 style="margin:0;font-weight:700;color:var(--text)">Danh sách chuyển nhượng</h5>
+        @if (currentUserId.HasValue)
+        {
+            <a href="/ChuyenNhuong/ChonDon"
+               style="background:#0ea86a;color:white;padding:10px 20px;border-radius:8px;
+                      font-weight:600;text-decoration:none;display:flex;align-items:center;gap:8px;
+                      font-size:14px;transition:opacity .2s"
+               onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                📢 Đăng chuyển nhượng
+            </a>
+        }
+        else
+        {
+            <a href="/Auth/Login?returnUrl=/ChuyenNhuong/ChonDon"
+               style="background:#0ea86a;color:white;padding:10px 20px;border-radius:8px;
+                      font-weight:600;text-decoration:none;display:flex;align-items:center;gap:8px;
+                      font-size:14px;opacity:.75">
+                📢 Đăng chuyển nhượng
+            </a>
+        }
+    </div>
+
     <div class="row g-4">
 
         <!-- Sidebar filter -->

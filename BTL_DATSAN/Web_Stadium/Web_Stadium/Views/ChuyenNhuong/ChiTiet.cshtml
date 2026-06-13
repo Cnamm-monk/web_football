@@ -97,10 +97,26 @@
             </div>
         }
 
-        <!-- Người đăng + thời gian -->
-        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;color:var(--muted)">
-            <span>👤 Đăng bởi <strong>@(Model.UserA?.HoTen ?? "Ẩn danh")</strong></span>
-            <span>🕐 @Model.ThoiGianTao.ToString("dd/MM/yyyy HH:mm")</span>
+        <!-- Người đăng + thời gian + SĐT -->
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px">
+                <span>👤 Đăng bởi <strong>@(Model.UserA?.HoTen ?? "Ẩn danh")</strong></span>
+                <span>🕐 @Model.ThoiGianTao.ToString("dd/MM/yyyy HH:mm")</span>
+            </div>
+            @if (daDangNhap && !string.IsNullOrEmpty(Model.SoDienThoaiLienHe))
+            {
+                <div style="background:var(--bg3);border-radius:8px;padding:10px;font-size:13px;display:flex;align-items:center;gap:8px">
+                    <span style="font-size:1.1rem">📞</span>
+                    <span style="color:var(--muted)">Liên hệ:</span>
+                    <strong style="color:var(--green)">@Model.SoDienThoaiLienHe</strong>
+                </div>
+            }
+            else if (!daDangNhap)
+            {
+                <div style="font-size:12px;color:var(--muted);font-style:italic">
+                    🔒 <a href="/Auth/Login?returnUrl=/ChuyenNhuong/ChiTiet/@Model.Id" style="color:var(--green)">Đăng nhập</a> để xem số điện thoại liên hệ
+                </div>
+            }
         </div>
     </div>
 

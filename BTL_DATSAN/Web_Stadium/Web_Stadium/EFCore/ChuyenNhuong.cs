@@ -9,6 +9,7 @@ public class ChuyenNhuong
     public string TieuDe { get; set; } = null!;
     public string? MoTa { get; set; }
     public decimal GiaChuyenNhuong { get; set; }
+    public string? SoDienThoaiLienHe { get; set; }
     // DangTim | ChoXacNhan | ChoStaff | ChoOwner | HoanTat | TuChoi | DaHuy
     public string TrangThai { get; set; } = "DangTim";
     public string? GhiChuStaff { get; set; }

@@ -94,7 +94,38 @@ namespace Web_Stadium.Controllers
             }
 
             ViewBag.DatSan = don;
+            var user = await _context.Users.FindAsync(userId);
+            ViewBag.UserSdt = user?.SoDienThoai;
             return View();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /ChuyenNhuong/ChonDon — user picks which booking to transfer
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> ChonDon()
+        {
+            var userId = CurrentUserId();
+
+            // DatSanIds đang có bài đăng (kể cả hoàn tất)
+            var excludedIds = await _context.ChuyenNhuongs
+                .Where(c => c.UserAId == userId
+                    && c.TrangThai != "TuChoi"
+                    && c.TrangThai != "DaHuy")
+                .Select(c => c.DatSanId)
+                .ToListAsync();
+
+            var dons = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.DatSanDichVus).ThenInclude(dd => dd.DichVu)
+                .Where(d => d.UserId == userId
+                    && d.TrangThai == "DaXacNhan"
+                    && d.NgayThiDau >= DateTime.Today
+                    && !excludedIds.Contains(d.Id))
+                .OrderBy(d => d.NgayThiDau)
+                .ToListAsync();
+
+            return View(dons);
         }
 
         // ══════════════════════════════════════════════════════════
@@ -102,7 +133,7 @@ namespace Web_Stadium.Controllers
         // ══════════════════════════════════════════════════════════
         [HttpPost]
         [YeuCauDangNhap]
-        public async Task<IActionResult> GuiBai(int datSanId, string tieuDe, string? moTa, decimal giaChuyenNhuong)
+        public async Task<IActionResult> GuiBai(int datSanId, string tieuDe, string? moTa, decimal giaChuyenNhuong, string? soDienThoaiLienHe)
         {
             var userId = CurrentUserId();
             var don = await _context.DatSans
@@ -129,6 +160,7 @@ namespace Web_Stadium.Controllers
                 TieuDe = tieuDe.Trim(),
                 MoTa = moTa?.Trim(),
                 GiaChuyenNhuong = Math.Max(0, giaChuyenNhuong),
+                SoDienThoaiLienHe = soDienThoaiLienHe?.Trim(),
                 TrangThai = "DangTim",
                 ThoiGianTao = DateTime.Now
             };
