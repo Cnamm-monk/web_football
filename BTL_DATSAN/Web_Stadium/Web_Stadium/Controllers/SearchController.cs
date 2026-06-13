@@ -21,67 +21,58 @@ namespace Web_Stadium.Controllers
 
             q = q.Trim();
 
-            var sanTask = _context.SanBongs
+            var sanBongs = await _context.SanBongs
                 .Where(s => s.TrangThaiDuyet == "DaDuyet" && !s.IsHidden
                     && (s.TenSan.Contains(q) || s.DiaChi.Contains(q) || s.Quan.Contains(q)))
-                .Take(4)
                 .Select(s => new {
                     id = s.Id,
                     tenSan = s.TenSan,
                     diaChi = s.DiaChi,
                     quan = s.Quan,
-                    danhGia = s.DanhGia.Any()
-                        ? s.DanhGia.Average(d => (double)d.SoSao)
-                        : (double?)null
+                    danhGia = s.DanhGiaTrungBinh
                 })
+                .Take(4)
                 .ToListAsync();
 
-            var giaiTask = _context.GiaiDaus
+            var giaiDaus = await _context.GiaiDaus
                 .Where(g => g.TrangThai != "Draft" && g.TenGiai.Contains(q))
                 .OrderByDescending(g => g.NgayBatDau)
-                .Take(3)
                 .Select(g => new {
                     id = g.Id,
                     tenGiai = g.TenGiai,
                     trangThai = g.TrangThai,
                     ngayBatDau = g.NgayBatDau
                 })
+                .Take(3)
                 .ToListAsync();
 
-            var mmTask = _context.Matchmakings
+            var matchmakings = await _context.Matchmakings
                 .Include(m => m.DatSan).ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Where(m => m.TrangThai == "DangTim"
                     && (m.TieuDe.Contains(q) || m.DatSan.KhungGio.SanBong.TenSan.Contains(q)))
-                .Take(3)
                 .Select(m => new {
                     id = m.Id,
                     tieuDe = m.TieuDe,
                     tenSan = m.DatSan.KhungGio.SanBong.TenSan,
                     ngayThiDau = m.DatSan.NgayThiDau
                 })
+                .Take(3)
                 .ToListAsync();
 
-            var cnTask = _context.ChuyenNhuongs
+            var chuyenNhuongs = await _context.ChuyenNhuongs
                 .Include(c => c.DatSan).ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Where(c => c.TrangThai == "DangTim"
                     && (c.TieuDe.Contains(q) || c.DatSan.KhungGio.SanBong.TenSan.Contains(q)))
-                .Take(3)
                 .Select(c => new {
                     id = c.Id,
                     tieuDe = c.TieuDe,
                     tenSan = c.DatSan.KhungGio.SanBong.TenSan,
                     giaChuyenNhuong = c.GiaChuyenNhuong
                 })
+                .Take(3)
                 .ToListAsync();
 
-            await Task.WhenAll(sanTask, giaiTask, mmTask, cnTask);
-
-            return Json(new {
-                sanBongs = sanTask.Result,
-                giaiDaus = giaiTask.Result,
-                matchmakings = mmTask.Result,
-                chuyenNhuongs = cnTask.Result
-            });
+            return Json(new { sanBongs, giaiDaus, matchmakings, chuyenNhuongs });
         }
     }
 }

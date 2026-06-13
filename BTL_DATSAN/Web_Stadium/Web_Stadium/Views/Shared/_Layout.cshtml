@@ -238,13 +238,14 @@
         .nav-dd-item {
             display: flex; align-items: center; gap: 10px;
             padding: 12px 18px;
-            color: #0f172a; text-decoration: none;
+            color: #1f2937 !important; text-decoration: none !important;
+            text-transform: none !important;
             font-size: 13px; font-weight: 600;
             transition: background .15s, color .15s;
             border-bottom: 1px solid rgba(15,23,42,.05);
         }
         .nav-dd-item:last-child { border-bottom: none; }
-        .nav-dd-item:hover { background: rgba(14,168,106,.08); color: var(--green); }
+        .nav-dd-item:hover { background: #f0fdf4 !important; color: #0ea86a !important; }
         @@keyframes navFadeIn {
             from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
             to   { opacity: 1; transform: translateX(-50%) translateY(0); }
