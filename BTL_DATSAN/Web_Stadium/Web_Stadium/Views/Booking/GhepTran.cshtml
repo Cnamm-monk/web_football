@@ -1,0 +1,163 @@
+@{
+    ViewData["Title"] = "Ghép trận";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var don = ViewBag.DatSan as Web_Stadium.EFCore.DatSan;
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Kết nối đội bóng</div>
+        <h1 style="font-style:italic;line-height:0.9;margin:0">
+            GHÉP TRẬN<br><span class="text-green">TÌM ĐỐI THỦ</span>
+        </h1>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:720px">
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">❌ @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    }
+
+    <!-- THÔNG TIN ĐƠN CỦA MÌNH -->
+    <div class="section-card p-3 mb-4" style="border:1px solid var(--green)">
+        <div style="font-size:10px;color:var(--green);letter-spacing:1px;margin-bottom:10px">🅰️ ĐƠN CỦA BẠN</div>
+        <div class="row g-2" style="font-size:14px">
+            <div class="col-5" style="color:var(--muted)">Sân</div>
+            <div class="col-7"><strong>@don?.KhungGio?.SanBong?.TenSan</strong></div>
+            <div class="col-5" style="color:var(--muted)">Địa chỉ</div>
+            <div class="col-7" style="font-size:12px;color:var(--muted2)">@don?.KhungGio?.SanBong?.DiaChi</div>
+            <div class="col-5" style="color:var(--muted)">Ngày thi đấu</div>
+            <div class="col-7"><strong style="color:var(--green)">@don?.NgayThiDau.ToString("dd/MM/yyyy")</strong></div>
+            <div class="col-5" style="color:var(--muted)">Khung giờ</div>
+            <div class="col-7">@don?.KhungGio?.GioBatDau.ToString("HH:mm") – @don?.KhungGio?.GioKetThuc.ToString("HH:mm")</div>
+        </div>
+    </div>
+
+    <!-- TÌM ĐỘI CÙ NGÀY / GIỜ -->
+    <div class="section-card p-3 mb-4">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">🔍 ĐỘI ĐANG ĐẶT CÙNG NGÀY & GIỜ</div>
+        <button type="button" id="btnTimDoiThu" onclick="timDoiThu()"
+                class="btn btn-sm btn-outline-success rounded-pill mb-3">
+            Tìm đội phù hợp
+        </button>
+        <div id="doiThuList"></div>
+        <div id="doiThuLoading" style="display:none;color:var(--muted);font-size:13px">Đang tìm...</div>
+    </div>
+
+    <!-- FORM GỬI LỜI MỜI -->
+    <form id="formGhep" method="post" action="/Booking/GuiLoiMoiGhep" novalidate>
+        <input type="hidden" name="datSanAId" value="@don?.Id" />
+        <input type="hidden" name="datSanBId" id="hidDatSanBId" value="" />
+
+        <div class="section-card p-3 mb-3" id="doiDuocChon" style="display:none;border:1px solid #3b82f6">
+            <div style="font-size:10px;color:#3b82f6;letter-spacing:1px;margin-bottom:8px">🅱️ ĐỘI ĐƯỢC MỜI</div>
+            <div id="tenDoiB" style="font-size:14px;font-weight:600"></div>
+            <div id="sanDoiB" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+        </div>
+
+        <div class="section-card p-3 mb-3">
+            <label class="form-label fw-semibold" style="font-size:13px;letter-spacing:.5px">💬 LỜI NHẮN GỬI ĐỘI KIA</label>
+            <textarea name="loiNhan" id="loiNhan" class="form-control" rows="3"
+                      placeholder="Ví dụ: Chào đội bạn! Chúng mình muốn ghép trận giao hữu 5v5 vui vẻ..."
+                      maxlength="300" oninput="updateCount()"
+                      style="background:var(--bg3);border-color:var(--border);color:var(--text);resize:none"></textarea>
+            <div style="font-size:12px;color:var(--muted);text-align:right;margin-top:4px">
+                <span id="charCount">0</span>/300
+            </div>
+        </div>
+
+        <div id="errMsg" style="color:#ef4444;font-size:13px;margin-bottom:12px;display:none"></div>
+
+        <div style="display:flex;gap:10px">
+            <button type="submit" id="btnGui" class="btn btn-success rounded-pill px-4" disabled>
+                ⚽ Gửi lời mời ghép trận
+            </button>
+            <a href="/User/HoSo?tab=lichsu" class="btn btn-outline-secondary rounded-pill px-4">Huỷ</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    var selectedDatSanBId = null;
+
+    function timDoiThu() {
+        var loading = document.getElementById('doiThuLoading');
+        var list = document.getElementById('doiThuList');
+        loading.style.display = 'block';
+        list.innerHTML = '';
+
+        fetch('/Booking/TimDoiThu?datSanAId=@don?.Id')
+            .then(r => r.json())
+            .then(data => {
+                loading.style.display = 'none';
+                if (!data || data.length === 0) {
+                    list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0">Không tìm thấy đội nào đang đặt cùng ngày và giờ.</div>';
+                    return;
+                }
+                var html = '<div style="display:flex;flex-direction:column;gap:8px">';
+                data.forEach(function(d) {
+                    html += '<div class="doi-item" style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:.2s" ' +
+                            'onclick="chonDoi(' + d.datSanId + ', \'' + escapeHtml(d.tenUser) + '\', \'' + escapeHtml(d.tenSan) + '\', \'' + escapeHtml(d.diaChi) + '\', \'' + escapeHtml(d.gio) + '\')" ' +
+                            'data-id="' + d.datSanId + '">' +
+                            '<div style="font-size:14px;font-weight:600">⚽ ' + escapeHtml(d.tenUser) + '</div>' +
+                            '<div style="font-size:12px;color:var(--muted);margin-top:2px">🏟 ' + escapeHtml(d.tenSan) + ' — ' + escapeHtml(d.diaChi) + '</div>' +
+                            '<div style="font-size:12px;color:var(--green);margin-top:1px">⏰ ' + escapeHtml(d.gio) + '</div>' +
+                            '</div>';
+                });
+                html += '</div>';
+                list.innerHTML = html;
+            })
+            .catch(function() {
+                loading.style.display = 'none';
+                list.innerHTML = '<div style="color:#ef4444;font-size:13px">Lỗi kết nối. Vui lòng thử lại.</div>';
+            });
+    }
+
+    function chonDoi(id, tenUser, tenSan, diaChi, gio) {
+        // Clear previous selection
+        document.querySelectorAll('.doi-item').forEach(function(el) {
+            el.style.borderColor = 'var(--border)';
+            el.style.background = '';
+        });
+        var el = document.querySelector('.doi-item[data-id="' + id + '"]');
+        if (el) { el.style.borderColor = '#3b82f6'; el.style.background = 'rgba(59,130,246,.07)'; }
+
+        selectedDatSanBId = id;
+        document.getElementById('hidDatSanBId').value = id;
+        document.getElementById('tenDoiB').textContent = '⚽ ' + tenUser;
+        document.getElementById('sanDoiB').textContent = '🏟 ' + tenSan + ' — ' + diaChi + ' | ⏰ ' + gio;
+        document.getElementById('doiDuocChon').style.display = 'block';
+        validateForm();
+    }
+
+    function updateCount() {
+        document.getElementById('charCount').textContent = document.getElementById('loiNhan').value.length;
+        validateForm();
+    }
+
+    function validateForm() {
+        var ok = selectedDatSanBId !== null && document.getElementById('loiNhan').value.trim().length >= 5;
+        var btn = document.getElementById('btnGui');
+        var err = document.getElementById('errMsg');
+        btn.disabled = !ok;
+        if (!ok) {
+            var msgs = [];
+            if (!selectedDatSanBId) msgs.push('Chọn đội muốn mời');
+            if (document.getElementById('loiNhan').value.trim().length < 5) msgs.push('Nhập lời nhắn (ít nhất 5 ký tự)');
+            err.textContent = '⚠ ' + msgs.join(' — ');
+            err.style.display = 'block';
+        } else {
+            err.style.display = 'none';
+        }
+    }
+
+    function escapeHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
+    }
+
+    document.getElementById('loiNhan').addEventListener('input', validateForm);
+</script>
+}

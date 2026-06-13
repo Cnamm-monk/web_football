@@ -696,5 +696,398 @@ namespace Web_Stadium.Controllers
             TempData["Success"] = "Đã gửi yêu cầu đổi sân! Owner sân mới sẽ xem xét và phản hồi sớm.";
             return RedirectToAction("MyBookings");
         }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/GhepTran/{datSanId} — form gửi lời mời
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> GhepTran(int datSanId)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var don = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
+
+            if (don == null) return NotFound();
+            if (don.TrangThai != "DaXacNhan")
+            {
+                TempData["Error"] = "Chỉ có thể ghép trận với đơn đã xác nhận.";
+                return RedirectToAction("MyBookings");
+            }
+
+            var daCo = await _context.GhepTrans
+                .AnyAsync(g => (g.DatSanAId == datSanId || g.DatSanBId == datSanId)
+                            && (g.TrangThai == "ChoXacNhan" || g.TrangThai == "DaXacNhan"));
+            if (daCo)
+            {
+                TempData["Error"] = "Đơn này đã có yêu cầu ghép trận đang xử lý.";
+                return RedirectToAction("MyBookings");
+            }
+
+            ViewBag.DatSan = don;
+            return View();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // POST /Booking/TimDoiThu — AJAX tìm đơn cùng ngày/giờ
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> TimDoiThu(int datSanAId)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var donA = await _context.DatSans
+                .Include(d => d.KhungGio)
+                .FirstOrDefaultAsync(d => d.Id == datSanAId && d.UserId == userId);
+
+            if (donA == null) return Json(new List<object>());
+
+            var gioBatDau = donA.KhungGio.GioBatDau;
+            var ngay = donA.NgayThiDau.Date;
+
+            var danhSach = await _context.DatSans
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Where(d => d.UserId != userId
+                         && d.TrangThai == "DaXacNhan"
+                         && d.NgayThiDau.Date == ngay
+                         && d.KhungGio.GioBatDau == gioBatDau)
+                .ToListAsync();
+
+            // Lọc đơn chưa bị ghép với đơn của mình
+            var daGhep = await _context.GhepTrans
+                .Where(g => g.TrangThai == "ChoXacNhan" || g.TrangThai == "DaXacNhan")
+                .Select(g => new { g.DatSanAId, g.DatSanBId })
+                .ToListAsync();
+
+            var ketQua = danhSach
+                .Where(d => !daGhep.Any(g =>
+                    (g.DatSanAId == d.Id || g.DatSanBId == d.Id) ||
+                    (g.DatSanAId == datSanAId || g.DatSanBId == datSanAId)))
+                .Select(d => new {
+                    datSanId = d.Id,
+                    tenUser = d.User?.HoTen ?? "Ẩn danh",
+                    tenSan = d.KhungGio?.SanBong?.TenSan ?? "",
+                    diaChi = d.KhungGio?.SanBong?.DiaChi ?? "",
+                    gio = d.KhungGio?.GioBatDau.ToString("HH:mm") + " – " + d.KhungGio?.GioKetThuc.ToString("HH:mm")
+                })
+                .ToList();
+
+            return Json(ketQua);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // POST /Booking/GuiLoiMoiGhep
+        // ══════════════════════════════════════════════════════════
+        [HttpPost]
+        [YeuCauDangNhap]
+        public async Task<IActionResult> GuiLoiMoiGhep(
+            int datSanAId, int datSanBId, string loiNhan)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var donA = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.User)
+                .FirstOrDefaultAsync(d => d.Id == datSanAId && d.UserId == userId);
+            var donB = await _context.DatSans
+                .Include(d => d.User)
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .FirstOrDefaultAsync(d => d.Id == datSanBId && d.TrangThai == "DaXacNhan");
+
+            if (donA == null || donB == null)
+            { TempData["Error"] = "Đơn không hợp lệ."; return RedirectToAction("MyBookings"); }
+            if (donA.TrangThai != "DaXacNhan")
+            { TempData["Error"] = "Đơn của bạn phải ở trạng thái Đã xác nhận."; return RedirectToAction("MyBookings"); }
+            if (donB.UserId == userId)
+            { TempData["Error"] = "Không thể gửi lời mời cho chính mình."; return RedirectToAction("MyBookings"); }
+
+            var daCo = await _context.GhepTrans
+                .AnyAsync(g => (g.DatSanAId == datSanAId || g.DatSanBId == datSanAId)
+                            && (g.TrangThai == "ChoXacNhan" || g.TrangThai == "DaXacNhan"));
+            if (daCo)
+            { TempData["Error"] = "Đơn này đã có yêu cầu ghép trận đang xử lý."; return RedirectToAction("MyBookings"); }
+
+            var ghep = new GhepTran
+            {
+                DatSanAId = datSanAId,
+                DatSanBId = datSanBId,
+                UserAId = userId!.Value,
+                UserBId = donB.UserId,
+                LoiNhan = loiNhan?.Trim() ?? "",
+                TrangThai = "ChoXacNhan",
+                ThoiGianTao = DateTime.Now
+            };
+            _context.GhepTrans.Add(ghep);
+            await _context.SaveChangesAsync();
+
+            // Email User B
+            if (donB.User != null && !string.IsNullOrEmpty(donB.User.Email))
+            {
+                var tenSanA = donA.KhungGio?.SanBong?.TenSan ?? "";
+                var ngay = donA.NgayThiDau.ToString("dd/MM/yyyy");
+                var gio = $"{donA.KhungGio?.GioBatDau:HH\\:mm} – {donA.KhungGio?.GioKetThuc:HH\\:mm}";
+                _ = Task.Run(() => _emailService.GuiEmailLoiMoiGhepTran(
+                    donB.User.Email, donB.User.HoTen ?? "Khách",
+                    donA.User?.HoTen ?? "Đội A",
+                    tenSanA, ngay, gio, loiNhan?.Trim() ?? ""));
+            }
+
+            TempData["Success"] = "Đã gửi lời mời ghép trận! Chờ đội kia xác nhận.";
+            return RedirectToAction("MyBookings");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/LoiMoiGhepTran — danh sách lời mời cho User B
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> LoiMoiGhepTran()
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var list = await _context.GhepTrans
+                .Include(g => g.DatSanA)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(g => g.DatSanA).ThenInclude(d => d.User)
+                .Include(g => g.DatSanB)
+                    .ThenInclude(d => d!.KhungGio).ThenInclude(k => k!.SanBong)
+                .Include(g => g.UserA)
+                .Where(g => g.UserBId == userId && g.TrangThai == "ChoXacNhan")
+                .OrderByDescending(g => g.ThoiGianTao)
+                .ToListAsync();
+            return View(list);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/DemLoiMoiGhep — AJAX badge count
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> DemLoiMoiGhep()
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var count = await _context.GhepTrans
+                .CountAsync(g => g.UserBId == userId && g.TrangThai == "ChoXacNhan");
+            return Json(new { count });
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // POST /Booking/XacNhanGhepTran
+        // ══════════════════════════════════════════════════════════
+        [HttpPost]
+        [YeuCauDangNhap]
+        public async Task<IActionResult> XacNhanGhepTran(int ghepTranId, string hanhDong)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var ghep = await _context.GhepTrans
+                .Include(g => g.DatSanA).ThenInclude(d => d.User)
+                .Include(g => g.UserA)
+                .FirstOrDefaultAsync(g => g.Id == ghepTranId
+                    && g.UserBId == userId
+                    && g.TrangThai == "ChoXacNhan");
+
+            if (ghep == null) return NotFound();
+
+            if (hanhDong == "TuChoi")
+            {
+                ghep.TrangThai = "TuChoi";
+                ghep.ThoiGianXuLy = DateTime.Now;
+                await _context.SaveChangesAsync();
+
+                var userA = ghep.DatSanA.User;
+                var userBten = (await _context.Users.FindAsync(userId))?.HoTen ?? "Đội B";
+                if (userA != null && !string.IsNullOrEmpty(userA.Email))
+                    _ = Task.Run(() => _emailService.GuiEmailGhepTranTuChoi(
+                        userA.Email, userA.HoTen ?? "Đội A", userBten));
+
+                TempData["Success"] = "Đã từ chối lời mời ghép trận.";
+                return RedirectToAction("LoiMoiGhepTran");
+            }
+
+            // ChapNhan → chuyển sang trang chọn sân
+            ghep.TrangThai = "DaXacNhan";
+            ghep.ThoiGianXuLy = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction("ChonSanGhep", new { ghepTranId });
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/ChonSanGhep/{ghepTranId}
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> ChonSanGhep(int ghepTranId)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var ghep = await _context.GhepTrans
+                .Include(g => g.DatSanA)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(g => g.DatSanA).ThenInclude(d => d.User)
+                .Include(g => g.DatSanB)
+                    .ThenInclude(d => d!.KhungGio).ThenInclude(k => k!.SanBong)
+                .Include(g => g.DatSanB).ThenInclude(d => d!.User)
+                .Include(g => g.UserA)
+                .FirstOrDefaultAsync(g => g.Id == ghepTranId
+                    && (g.UserAId == userId || g.UserBId == userId)
+                    && g.TrangThai == "DaXacNhan");
+
+            if (ghep == null) return NotFound();
+
+            var sanList = await _context.SanBongs
+                .Where(s => s.TrangThaiDuyet == "DaDuyet" && !s.IsHidden)
+                .OrderBy(s => s.TenSan)
+                .ToListAsync();
+
+            ViewBag.GhepTran = ghep;
+            ViewBag.SanList = sanList;
+            return View();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // POST /Booking/ChonSanGhep
+        // ══════════════════════════════════════════════════════════
+        [HttpPost]
+        [YeuCauDangNhap]
+        public async Task<IActionResult> ChonSanGhep(
+            int ghepTranId, string hinhThuc, int? sanMoiId, int? khungGioMoiId)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var ghep = await _context.GhepTrans
+                .Include(g => g.DatSanA)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(g => g.DatSanA).ThenInclude(d => d.User)
+                .Include(g => g.DatSanB)
+                    .ThenInclude(d => d!.KhungGio).ThenInclude(k => k!.SanBong)
+                .Include(g => g.DatSanB).ThenInclude(d => d!.User)
+                .FirstOrDefaultAsync(g => g.Id == ghepTranId
+                    && (g.UserAId == userId || g.UserBId == userId)
+                    && g.TrangThai == "DaXacNhan");
+
+            if (ghep == null) return NotFound();
+
+            var donA = ghep.DatSanA;
+            var donB = ghep.DatSanB;
+            var kgA = donA.KhungGio;
+            var kgB = donB?.KhungGio;
+
+            ghep.HinhThuc = hinhThuc;
+            ghep.TrangThai = "HoanTat";
+            ghep.ThoiGianXuLy = DateTime.Now;
+
+            string tenSan, ngay, gio, maXacNhan;
+
+            if (hinhThuc == "SanA")
+            {
+                // Giữ đơn A, hủy đơn B
+                if (donB != null)
+                {
+                    donB.TrangThai = "DaHuy";
+                    if (kgB != null) { kgB.TrangThai = "Trong"; kgB.ThoiGianHetGiuCho = null; }
+                }
+                ghep.SanChonId = kgA.SanBongId;
+                ghep.KhungGioChonId = donA.KhungGioId;
+                tenSan = kgA.SanBong?.TenSan ?? "";
+                ngay = donA.NgayThiDau.ToString("dd/MM/yyyy");
+                gio = $"{kgA.GioBatDau:HH\\:mm} – {kgA.GioKetThuc:HH\\:mm}";
+                maXacNhan = donA.MaXacNhan;
+                await _context.SaveChangesAsync();
+                if (kgB != null)
+                    await _hub.Clients.Group($"san_{kgB.SanBongId}")
+                        .SendAsync("CapNhatKhungGio", new { khungGioId = kgB.Id, trangThai = "Trong", hetHan = (DateTime?)null });
+
+                _ = Task.Run(() => _emailService.GuiEmailGhepTranHoanTat(
+                    donA.User?.Email ?? "", donA.User?.HoTen ?? "Đội A",
+                    donB?.User?.Email ?? "", donB?.User?.HoTen ?? "Đội B",
+                    tenSan, ngay, gio, maXacNhan));
+            }
+            else if (hinhThuc == "SanB")
+            {
+                // Giữ đơn B, hủy đơn A
+                donA.TrangThai = "DaHuy";
+                if (kgA != null) { kgA.TrangThai = "Trong"; kgA.ThoiGianHetGiuCho = null; }
+                if (donB != null)
+                {
+                    ghep.SanChonId = donB.KhungGio?.SanBongId;
+                    ghep.KhungGioChonId = donB.KhungGioId;
+                }
+                tenSan = donB?.KhungGio?.SanBong?.TenSan ?? "";
+                ngay = (donB?.NgayThiDau ?? donA.NgayThiDau).ToString("dd/MM/yyyy");
+                gio = $"{donB?.KhungGio?.GioBatDau:HH\\:mm} – {donB?.KhungGio?.GioKetThuc:HH\\:mm}";
+                maXacNhan = donB?.MaXacNhan ?? "";
+                await _context.SaveChangesAsync();
+                await _hub.Clients.Group($"san_{kgA.SanBongId}")
+                    .SendAsync("CapNhatKhungGio", new { khungGioId = kgA.Id, trangThai = "Trong", hetHan = (DateTime?)null });
+
+                _ = Task.Run(() => _emailService.GuiEmailGhepTranHoanTat(
+                    donA.User?.Email ?? "", donA.User?.HoTen ?? "Đội A",
+                    donB?.User?.Email ?? "", donB?.User?.HoTen ?? "Đội B",
+                    tenSan, ngay, gio, maXacNhan));
+            }
+            else // SanMoi
+            {
+                if (sanMoiId == null || khungGioMoiId == null)
+                {
+                    TempData["Error"] = "Vui lòng chọn sân mới và khung giờ.";
+                    return RedirectToAction("ChonSanGhep", new { ghepTranId });
+                }
+
+                var kgMoi = await _context.KhungGios
+                    .Include(k => k.SanBong)
+                    .FirstOrDefaultAsync(k => k.Id == khungGioMoiId && k.SanBongId == sanMoiId);
+
+                if (kgMoi == null || kgMoi.TrangThai != "Trong")
+                {
+                    TempData["Error"] = "Khung giờ đã chọn không còn trống.";
+                    return RedirectToAction("ChonSanGhep", new { ghepTranId });
+                }
+
+                // Hủy cả 2 đơn
+                donA.TrangThai = "DaHuy";
+                if (kgA != null) { kgA.TrangThai = "Trong"; kgA.ThoiGianHetGiuCho = null; }
+                if (donB != null)
+                {
+                    donB.TrangThai = "DaHuy";
+                    if (kgB != null) { kgB.TrangThai = "Trong"; kgB.ThoiGianHetGiuCho = null; }
+                }
+
+                // Tạo đơn mới
+                var tienCocMoi = Math.Round(kgMoi.Gia * (kgMoi.SanBong?.TyLeCoc ?? 0.30m), 0);
+                var donMoi = new DatSan
+                {
+                    UserId = ghep.UserAId,
+                    KhungGioId = khungGioMoiId.Value,
+                    NgayThiDau = donA.NgayThiDau,
+                    TienCoc = tienCocMoi,
+                    TongTien = 0,
+                    MaXacNhan = $"GT{DateTime.Now:yyMMddHHmm}{ghep.Id:D4}",
+                    TrangThai = "DaXacNhan",
+                    ThoiGianTao = DateTime.Now
+                };
+                _context.DatSans.Add(donMoi);
+                kgMoi.TrangThai = "DaDat";
+
+                ghep.SanChonId = sanMoiId;
+                ghep.KhungGioChonId = khungGioMoiId;
+                await _context.SaveChangesAsync();
+
+                // SignalR broadcast tất cả sân liên quan
+                if (kgA != null)
+                    await _hub.Clients.Group($"san_{kgA.SanBongId}")
+                        .SendAsync("CapNhatKhungGio", new { khungGioId = kgA.Id, trangThai = "Trong", hetHan = (DateTime?)null });
+                if (kgB != null)
+                    await _hub.Clients.Group($"san_{kgB.SanBongId}")
+                        .SendAsync("CapNhatKhungGio", new { khungGioId = kgB.Id, trangThai = "Trong", hetHan = (DateTime?)null });
+                await _hub.Clients.Group($"san_{sanMoiId}")
+                    .SendAsync("CapNhatKhungGio", new { khungGioId = khungGioMoiId, trangThai = "DaDat", hetHan = (DateTime?)null });
+
+                tenSan = kgMoi.SanBong?.TenSan ?? "";
+                ngay = donA.NgayThiDau.ToString("dd/MM/yyyy");
+                gio = $"{kgMoi.GioBatDau:HH\\:mm} – {kgMoi.GioKetThuc:HH\\:mm}";
+                maXacNhan = donMoi.MaXacNhan;
+                _ = Task.Run(() => _emailService.GuiEmailGhepTranSanMoi(
+                    donA.User?.Email ?? "", donA.User?.HoTen ?? "Đội A",
+                    donB?.User?.Email ?? "", donB?.User?.HoTen ?? "Đội B",
+                    tenSan, ngay, gio, maXacNhan));
+            }
+
+            TempData["Success"] = "Ghép trận hoàn tất! Cả hai đội sẽ nhận được email xác nhận.";
+            return RedirectToAction("MyBookings");
+        }
     }
 }

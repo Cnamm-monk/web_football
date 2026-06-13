@@ -1,0 +1,114 @@
+@model List<Web_Stadium.EFCore.GhepTran>
+@{
+    ViewData["Title"] = "Lời mời ghép trận";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container d-flex justify-content-between align-items-end">
+        <div>
+            <div class="section-label">Hộp thư</div>
+            <h1 style="font-style:italic;line-height:0.9;margin:0">
+                LỜI MỜI<br><span class="text-green">GHÉP TRẬN</span>
+            </h1>
+        </div>
+        <div style="font-size:13px;color:var(--muted)">@Model.Count lời mời đang chờ</div>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:720px">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">❌ @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div style="text-align:center;padding:80px 0;color:var(--muted)">
+            <div style="font-size:3rem;margin-bottom:16px">⚽</div>
+            <div style="font-family:var(--ff-h);font-size:1.2rem">Không có lời mời nào đang chờ</div>
+            <div style="font-size:13px;margin-top:8px">Khi có đội mời ghép trận, bạn sẽ thấy ở đây.</div>
+        </div>
+    }
+    else
+    {
+        @foreach (var ghep in Model)
+        {
+            var donA = ghep.DatSanA;
+            var donB = ghep.DatSanB;
+            <div class="section-card p-0 overflow-hidden mb-4" style="border:1px solid #3b82f6">
+                <!-- Header -->
+                <div style="background:rgba(59,130,246,.1);padding:12px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(59,130,246,.2)">
+                    <div>
+                        <strong style="color:#3b82f6;font-size:14px">⚽ Lời mời từ @ghep.UserA?.HoTen</strong>
+                    </div>
+                    <div style="font-size:12px;color:var(--muted)">🕐 @ghep.ThoiGianTao.ToString("dd/MM HH:mm")</div>
+                </div>
+
+                <div class="row g-0">
+                    <!-- Sân A (đội mời) -->
+                    <div class="col-md-6 p-3" style="border-right:1px solid var(--border)">
+                        <div style="font-size:10px;color:var(--green);letter-spacing:1px;margin-bottom:8px">🅰️ SÂN ĐỘI MỜI</div>
+                        <div style="font-size:14px;font-weight:600">@donA.KhungGio?.SanBong?.TenSan</div>
+                        <div style="font-size:12px;color:var(--muted);margin-top:2px">📍 @donA.KhungGio?.SanBong?.DiaChi</div>
+                        <div style="font-size:13px;margin-top:4px">
+                            🕐 @donA.KhungGio?.GioBatDau.ToString("HH:mm") – @donA.KhungGio?.GioKetThuc.ToString("HH:mm")
+                        </div>
+                        <div style="font-size:12px;color:var(--green);margin-top:2px">
+                            📅 @donA.NgayThiDau.ToString("dd/MM/yyyy")
+                        </div>
+                    </div>
+
+                    <!-- Sân B (của mình) -->
+                    <div class="col-md-6 p-3">
+                        <div style="font-size:10px;color:#3b82f6;letter-spacing:1px;margin-bottom:8px">🅱️ SÂN CỦA BẠN</div>
+                        @if (donB != null)
+                        {
+                            <div style="font-size:14px;font-weight:600">@donB.KhungGio?.SanBong?.TenSan</div>
+                            <div style="font-size:12px;color:var(--muted);margin-top:2px">📍 @donB.KhungGio?.SanBong?.DiaChi</div>
+                            <div style="font-size:13px;margin-top:4px">
+                                🕐 @donB.KhungGio?.GioBatDau.ToString("HH:mm") – @donB.KhungGio?.GioKetThuc.ToString("HH:mm")
+                            </div>
+                        }
+                        else
+                        {
+                            <div style="color:var(--muted);font-size:13px">Chưa xác định đơn của bạn</div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Lời nhắn -->
+                <div style="padding:12px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,.03)">
+                    <span style="font-size:11px;color:var(--muted)">💬 Lời nhắn:</span>
+                    <span style="font-size:13px;margin-left:6px;font-style:italic">"@ghep.LoiNhan"</span>
+                </div>
+
+                <!-- Nút xử lý -->
+                <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:10px">
+                    <form method="post" action="/Booking/XacNhanGhepTran" style="margin:0">
+                        <input type="hidden" name="ghepTranId" value="@ghep.Id" />
+                        <button type="submit" name="hanhDong" value="ChapNhan"
+                                class="btn btn-success rounded-pill btn-sm"
+                                onclick="return confirm('Chấp nhận lời mời ghép trận từ @ghep.UserA?.HoTen?')">
+                            ✅ Chấp nhận — Chọn sân thi đấu
+                        </button>
+                        <button type="submit" name="hanhDong" value="TuChoi"
+                                class="btn btn-danger rounded-pill btn-sm"
+                                onclick="return confirm('Từ chối lời mời này?')">
+                            ❌ Từ chối
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+    }
+
+    <div style="text-align:center;margin-top:24px">
+        <a href="/User/HoSo?tab=lichsu" class="btn btn-outline-secondary rounded-pill">← Quay lại hồ sơ</a>
+    </div>
+</div>

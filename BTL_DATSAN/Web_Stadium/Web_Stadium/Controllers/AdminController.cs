@@ -1245,5 +1245,29 @@ namespace Web_Stadium.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction("YeuCauDoiSan");
         }
+
+        // ══════════════════════════════════════════════════════════
+        // GIÁM SÁT GHÉP TRẬN
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> GhepTran(string? trangThai)
+        {
+            var query = _context.GhepTrans
+                .Include(g => g.DatSanA)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(g => g.DatSanA).ThenInclude(d => d.User)
+                .Include(g => g.DatSanB)
+                    .ThenInclude(d => d!.KhungGio).ThenInclude(k => k!.SanBong)
+                .Include(g => g.DatSanB).ThenInclude(d => d!.User)
+                .Include(g => g.UserA)
+                .Include(g => g.UserB)
+                .Include(g => g.SanChon)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(trangThai))
+                query = query.Where(g => g.TrangThai == trangThai);
+
+            ViewBag.TrangThaiFilter = trangThai;
+            return View(await query.OrderByDescending(g => g.ThoiGianTao).ToListAsync());
+        }
     }
 }

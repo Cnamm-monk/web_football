@@ -737,5 +737,186 @@ namespace Web_Stadium.Services
             await GuiEmailAsync(userEmail, userName,
                 $"[PitchHub] Yêu cầu đổi sang sân {tenSanMoi} không được chấp thuận", body);
         }
+
+        // ══════════════════════════════════════════════════════════
+        // 12. LỜI MỜI GHÉP TRẬN → USER B
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailLoiMoiGhepTran(
+            string emailB, string tenUserB,
+            string tenUserA, string tenSanA,
+            string ngay, string gio, string loiNhan)
+        {
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+    <div style='color:#1ed760;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>LỜI MỜI GHÉP TRẬN ⚽</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{tenUserB}</strong>,</p>
+    <p style='color:#555;'>Bạn nhận được lời mời ghép trận từ <strong style='color:#0EA86A;'>{tenUserA}</strong>!</p>
+    <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:120px;'>👤 Đội mời</td><td style='color:#333;font-weight:700;'>{tenUserA}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>🏟 Sân của họ</td><td style='color:#333;'>{tenSanA}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày</td><td style='color:#0EA86A;font-weight:700;'>{ngay}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Khung giờ</td><td style='color:#0EA86A;font-weight:700;'>{gio}</td></tr>
+      </table>
+      <div style='margin-top:14px;padding:12px;background:#fff;border-radius:8px;border:1px solid #eee;'>
+        <div style='font-size:.75rem;color:#888;margin-bottom:4px;'>💬 Lời nhắn:</div>
+        <div style='color:#333;font-style:italic;'>""{loiNhan}""</div>
+      </div>
+    </div>
+    <div style='text-align:center;margin-top:20px;'>
+      <a href='https://localhost:7000/Booking/LoiMoiGhepTran'
+         style='background:#0EA86A;color:#fff;text-decoration:none;padding:12px 28px;
+                border-radius:999px;font-weight:700;font-size:.95rem;display:inline-block;'>
+        Xem và phản hồi lời mời →
+      </a>
+    </div>
+    <p style='color:#888;font-size:.8rem;margin-top:16px;text-align:center;'>
+      Đăng nhập vào PitchHub để chấp nhận hoặc từ chối lời mời này.
+    </p>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(emailB, tenUserB,
+                $"[PitchHub] ⚽ {tenUserA} mời bạn ghép trận — {ngay} {gio}", body);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 13. TỪ CHỐI GHÉP TRẬN → USER A
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailGhepTranTuChoi(
+            string emailA, string tenUserA, string tenUserB)
+        {
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#1a0a0a,#3a1a1a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#ef4444;'>HUB</span>⚽</div>
+    <div style='color:#ef4444;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>LỜI MỜI BỊ TỪ CHỐI</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{tenUserA}</strong>,</p>
+    <p style='color:#555;'><strong style='color:#ef4444;'>{tenUserB}</strong> đã từ chối lời mời ghép trận của bạn.</p>
+    <p style='color:#777;font-size:.9rem;'>Đừng nản lòng! Bạn có thể tìm đối thủ khác trên <strong>PitchHub</strong> hoặc đăng bài tìm đối thủ tại trang Matchmaking.</p>
+    <div style='text-align:center;margin-top:20px;'>
+      <a href='https://localhost:7000/Matchmaking'
+         style='background:#0EA86A;color:#fff;text-decoration:none;padding:12px 28px;
+                border-radius:999px;font-weight:700;font-size:.95rem;display:inline-block;'>
+        Tìm đối thủ khác →
+      </a>
+    </div>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(emailA, tenUserA,
+                $"[PitchHub] {tenUserB} đã từ chối lời mời ghép trận", body);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 14. GHÉP TRẬN HOÀN TẤT (sân A hoặc B) → 2 đội
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailGhepTranHoanTat(
+            string emailA, string tenUserA,
+            string emailB, string tenUserB,
+            string tenSan, string ngay, string gio, string maXacNhan)
+        {
+            async Task GuiMot(string email, string ten)
+            {
+                var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+    <div style='color:#1ed760;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>GHÉP TRẬN THÀNH CÔNG! 🎉</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{ten}</strong>,</p>
+    <p style='color:#555;'>Trận đấu ghép cặp của bạn đã được xác nhận!</p>
+    <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:120px;'>🏟 Sân đấu</td><td style='color:#0EA86A;font-weight:700;'>{tenSan}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày</td><td style='color:#0EA86A;font-weight:700;'>{ngay}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Giờ đá</td><td style='color:#0EA86A;font-weight:700;'>{gio}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>🆚 Đối đầu</td><td style='color:#333;font-weight:700;'>{tenUserA} vs {tenUserB}</td></tr>
+      </table>
+      <div style='background:#0f1f14;border-radius:10px;padding:14px;text-align:center;margin-top:12px;'>
+        <div style='color:#888;font-size:.72rem;letter-spacing:1.5px;'>MÃ CHECK-IN</div>
+        <div style='font-family:monospace;font-size:1.4rem;font-weight:900;color:#1ed760;letter-spacing:3px;margin-top:4px;'>{maXacNhan}</div>
+      </div>
+    </div>
+    <p style='color:#666;font-size:.85rem;text-align:center;'>Chúc các bạn có trận đấu sôi nổi! 🏆</p>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+                await GuiEmailAsync(email, ten,
+                    $"[PitchHub] 🎉 Ghép trận thành công — {tenSan} {ngay}", body);
+            }
+            await GuiMot(emailA, tenUserA);
+            await GuiMot(emailB, tenUserB);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 15. GHÉP TRẬN SÂN MỚI → 2 đội
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailGhepTranSanMoi(
+            string emailA, string tenUserA,
+            string emailB, string tenUserB,
+            string tenSanMoi, string ngay, string gio, string maXacNhan)
+        {
+            async Task GuiMot(string email, string ten)
+            {
+                var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+    <div style='color:#1ed760;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>SÂN MỚI ĐÃ ĐẶT! 🆕</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{ten}</strong>,</p>
+    <p style='color:#555;'>Ghép trận thành công! Hai đội đã đồng thuận chuyển sang <strong style='color:#0EA86A;'>sân mới</strong>.</p>
+    <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:120px;'>🏟 Sân mới</td><td style='color:#0EA86A;font-weight:700;'>{tenSanMoi}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày</td><td style='color:#0EA86A;font-weight:700;'>{ngay}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Giờ đá</td><td style='color:#0EA86A;font-weight:700;'>{gio}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>🆚 Đối đầu</td><td style='color:#333;font-weight:700;'>{tenUserA} vs {tenUserB}</td></tr>
+      </table>
+      <div style='background:#0f1f14;border-radius:10px;padding:14px;text-align:center;margin-top:12px;'>
+        <div style='color:#888;font-size:.72rem;letter-spacing:1.5px;'>MÃ CHECK-IN</div>
+        <div style='font-family:monospace;font-size:1.4rem;font-weight:900;color:#1ed760;letter-spacing:3px;margin-top:4px;'>{maXacNhan}</div>
+      </div>
+    </div>
+    <p style='color:#888;font-size:.8rem;'>Đơn đặt sân cũ của bạn đã được hủy tự động và hoàn cọc theo quy định.</p>
+    <p style='color:#666;font-size:.85rem;text-align:center;'>Chúc các bạn có trận đấu sôi nổi! 🏆</p>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+                await GuiEmailAsync(email, ten,
+                    $"[PitchHub] 🆕 Ghép trận — sân mới {tenSanMoi} {ngay}", body);
+            }
+            await GuiMot(emailA, tenUserA);
+            await GuiMot(emailB, tenUserB);
+        }
     }
 }

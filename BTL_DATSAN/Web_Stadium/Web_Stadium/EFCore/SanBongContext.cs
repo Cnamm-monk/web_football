@@ -60,6 +60,9 @@ public partial class SanBongContext : DbContext
     public virtual DbSet<YeuCauDoiGio> YeuCauDoiGios { get; set; }
     public virtual DbSet<YeuCauDoiSan> YeuCauDoiSans { get; set; }
 
+    // - V8: Ghép trận
+    public virtual DbSet<GhepTran> GhepTrans { get; set; }
+
     // - V6: 6 bang moi
     public virtual DbSet<BangDau> BangDaus { get; set; }
     public virtual DbSet<DoiBong> DoiBongs { get; set; }
@@ -729,6 +732,32 @@ public partial class SanBongContext : DbContext
                 .OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(e => e.OwnerXuLy).WithMany()
                 .HasForeignKey(e => e.OwnerXuLyId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ── V8: GhepTran ─────────────────────────────────────────
+        modelBuilder.Entity<GhepTran>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TrangThai).HasMaxLength(20).HasDefaultValue("ChoXacNhan");
+            entity.Property(e => e.HinhThuc).HasMaxLength(10);
+            entity.HasOne(e => e.DatSanA).WithMany()
+                .HasForeignKey(e => e.DatSanAId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.DatSanB).WithMany()
+                .HasForeignKey(e => e.DatSanBId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.UserA).WithMany()
+                .HasForeignKey(e => e.UserAId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.UserB).WithMany()
+                .HasForeignKey(e => e.UserBId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.SanChon).WithMany()
+                .HasForeignKey(e => e.SanChonId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(e => e.KhungGioChon).WithMany()
+                .HasForeignKey(e => e.KhungGioChonId)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 

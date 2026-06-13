@@ -265,6 +265,17 @@
                 {
                     @if (role == "User")
                     {
+                        <!-- Badge lời mời ghép trận -->
+                        <div style="position:relative;display:inline-flex;align-items:center;">
+                            <a href="/Booking/LoiMoiGhepTran" class="heart-nav-btn" title="Lời mời ghép trận" style="text-decoration:none;">
+                                ⚽
+                            </a>
+                            <span id="ghepBadge" style="display:none;position:absolute;top:0;right:0;background:#ef4444;
+                                   color:#fff;font-size:.6rem;font-weight:700;min-width:16px;height:16px;
+                                   border-radius:50%;display:flex;align-items:center;justify-content:center;
+                                   padding:0 3px;pointer-events:none;" id="ghepBadge">0</span>
+                        </div>
+
                         <a href="/Venues" class="heart-nav-btn" title="Tìm sân" style="text-decoration:none;">
                             <svg width="22" height="22" viewBox="0 0 24 24"
                                  fill="none" stroke="white" stroke-width="2"
@@ -416,6 +427,25 @@
             setTimeout(function() { el.style.display = 'none'; }, 4000);
         });
     </script>
+
+    @* Badge lời mời ghép trận cho User *@
+    @if (role == "User")
+    {
+        <script>
+            (function() {
+                fetch('/Booking/DemLoiMoiGhep')
+                    .then(r => r.json())
+                    .then(data => {
+                        var badge = document.getElementById('ghepBadge');
+                        if (badge && data.count > 0) {
+                            badge.textContent = data.count;
+                            badge.style.display = 'flex';
+                        }
+                    })
+                    .catch(function() {});
+            })();
+        </script>
+    }
 
     @await RenderSectionAsync("Scripts", required: false)
 
