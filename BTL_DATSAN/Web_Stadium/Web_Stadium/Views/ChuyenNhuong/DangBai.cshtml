@@ -5,6 +5,10 @@
     var san = don?.KhungGio?.SanBong;
     var kg = don?.KhungGio;
     var defaultSdt = ViewBag.UserSdt as string;
+    var conLai = (decimal)(ViewBag.ConLai ?? 0m);
+    var tienCoc = don?.TienCoc ?? 0m;
+    var tongTien = don?.TongTien ?? 0m;
+    var giaThue = kg?.Gia ?? 0m;
 }
 
 <div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
@@ -33,23 +37,73 @@
             <div class="col-5" style="color:var(--muted)">Mã đơn</div>
             <div class="col-7" style="font-size:12px;color:var(--muted2)">@don?.MaXacNhan</div>
         </div>
-        @if (don?.DatSanDichVus?.Any() == true)
-        {
-            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-                <div style="font-size:11px;color:var(--muted);margin-bottom:6px">🎁 Dịch vụ kèm theo:</div>
-                <div class="d-flex gap-2 flex-wrap">
-                    @foreach (var dv in don.DatSanDichVus)
-                    {
-                        <span class="badge bg-success" style="font-size:11px;">@dv.DichVu?.TenDichVu</span>
-                    }
-                </div>
-            </div>
-        }
     </div>
 
-    <!-- Disclaimer -->
-    <div class="alert alert-warning" style="font-size:13px;border-radius:10px;">
-        ⚠️ <strong>Lưu ý:</strong> Mọi giao dịch tài chính giữa hai bên thực hiện <strong>ngoài hệ thống</strong>. PitchHub chỉ hỗ trợ thủ tục chuyển chủ đơn đặt sân sau khi được kiểm duyệt.
+    <!-- Bảng tài chính tự động -->
+    <div class="section-card p-0 overflow-hidden mb-4" style="border:1px solid var(--border);border-radius:12px">
+        <div style="background:linear-gradient(135deg,#0d9f5e,#097A4E);padding:12px 16px">
+            <div style="color:#fff;font-weight:700;font-size:13px">💰 THÔNG TIN TÀI CHÍNH ĐƠN</div>
+        </div>
+        <div class="p-3">
+            <!-- Giá thuê sân -->
+            <div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid var(--border)">
+                <span style="color:var(--muted)">Giá thuê sân</span>
+                <span><strong>@giaThue.ToString("N0") đ</strong></span>
+            </div>
+
+            <!-- Tiền cọc -->
+            <div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid var(--border)">
+                <span style="color:var(--muted)">
+                    Tiền cọc đã trả
+                    @if (tongTien > 0)
+                    {
+                        <span style="font-size:11px;color:var(--muted2)">(@((tienCoc / tongTien * 100).ToString("0")!)%)</span>
+                    }
+                </span>
+                <span style="color:var(--green);font-weight:700">@tienCoc.ToString("N0") đ ✅</span>
+            </div>
+
+            <!-- Còn lại -->
+            <div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;@(don?.DatSanDichVus?.Any() == true ? "border-bottom:1px solid var(--border)" : "")">
+                <span style="color:var(--muted)">Còn lại phải trả khi check-in</span>
+                <span style="color:@(conLai > 0 ? "#f59e0b" : "var(--green)");font-weight:700">
+                    @(conLai > 0 ? conLai.ToString("N0") + " đ" : "Đã thanh toán đủ")
+                </span>
+            </div>
+
+            <!-- Dịch vụ -->
+            @if (don?.DatSanDichVus?.Any() == true)
+            {
+                <div style="padding:8px 0 4px">
+                    <div style="font-size:11px;color:var(--muted);letter-spacing:0.5px;margin-bottom:6px">DỊCH VỤ KÈM THEO</div>
+                    @foreach (var dv in don.DatSanDichVus)
+                    {
+                        var giaDv = (dv.DichVu?.Gia ?? 0) * dv.SoLuong;
+                        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0">
+                            <span style="color:var(--muted2)">• @(dv.DichVu?.TenDichVu ?? "—") x@dv.SoLuong</span>
+                            <span>@giaDv.ToString("N0") đ</span>
+                        </div>
+                    }
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:15px;padding:10px 0 4px;border-top:2px solid var(--border);margin-top:4px">
+                    <span style="font-weight:700">Tổng giá trị đơn</span>
+                    <span style="font-weight:900;color:var(--green)">@tongTien.ToString("N0") đ</span>
+                </div>
+            }
+            else
+            {
+                <div style="display:flex;justify-content:space-between;font-size:15px;padding:10px 0 4px;border-top:2px solid var(--border);margin-top:4px">
+                    <span style="font-weight:700">Tổng giá trị đơn</span>
+                    <span style="font-weight:900;color:var(--green)">@tongTien.ToString("N0") đ</span>
+                </div>
+            }
+        </div>
+
+        <!-- Lưu ý tiếp quản -->
+        <div style="background:rgba(245,158,11,.08);border-top:1px solid rgba(245,158,11,.3);padding:12px 16px;font-size:12px;color:#92400e;line-height:1.6">
+            ⚠️ <strong>Lưu ý:</strong> Người nhận chuyển nhượng sẽ tiếp quản toàn bộ đơn này@(conLai > 0 ? $", bao gồm khoản còn lại <strong>{conLai.ToString("N0")} đ</strong> cần thanh toán khi check-in" : "").
+            Mọi thỏa thuận tài chính giữa 2 bên thực hiện ngoài hệ thống.
+        </div>
     </div>
 
     <!-- Form đăng bài -->
@@ -57,6 +111,7 @@
         <input type="hidden" name="datSanId" value="@don?.Id" />
 
         <div class="section-card p-3 mb-3">
+            <!-- Tiêu đề -->
             <div class="mb-3">
                 <label class="form-label fw-semibold" style="font-size:13px">📌 Tiêu đề bài đăng <span style="color:#ef4444">*</span></label>
                 <input name="tieuDe" type="text" class="form-control"
@@ -65,6 +120,7 @@
                        style="background:var(--bg3);border-color:var(--border);color:var(--text)" />
             </div>
 
+            <!-- Mô tả -->
             <div class="mb-3">
                 <label class="form-label fw-semibold" style="font-size:13px">💬 Mô tả / Lý do chuyển nhượng</label>
                 <textarea name="moTa" class="form-control" rows="3"
@@ -73,6 +129,7 @@
                           style="background:var(--bg3);border-color:var(--border);color:var(--text);resize:none"></textarea>
             </div>
 
+            <!-- SĐT -->
             <div class="mb-3">
                 <label class="form-label fw-semibold" style="font-size:13px">📞 Số điện thoại liên hệ <span style="color:#ef4444">*</span></label>
                 <input name="soDienThoaiLienHe" type="tel" class="form-control"
@@ -85,18 +142,56 @@
                 <div style="font-size:12px;color:var(--muted);margin-top:4px">Số này sẽ hiển thị cho người muốn tiếp nhận</div>
             </div>
 
-            <div class="mb-2">
-                <label class="form-label fw-semibold" style="font-size:13px">💰 Giá chuyển nhượng (đ)</label>
-                <div class="input-group">
-                    <input name="giaChuyenNhuong" id="giaInput" type="number" min="0" step="10000" value="0"
-                           class="form-control"
-                           style="background:var(--bg3);border-color:var(--border);color:var(--text)" />
-                    <span class="input-group-text" style="background:var(--bg3);border-color:var(--border);color:var(--muted)">đ</span>
+            <!-- Giá chuyển nhượng — 2 lựa chọn -->
+            <div class="mb-1">
+                <label class="form-label fw-semibold" style="font-size:13px">💰 Giá chuyển nhượng</label>
+
+                <div style="display:flex;flex-direction:column;gap:10px">
+                    <!-- Option: Miễn phí -->
+                    <label style="display:flex;align-items:center;gap:10px;padding:12px;border:2px solid var(--border);
+                                  border-radius:10px;cursor:pointer;transition:border-color .2s"
+                           id="lblMienPhi">
+                        <input type="radio" name="loaiGia" value="mienPhi" id="rdoMienPhi"
+                               style="width:18px;height:18px;accent-color:var(--green)" checked />
+                        <div>
+                            <div style="font-weight:700;font-size:14px;color:var(--green)">Miễn phí — tặng lại đơn</div>
+                            <div style="font-size:12px;color:var(--muted)">Không thu tiền từ người nhận</div>
+                        </div>
+                    </label>
+
+                    <!-- Option: Có thỏa thuận -->
+                    <label style="display:flex;flex-direction:column;gap:8px;padding:12px;border:2px solid var(--border);
+                                  border-radius:10px;cursor:pointer;transition:border-color .2s"
+                           id="lblCoGia">
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <input type="radio" name="loaiGia" value="coGia" id="rdoCoGia"
+                                   style="width:18px;height:18px;accent-color:#f59e0b" />
+                            <div>
+                                <div style="font-weight:700;font-size:14px;color:#f59e0b">Có thỏa thuận giá</div>
+                                <div style="font-size:12px;color:var(--muted)">Thu lại một phần chi phí đã bỏ ra</div>
+                            </div>
+                        </div>
+                        <div id="giaInputWrapper" style="display:none;padding-left:28px">
+                            <div class="input-group input-group-sm">
+                                <input id="giaInput" type="number" min="0" step="10000"
+                                       value="@((long)tienCoc)"
+                                       class="form-control"
+                                       placeholder="Nhập số tiền"
+                                       style="background:var(--bg3);border-color:var(--border);color:var(--text)" />
+                                <span class="input-group-text" style="background:var(--bg3);border-color:var(--border);color:var(--muted)">đ</span>
+                            </div>
+                            @if (tienCoc > 0)
+                            {
+                                <div style="font-size:12px;color:var(--muted);margin-top:4px">
+                                    💡 Gợi ý: bằng tiền cọc đã trả <strong>@tienCoc.ToString("N0") đ</strong>
+                                </div>
+                            }
+                        </div>
+                    </label>
                 </div>
-                <div style="font-size:12px;color:var(--muted);margin-top:4px">
-                    Nhập 0 nếu muốn chuyển miễn phí (cho tặng)
-                </div>
-                <div id="giaPreview" style="margin-top:6px;font-size:13px;display:none"></div>
+
+                <!-- Hidden field thực sự gửi lên server -->
+                <input type="hidden" name="giaChuyenNhuong" id="giaHidden" value="0" />
             </div>
         </div>
 
@@ -123,22 +218,36 @@
 <script>
     const checkbox = document.getElementById('xacNhanCheckbox');
     const submitBtn = document.getElementById('submitBtn');
+    const rdoMienPhi = document.getElementById('rdoMienPhi');
+    const rdoCoGia = document.getElementById('rdoCoGia');
+    const giaInputWrapper = document.getElementById('giaInputWrapper');
     const giaInput = document.getElementById('giaInput');
-    const giaPreview = document.getElementById('giaPreview');
+    const giaHidden = document.getElementById('giaHidden');
+    const lblMienPhi = document.getElementById('lblMienPhi');
+    const lblCoGia = document.getElementById('lblCoGia');
+
+    function updateRadioStyle() {
+        if (rdoMienPhi.checked) {
+            lblMienPhi.style.borderColor = 'var(--green)';
+            lblCoGia.style.borderColor = 'var(--border)';
+            giaInputWrapper.style.display = 'none';
+            giaHidden.value = '0';
+        } else {
+            lblMienPhi.style.borderColor = 'var(--border)';
+            lblCoGia.style.borderColor = '#f59e0b';
+            giaInputWrapper.style.display = 'block';
+            giaHidden.value = giaInput.value || '0';
+        }
+    }
+
+    rdoMienPhi.addEventListener('change', updateRadioStyle);
+    rdoCoGia.addEventListener('change', updateRadioStyle);
+    giaInput.addEventListener('input', () => { giaHidden.value = giaInput.value || '0'; });
 
     checkbox.addEventListener('change', () => {
         submitBtn.disabled = !checkbox.checked;
     });
 
-    giaInput.addEventListener('input', () => {
-        const val = parseFloat(giaInput.value) || 0;
-        if (val === 0) {
-            giaPreview.style.display = 'block';
-            giaPreview.innerHTML = '<span style="color:var(--green);font-weight:700">✅ MIỄN PHÍ — cho tặng</span>';
-        } else {
-            giaPreview.style.display = 'block';
-            giaPreview.innerHTML = '<span style="color:#f59e0b">⚠️ Giá: <strong>' +
-                val.toLocaleString('vi-VN') + ' đ</strong> — thỏa thuận ngoài hệ thống</span>';
-        }
-    });
+    // Init
+    updateRadioStyle();
 </script>

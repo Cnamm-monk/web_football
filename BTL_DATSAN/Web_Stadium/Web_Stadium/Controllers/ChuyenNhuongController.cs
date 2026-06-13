@@ -93,9 +93,12 @@ namespace Web_Stadium.Controllers
                 return RedirectToAction("MyBookings", "Booking");
             }
 
-            ViewBag.DatSan = don;
             var user = await _context.Users.FindAsync(userId);
+            ViewBag.DatSan = don;
             ViewBag.UserSdt = user?.SoDienThoai;
+            // Tính tài chính
+            decimal conLai = (don.TongTien > 0 ? don.TongTien : 0) - don.TienCoc;
+            ViewBag.ConLai = conLai < 0 ? 0 : conLai;
             return View();
         }
 
