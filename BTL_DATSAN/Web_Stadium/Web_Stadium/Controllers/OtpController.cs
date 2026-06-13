@@ -94,29 +94,98 @@ namespace Web_Stadium.Controllers
 
             // ✅ GỬI OTP QUA EMAIL (thay vì SMS)
             var emailBody = $@"
-        <div style='font-family:Arial,sans-serif;max-width:480px;margin:0 auto;'>
-            <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:24px;
-                        text-align:center;border-radius:12px 12px 0 0;'>
-                <div style='font-size:1.6rem;font-weight:900;color:#fff;'>
-                    PITCH<span style='color:#1ed760;'>HUB</span>⚽
-                </div>
+<!DOCTYPE html>
+<html>
+<head><meta charset='utf-8'></head>
+<body style='margin:0;padding:0;background:#f4f4f5;font-family:Inter,Segoe UI,sans-serif;'>
+  <table width='100%' cellpadding='0' cellspacing='0'
+         style='background:#f4f4f5;padding:40px 0;'>
+    <tr><td align='center'>
+      <table width='520' cellpadding='0' cellspacing='0'
+             style='background:#ffffff;border-radius:16px;
+                    overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);'>
+
+        <!-- HEADER -->
+        <tr>
+          <td style='background:linear-gradient(135deg,#0ea86a,#059952);
+                     padding:32px 40px;text-align:center;'>
+            <div style='font-size:28px;font-weight:800;color:#ffffff;
+                        letter-spacing:-0.5px;'>
+              PITCH<span style='color:#86efac;'>HUB</span> ⚽
             </div>
-            <div style='padding:24px;background:#fff;border-radius:0 0 12px 12px;'>
-                <p style='color:#333;'>Xin chào <strong>{user.HoTen}</strong>,</p>
-                <p style='color:#333;'>Mã OTP xác thực số điện thoại của bạn là:</p>
-                <div style='background:#0f1f14;border-radius:10px;padding:16px;
-                            text-align:center;margin:16px 0;'>
-                    <div style='font-family:monospace;font-size:2rem;font-weight:900;
-                                color:#1ed760;letter-spacing:8px;'>
-                        {maOtp}
-                    </div>
-                </div>
-                <p style='color:#888;font-size:13px;'>
-                    Mã có hiệu lực trong <strong>5 phút</strong>.
-                    Không chia sẻ mã này cho bất kỳ ai.
-                </p>
+            <div style='color:rgba(255,255,255,0.8);font-size:13px;
+                        margin-top:4px;'>Nền tảng đặt sân số 1 Việt Nam</div>
+          </td>
+        </tr>
+
+        <!-- BODY -->
+        <tr>
+          <td style='padding:40px;'>
+
+            <!-- Icon + Title -->
+            <div style='text-align:center;margin-bottom:24px;'>
+              <div style='width:64px;height:64px;border-radius:50%;
+                          background:#f0fdf4;border:2px solid #bbf7d0;
+                          display:inline-flex;align-items:center;
+                          justify-content:center;font-size:28px;
+                          margin-bottom:16px;'>🔐</div>
+              <h2 style='margin:0;font-size:22px;font-weight:700;
+                          color:#111827;'>Xác thực tài khoản</h2>
+              <p style='margin:8px 0 0;color:#6b7280;font-size:14px;'>
+                Xin chào <strong style='color:#111827;'>{user.HoTen}</strong>,
+                đây là mã OTP của bạn
+              </p>
             </div>
-        </div>";
+
+            <!-- OTP Box -->
+            <div style='background:linear-gradient(135deg,#f0fdf4,#dcfce7);
+                        border:2px solid #86efac;border-radius:12px;
+                        padding:28px;text-align:center;margin:24px 0;'>
+              <div style='font-size:11px;font-weight:600;color:#16a34a;
+                          text-transform:uppercase;letter-spacing:2px;
+                          margin-bottom:12px;'>Mã xác thực OTP</div>
+              <div style='font-size:42px;font-weight:800;
+                          letter-spacing:12px;color:#0ea86a;
+                          font-family:monospace;'>{maOtp}</div>
+              <div style='margin-top:12px;font-size:12px;color:#6b7280;'>
+                ⏱ Mã có hiệu lực trong <strong>5 phút</strong>
+              </div>
+            </div>
+
+            <!-- Warning -->
+            <div style='background:#fef9c3;border:1px solid #fde047;
+                        border-radius:8px;padding:12px 16px;'>
+              <div style='font-size:13px;color:#854d0e;line-height:1.5;'>
+                ⚠️ <strong>Lưu ý bảo mật:</strong> Không chia sẻ mã này
+                cho bất kỳ ai. PitchHub sẽ không bao giờ yêu cầu mã OTP
+                qua điện thoại hay email khác.
+              </div>
+            </div>
+
+            <!-- Note -->
+            <p style='font-size:13px;color:#9ca3af;text-align:center;
+                      margin-top:24px;'>
+              Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email.
+            </p>
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style='background:#f9fafb;padding:20px 40px;
+                     border-top:1px solid #e5e7eb;text-align:center;'>
+            <p style='margin:0;font-size:12px;color:#9ca3af;'>
+              © 2026 PitchHub.vn ·
+              <a href='#' style='color:#0ea86a;text-decoration:none;'>Hỗ trợ</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>";
 
             try
             {
