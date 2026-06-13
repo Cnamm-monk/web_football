@@ -1182,5 +1182,68 @@ namespace Web_Stadium.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction("YeuCauDoiGio");
         }
+
+        // ══════════════════════════════════════════════════════════
+        // GIÁM SÁT YÊU CẦU ĐỔI SÂN
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> YeuCauDoiSan(string? trangThai)
+        {
+            var query = _context.YeuCauDoiSans
+                .Include(y => y.DatSan)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.SanMoi)
+                .Include(y => y.KhungGioMoi)
+                .Include(y => y.OwnerXuLy)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(trangThai))
+                query = query.Where(y => y.TrangThai == trangThai);
+
+            ViewBag.TrangThaiFilter = trangThai;
+            return View(await query.OrderByDescending(y => y.ThoiGianTao).ToListAsync());
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> GhiDeDoiSan(int yeuCauId, string hanhDong, string? ghiChuAdmin)
+        {
+            var adminId = GetAdminId();
+            var yc = await _context.YeuCauDoiSans
+                .Include(y => y.DatSan)
+                    .ThenInclude(d => d.KhungGio)
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.SanMoi)
+                .Include(y => y.KhungGioMoi)
+                .FirstOrDefaultAsync(y => y.Id == yeuCauId);
+
+            if (yc == null) return NotFound();
+
+            if (hanhDong == "PheDuyet" && yc.TrangThai != "DaPheDuyet")
+            {
+                var kgMoi = await _context.KhungGios.FindAsync(yc.KhungGioMoiId);
+                if (kgMoi != null && kgMoi.TrangThai == "Trong")
+                {
+                    var don = yc.DatSan;
+                    var kgCu = don.KhungGio;
+                    if (kgCu != null) { kgCu.TrangThai = "Trong"; kgCu.ThoiGianHetGiuCho = null; }
+                    kgMoi.TrangThai = "DaDat";
+                    don.KhungGioId = yc.KhungGioMoiId;
+                }
+                yc.TrangThai = "DaPheDuyet";
+                yc.OwnerXuLyId = adminId;
+                await GhiLog("AdminPheDuyetDoiSan", "YeuCauDoiSan", yc.Id, $"Admin ghi đè phê duyệt đổi sân đơn {yc.DatSan.MaXacNhan}");
+                TempData["Success"] = "Admin đã ghi đè — phê duyệt đổi sân thành công.";
+            }
+            else if (hanhDong == "TuChoi" && yc.TrangThai != "TuChoi")
+            {
+                yc.TrangThai = "TuChoi";
+                yc.OwnerXuLyId = adminId;
+                await GhiLog("AdminTuChoiDoiSan", "YeuCauDoiSan", yc.Id, $"Admin ghi đè từ chối đổi sân đơn {yc.DatSan.MaXacNhan}");
+                TempData["Success"] = "Admin đã ghi đè — từ chối yêu cầu đổi sân.";
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction("YeuCauDoiSan");
+        }
     }
 }

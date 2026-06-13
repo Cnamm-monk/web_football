@@ -1,0 +1,157 @@
+@model List<Web_Stadium.EFCore.YeuCauDoiSan>
+@{
+    ViewData["Title"] = "Yêu cầu đổi sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container d-flex justify-content-between align-items-end">
+        <div>
+            <div class="section-label">Owner</div>
+            <h1 style="font-style:italic;line-height:0.9;margin:0">
+                YÊU CẦU<br><span class="text-green">ĐỔI SÂN</span>
+            </h1>
+        </div>
+        <div style="font-size:13px;color:var(--muted)">@Model.Count yêu cầu đang chờ</div>
+    </div>
+</div>
+
+<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
+    <div class="container d-flex gap-2 flex-wrap">
+        <a href="/Owner" class="btn btn-sm btn-outline-secondary rounded-pill">← Dashboard</a>
+        <a href="/Owner/YeuCauDoiGio" class="btn btn-sm btn-outline-warning rounded-pill">🔄 Đổi giờ</a>
+        <a href="/Owner/YeuCauDoiSan" class="btn btn-sm btn-primary rounded-pill">🏟️ Đổi sân</a>
+    </div>
+</div>
+
+<div class="container py-4">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">✅ @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">❌ @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div style="text-align:center;padding:80px 0;color:var(--muted)">
+            <div style="font-size:3rem;margin-bottom:16px">🏟️</div>
+            <div style="font-family:var(--ff-h);font-size:1.2rem">Không có yêu cầu đổi sân nào đang chờ</div>
+        </div>
+    }
+    else
+    {
+        @foreach (var yc in Model)
+        {
+            var slotStatus = yc.KhungGioMoi?.TrangThai ?? "Unknown";
+            var slotOk = slotStatus == "Trong";
+            <div class="section-card p-0 overflow-hidden mb-4" style="border:1px solid var(--border)">
+                <!-- Header -->
+                <div style="background:var(--bg3);padding:12px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
+                    <div>
+                        <strong style="font-size:14px">@yc.DatSan?.User?.HoTen</strong>
+                        <span style="color:var(--muted);font-size:12px;margin-left:8px">@yc.DatSan?.User?.Email</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--muted)">
+                        🕐 @yc.ThoiGianTao.ToString("dd/MM HH:mm")
+                    </div>
+                </div>
+
+                <div class="row g-0">
+                    <!-- SÂN HIỆN TẠI -->
+                    <div class="col-md-5 p-3" style="border-right:1px solid var(--border)">
+                        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">SÂN HIỆN TẠI</div>
+                        <div style="font-size:14px;font-weight:600">@yc.DatSan?.KhungGio?.SanBong?.TenSan</div>
+                        <div style="font-size:12px;color:var(--muted);margin-top:2px">📍 @yc.DatSan?.KhungGio?.SanBong?.DiaChi</div>
+                        <div style="font-size:12px;margin-top:4px">
+                            🕐 @yc.DatSan?.KhungGio?.GioBatDau.ToString("HH:mm") – @yc.DatSan?.KhungGio?.GioKetThuc.ToString("HH:mm")
+                        </div>
+                        <div style="font-size:12px;color:var(--green);margin-top:2px">
+                            📅 @yc.NgayThiDau.ToString("dd/MM/yyyy")
+                        </div>
+                        <div style="font-size:12px;margin-top:2px">
+                            💰 @yc.DatSan?.KhungGio?.Gia.ToString("N0")đ
+                        </div>
+                    </div>
+
+                    <!-- MŨI TÊN -->
+                    <div class="col-auto d-flex align-items-center justify-content-center px-2" style="font-size:1.5rem;color:var(--muted)">→</div>
+
+                    <!-- SÂN MỚI -->
+                    <div class="col-md-5 p-3">
+                        <div style="font-size:10px;color:#3b82f6;letter-spacing:1px;margin-bottom:8px">SÂN MỚI YÊU CẦU</div>
+                        <div style="font-size:14px;font-weight:600;color:#3b82f6">@yc.SanMoi?.TenSan</div>
+                        <div style="font-size:12px;color:var(--muted);margin-top:2px">📍 @yc.SanMoi?.DiaChi</div>
+                        <div style="font-size:12px;margin-top:4px">
+                            🕐 @yc.KhungGioMoi?.GioBatDau.ToString("HH:mm") – @yc.KhungGioMoi?.GioKetThuc.ToString("HH:mm")
+                        </div>
+                        <div style="font-size:12px;margin-top:2px">
+                            💰 @yc.KhungGioMoi?.Gia.ToString("N0")đ
+                            @if (yc.ChenhLechGia > 0)
+                            {
+                                <span style="color:#ef4444;font-weight:600"> (+@yc.ChenhLechGia.ToString("N0")đ)</span>
+                            }
+                            else if (yc.ChenhLechGia < 0)
+                            {
+                                <span style="color:var(--green);font-weight:600"> (@yc.ChenhLechGia.ToString("N0")đ)</span>
+                            }
+                        </div>
+                        <!-- Tình trạng slot -->
+                        <div style="margin-top:6px">
+                            @if (slotOk)
+                            {
+                                <span style="font-size:11px;color:var(--green);background:rgba(16,185,129,.1);padding:2px 8px;border-radius:4px">✅ Khung giờ còn trống</span>
+                            }
+                            else
+                            {
+                                <span style="font-size:11px;color:#ef4444;background:rgba(239,68,68,.1);padding:2px 8px;border-radius:4px">⚠️ Khung giờ đã bị đặt!</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LÝ DO -->
+                <div style="padding:12px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,.03)">
+                    <span style="font-size:11px;color:var(--muted)">📝 Lý do:</span>
+                    <span style="font-size:13px;margin-left:6px">@yc.LyDo</span>
+                </div>
+
+                <!-- FORM XỬ LÝ -->
+                <form method="post" action="/Owner/XuLyDoiSan">
+                    <input type="hidden" name="yeuCauId" value="@yc.Id" />
+                    <div style="padding:14px 18px;border-top:1px solid var(--border)">
+                        <label style="font-size:12px;color:var(--muted)">Ghi chú Owner (tuỳ chọn):</label>
+                        <textarea name="ghiChuOwner" class="form-control mt-1" rows="2"
+                                  placeholder="Lý do phê duyệt hoặc từ chối..."
+                                  style="background:var(--bg3);border-color:var(--border);color:var(--text);font-size:13px;resize:none"></textarea>
+                        <div class="mt-2 d-flex gap-2">
+                            @if (slotOk)
+                            {
+                                <button type="submit" name="hanhDong" value="PheDuyet"
+                                        class="btn btn-sm btn-success rounded-pill"
+                                        onclick="return confirm('Phê duyệt đổi sân cho @yc.DatSan?.User?.HoTen?')">
+                                    ✅ Phê duyệt — Chuyển sang sân mới
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-sm btn-secondary rounded-pill" disabled
+                                        title="Khung giờ đã bị đặt, không thể phê duyệt">
+                                    ⚠️ Không thể phê duyệt (slot đã đặt)
+                                </button>
+                            }
+                            <button type="submit" name="hanhDong" value="TuChoi"
+                                    class="btn btn-sm btn-danger rounded-pill"
+                                    onclick="return confirm('Từ chối yêu cầu đổi sân?')">
+                                ❌ Từ chối
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        }
+    }
+</div>

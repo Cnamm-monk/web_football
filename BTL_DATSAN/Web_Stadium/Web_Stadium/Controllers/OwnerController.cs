@@ -134,6 +134,12 @@ namespace Web_Stadium.Controllers
                               && y.TrangThai == "ChoXuLy"
                               && y.StaffXuLyId != null);
 
+            // Badge đổi sân — yêu cầu mới đang chờ Owner xử lý
+            ViewBag.SoYeuCauDoiSan = await _context.YeuCauDoiSans
+                .Include(y => y.SanMoi)
+                .CountAsync(y => y.SanMoi.OwnerId == ownerId
+                              && y.TrangThai == "ChoXuLy");
+
             return View();
         }
 
@@ -1377,6 +1383,119 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
             }
 
             return RedirectToAction("YeuCauDoiGio");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // YÊU CẦU ĐỔI SÂN — Owner xem và phê duyệt
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> YeuCauDoiSan()
+        {
+            var ownerId = GetOwnerId();
+            var list = await _context.YeuCauDoiSans
+                .Include(y => y.DatSan)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.SanMoi)
+                .Include(y => y.KhungGioMoi)
+                .Where(y => y.SanMoi.OwnerId == ownerId && y.TrangThai == "ChoXuLy")
+                .OrderByDescending(y => y.ThoiGianTao)
+                .ToListAsync();
+            return View(list);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> XuLyDoiSan(int yeuCauId, string? ghiChuOwner, string hanhDong)
+        {
+            var ownerId = GetOwnerId();
+            var yc = await _context.YeuCauDoiSans
+                .Include(y => y.DatSan)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.SanMoi)
+                .Include(y => y.KhungGioMoi)
+                .FirstOrDefaultAsync(y => y.Id == yeuCauId
+                    && y.SanMoi.OwnerId == ownerId
+                    && y.TrangThai == "ChoXuLy");
+
+            if (yc == null) return NotFound();
+
+            yc.OwnerXuLyId = ownerId;
+            yc.GhiChuOwner = ghiChuOwner?.Trim();
+            yc.ThoiGianXuLy = DateTime.Now;
+
+            if (hanhDong == "TuChoi")
+            {
+                yc.TrangThai = "TuChoi";
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = ownerId, VaiTro = "Owner", HanhDong = "TuChoiDoiSan",
+                    DoiTuong = "YeuCauDoiSan", DoiTuongId = yc.Id,
+                    MoTa = $"Owner từ chối đổi sân → {yc.SanMoi.TenSan} cho đơn {yc.DatSan.MaXacNhan}"
+                });
+                await _context.SaveChangesAsync();
+
+                var lyDoTuChoi = string.IsNullOrWhiteSpace(ghiChuOwner) ? "Owner không chấp thuận yêu cầu." : ghiChuOwner;
+                _ = Task.Run(() => _emailService.GuiEmailDoiSanTuChoi(
+                    yc.DatSan.User!.Email, yc.DatSan.User.HoTen ?? "Khách",
+                    yc.SanMoi.TenSan, lyDoTuChoi));
+                TempData["Success"] = "Đã từ chối yêu cầu đổi sân.";
+            }
+            else // PheDuyet
+            {
+                // Kiểm tra khung giờ mới vẫn còn Trong
+                var kgMoi = await _context.KhungGios.FindAsync(yc.KhungGioMoiId);
+                if (kgMoi == null || kgMoi.TrangThai != "Trong")
+                {
+                    TempData["Error"] = "Khung giờ trên sân mới không còn trống! Hãy từ chối và thông báo khách chọn lại.";
+                    return RedirectToAction("YeuCauDoiSan");
+                }
+
+                var don = yc.DatSan;
+                var kgCu = don.KhungGio;
+                var sanCuId = kgCu?.SanBongId ?? 0;
+
+                // Cập nhật đơn: đổi sân + khung giờ
+                don.KhungGioId = yc.KhungGioMoiId;
+
+                // Giải phóng khung giờ cũ
+                if (kgCu != null)
+                {
+                    kgCu.TrangThai = "Trong";
+                    kgCu.ThoiGianHetGiuCho = null;
+                }
+
+                // Khóa khung giờ mới
+                kgMoi.TrangThai = "DaDat";
+
+                yc.TrangThai = "DaPheDuyet";
+
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = ownerId, VaiTro = "Owner", HanhDong = "PheDuyetDoiSan",
+                    DoiTuong = "YeuCauDoiSan", DoiTuongId = yc.Id,
+                    MoTa = $"Phê duyệt đổi sân đơn {don.MaXacNhan} → {yc.SanMoi.TenSan}"
+                });
+                await _context.SaveChangesAsync();
+
+                // SignalR broadcast cả 2 sân
+                if (sanCuId > 0)
+                    await _hub.Clients.Group($"san_{sanCuId}")
+                        .SendAsync("CapNhatKhungGio", new { khungGioId = kgCu!.Id, trangThai = "Trong", hetHan = (DateTime?)null });
+                await _hub.Clients.Group($"san_{yc.SanMoiId}")
+                    .SendAsync("CapNhatKhungGio", new { khungGioId = kgMoi.Id, trangThai = "DaDat", hetHan = (DateTime?)null });
+
+                // Email xác nhận cho khách
+                var gioMoi = $"{kgMoi.GioBatDau:hh\\:mm} – {kgMoi.GioKetThuc:hh\\:mm}";
+                _ = Task.Run(() => _emailService.GuiEmailDoiSanPheDuyet(
+                    don.User!.Email, don.User.HoTen ?? "Khách",
+                    don.KhungGio?.SanBong?.TenSan ?? "",
+                    yc.SanMoi.TenSan, gioMoi,
+                    yc.NgayThiDau.ToString("dd/MM/yyyy"), don.MaXacNhan, yc.ChenhLechGia));
+
+                TempData["Success"] = "Đã phê duyệt đổi sân! Khách sẽ nhận được email xác nhận.";
+            }
+
+            return RedirectToAction("YeuCauDoiSan");
         }
     }
 }

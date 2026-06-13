@@ -609,5 +609,133 @@ namespace Web_Stadium.Services
             await GuiEmailAsync(userEmail, userName,
                 $"[PitchHub] Yêu cầu đổi giờ tại {tenSan} không được chấp thuận", body);
         }
+
+        // ══════════════════════════════════════════════════════════
+        // 9. THÔNG BÁO YÊU CẦU ĐỔI SÂN → OWNER SÂN MỚI
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailYeuCauDoiSanChoOwner(
+            string ownerEmail, string ownerName,
+            string tenKhach, string tenSanCu, string tenSanMoi,
+            string gioMoi, string ngay, string lyDo, decimal chenhLechGia)
+        {
+            var clSign = chenhLechGia >= 0 ? "+" : "";
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+    <div style='color:#60a5fa;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>YÊU CẦU ĐỔI SÂN</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{ownerName}</strong>,</p>
+    <p style='color:#555;'>Khách hàng <strong>{tenKhach}</strong> muốn chuyển đặt sân từ <strong>{tenSanCu}</strong> sang <strong>{tenSanMoi}</strong> của bạn. Vui lòng xem xét và phê duyệt.</p>
+    <div style='background:#eff6ff;border:1px solid #60a5fa;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:140px;'>🏟 Sân cũ</td><td style='color:#555;'>{tenSanCu}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>🏟 Sân mới</td><td style='color:#111;font-weight:700;'>{tenSanMoi}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày</td><td style='color:#111;font-weight:600;'>{ngay}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Khung giờ</td><td style='color:#111;font-weight:600;'>{gioMoi}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>💰 Chênh lệch giá</td>
+            <td style='color:{(chenhLechGia >= 0 ? "#ef4444" : "#22c55e")};font-weight:700;'>{clSign}{chenhLechGia:N0}đ</td></tr>
+        <tr><td style='color:#888;padding:5px 0;vertical-align:top;'>💬 Lý do</td><td style='color:#333;font-style:italic;'>{lyDo}</td></tr>
+      </table>
+    </div>
+    <p style='color:#555;font-size:.9rem;'>Đăng nhập Owner Portal để phê duyệt hoặc từ chối yêu cầu này.</p>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(ownerEmail, ownerName,
+                $"[PitchHub] Yêu cầu đổi sân mới từ {tenKhach} — {tenSanMoi}", body);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 10. XÁC NHẬN ĐỔI SÂN THÀNH CÔNG → KHÁCH
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailDoiSanPheDuyet(
+            string userEmail, string userName,
+            string tenSanCu, string tenSanMoi,
+            string gioMoi, string ngay, string maXacNhan, decimal chenhLechGia)
+        {
+            var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={maXacNhan}";
+            var clSign = chenhLechGia >= 0 ? "+" : "";
+            var clNote = chenhLechGia > 0
+                ? $"Bạn cần thanh toán thêm <strong style='color:#ef4444;'>{chenhLechGia:N0}đ</strong> chênh lệch."
+                : chenhLechGia < 0
+                    ? $"Bạn sẽ được hoàn lại <strong style='color:#22c55e;'>{Math.Abs(chenhLechGia):N0}đ</strong>."
+                    : "Không có chênh lệch giá.";
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#0f2027,#1a3a2a);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#1ed760;'>HUB</span>⚽</div>
+    <div style='color:#1ed760;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>ĐỔI SÂN THÀNH CÔNG ✅</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{userName}</strong>,</p>
+    <p style='color:#555;'>Yêu cầu đổi sân của bạn đã được phê duyệt!</p>
+    <div style='background:#f8fffe;border:1px solid #1ed760;border-radius:12px;padding:20px;margin:20px 0;'>
+      <table style='width:100%;font-size:.9rem;border-collapse:collapse;'>
+        <tr><td style='color:#888;padding:5px 0;width:130px;'>🏟 Sân cũ</td><td style='color:#555;text-decoration:line-through;'>{tenSanCu}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>🏟 Sân mới</td><td style='color:#0EA86A;font-weight:700;'>{tenSanMoi}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>📅 Ngày</td><td style='color:#0EA86A;font-weight:700;'>{ngay}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>⏰ Khung giờ</td><td style='color:#0EA86A;font-weight:700;'>{gioMoi}</td></tr>
+        <tr><td style='color:#888;padding:5px 0;'>💰 Chênh lệch</td><td style='font-weight:700;'>{clSign}{chenhLechGia:N0}đ</td></tr>
+      </table>
+    </div>
+    <p style='color:#555;font-size:.9rem;'>{clNote}</p>
+    <div style='background:#0f1f14;border-radius:12px;padding:18px;text-align:center;margin-bottom:16px;'>
+      <div style='color:#888;font-size:.75rem;letter-spacing:1.5px;margin-bottom:8px;'>MÃ CHECK-IN MỚI</div>
+      <div style='font-family:monospace;font-size:1.5rem;font-weight:900;color:#1ed760;letter-spacing:3px;'>{maXacNhan}</div>
+    </div>
+    <div style='text-align:center;'>
+      <img src='{qrUrl}' width='140' height='140' style='border-radius:10px;border:3px solid #1ed760;' />
+    </div>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(userEmail, userName,
+                $"[PitchHub] ✅ Đổi sân thành công — {tenSanMoi}", body);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // 11. TỪ CHỐI ĐỔI SÂN → KHÁCH
+        // ══════════════════════════════════════════════════════════
+        public async Task GuiEmailDoiSanTuChoi(
+            string userEmail, string userName,
+            string tenSanMoi, string lyDo)
+        {
+            var body = $@"
+<!DOCTYPE html><html lang='vi'><head><meta charset='utf-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;'>
+<div style='max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);'>
+  <div style='background:linear-gradient(135deg,#7f0000,#1a0000);padding:28px;text-align:center;'>
+    <div style='font-size:1.8rem;font-weight:900;color:#fff;'>PITCH<span style='color:#ef4444;'>HUB</span>⚽</div>
+    <div style='color:#ef4444;font-size:.85rem;letter-spacing:2px;margin-top:4px;'>YÊU CẦU ĐỔI SÂN BỊ TỪ CHỐI</div>
+  </div>
+  <div style='padding:28px;'>
+    <p style='color:#333;'>Xin chào <strong>{userName}</strong>,</p>
+    <p style='color:#555;'>Rất tiếc, yêu cầu chuyển sang sân <strong>{tenSanMoi}</strong> không được chấp thuận.</p>
+    <div style='background:#fff5f5;border:1px solid #ef4444;border-radius:12px;padding:16px;margin:20px 0;'>
+      <div style='color:#888;font-size:.8rem;margin-bottom:6px;'>Lý do từ chối:</div>
+      <div style='color:#333;font-style:italic;'>{lyDo}</div>
+    </div>
+    <p style='color:#555;font-size:.9rem;'>Đơn đặt sân gốc của bạn vẫn được giữ nguyên. Nếu cần hỗ trợ, liên hệ support@pitchhub.vn.</p>
+  </div>
+  <div style='background:#f8f8f8;padding:14px;text-align:center;border-top:1px solid #eee;'>
+    <p style='color:#aaa;font-size:.75rem;margin:0;'>© {DateTime.Now.Year} PitchHub.vn</p>
+  </div>
+</div>
+</body></html>";
+            await GuiEmailAsync(userEmail, userName,
+                $"[PitchHub] Yêu cầu đổi sang sân {tenSanMoi} không được chấp thuận", body);
+        }
     }
 }

@@ -1,0 +1,263 @@
+@{
+    ViewData["Title"] = "Yêu cầu đổi sân";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var don = ViewBag.DatSan as Web_Stadium.EFCore.DatSan;
+    var sanList = ViewBag.SanList as List<Web_Stadium.EFCore.SanBong> ?? new();
+    var ngayThiDau = ViewBag.NgayThiDau as string ?? "";
+}
+
+<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
+    <div class="container">
+        <div class="section-label">Yêu cầu</div>
+        <h1 style="font-style:italic;line-height:0.9;margin:0">ĐỔI SÂN<br><span class="text-green">ĐẶT SÂN</span></h1>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:700px">
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">❌ @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    }
+
+    <!-- THÔNG TIN ĐƠN HIỆN TẠI -->
+    <div class="section-card p-3 mb-4" style="border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">📋 ĐƠN HIỆN TẠI</div>
+        <div class="row g-2" style="font-size:14px">
+            <div class="col-5" style="color:var(--muted)">Sân hiện tại</div>
+            <div class="col-7"><strong>@don?.KhungGio?.SanBong?.TenSan</strong></div>
+            <div class="col-5" style="color:var(--muted)">Địa chỉ</div>
+            <div class="col-7" style="color:var(--muted2)">@don?.KhungGio?.SanBong?.DiaChi</div>
+            <div class="col-5" style="color:var(--muted)">Khung giờ</div>
+            <div class="col-7">@don?.KhungGio?.GioBatDau.ToString("HH:mm") – @don?.KhungGio?.GioKetThuc.ToString("HH:mm")</div>
+            <div class="col-5" style="color:var(--muted)">Ngày thi đấu</div>
+            <div class="col-7"><strong style="color:var(--green)">@don?.NgayThiDau.ToString("dd/MM/yyyy")</strong></div>
+            <div class="col-5" style="color:var(--muted)">Giá hiện tại</div>
+            <div class="col-7">@don?.KhungGio?.Gia.ToString("N0")đ</div>
+        </div>
+    </div>
+
+    <form method="post" action="/Booking/GuiYeuCauDoiSan" id="formDoiSan" novalidate>
+        <input type="hidden" name="datSanId" value="@don?.Id" />
+        <input type="hidden" name="sanMoiId" id="hidSanMoiId" value="" />
+        <input type="hidden" name="khungGioMoiId" id="hidKhungGioMoiId" value="" />
+
+        <!-- CHỌN SÂN MỚI -->
+        <div class="section-card p-3 mb-3">
+            <label class="form-label fw-semibold" style="font-size:13px;letter-spacing:.5px">🏟️ CHỌN SÂN MỚI</label>
+            @if (!sanList.Any())
+            {
+                <div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">
+                    Hiện không có sân cùng loại nào khả dụng.
+                </div>
+            }
+            else
+            {
+                <div style="display:flex;flex-direction:column;gap:8px" id="sanListContainer">
+                    @foreach (var san in sanList)
+                    {
+                        <div class="san-option" data-san-id="@san.Id"
+                             style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:.2s">
+                            <div style="display:flex;justify-content:space-between;align-items:center">
+                                <div>
+                                    <strong style="font-size:14px">@san.TenSan</strong>
+                                    <div style="font-size:12px;color:var(--muted);margin-top:2px">📍 @san.DiaChi</div>
+                                    <div style="font-size:12px;color:var(--muted2);margin-top:1px">⚽ @san.LoaiSan</div>
+                                </div>
+                                <div style="text-align:right">
+                                    <div id="status-@san.Id" style="font-size:11px;color:var(--muted)">
+                                        <span class="spinner-border spinner-border-sm"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Slot list will be inserted here -->
+                            <div id="slots-@san.Id" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px"></div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- LÝ DO -->
+        <div class="section-card p-3 mb-3">
+            <label class="form-label fw-semibold" style="font-size:13px;letter-spacing:.5px">📝 LÝ DO ĐỔI SÂN</label>
+            <textarea name="lyDo" id="lyDo" class="form-control" rows="4"
+                      placeholder="Mô tả lý do bạn muốn đổi sang sân mới (tối thiểu 10 ký tự)..."
+                      maxlength="500" oninput="updateCount()"
+                      style="background:var(--bg3);border-color:var(--border);color:var(--text);resize:none"></textarea>
+            <div style="font-size:12px;color:var(--muted);text-align:right;margin-top:4px">
+                <span id="charCount">0</span>/500 ký tự
+                <span id="charWarn" style="color:#ef4444;display:none"> — Cần ít nhất 10 ký tự</span>
+            </div>
+        </div>
+
+        <!-- CHÊNH LỆCH GIÁ -->
+        <div class="section-card p-3 mb-4" id="chenhLechBox" style="display:none;border:1px solid var(--border)">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">💰 CHÊNH LỆCH GIÁ</div>
+            <div style="font-size:15px">
+                Giá khung giờ đã chọn: <strong id="giaMoi">0đ</strong><br/>
+                <span style="font-size:13px;color:var(--muted)">Hiện tại: @don?.KhungGio?.Gia.ToString("N0")đ</span><br/>
+                Chênh lệch:
+                <strong id="chenhLech" style="color:var(--green)">0đ</strong>
+                <div id="noteChenhLech" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
+            </div>
+        </div>
+
+        <div id="errMsg" style="color:#ef4444;font-size:13px;margin-bottom:12px;display:none"></div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button type="submit" id="btnSubmit" class="btn btn-success rounded-pill px-4" disabled>
+                🏟️ Gửi yêu cầu đổi sân
+            </button>
+            <a href="/User/HoSo" class="btn btn-outline-secondary rounded-pill px-4">Huỷ</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    var giaHienTai = @((don?.KhungGio?.Gia ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture));
+    var selectedSanId = null;
+    var selectedKhungGioId = null;
+    var selectedGia = null;
+
+    // Load slots for all venues
+    @foreach (var san in sanList)
+    {
+        <text>loadSlots(@san.Id);</text>
+    }
+
+    function loadSlots(sanId) {
+        fetch('/Booking/KhungGioTrongCuaSan?sanId=' + sanId)
+            .then(r => r.json())
+            .then(data => {
+                var statusEl = document.getElementById('status-' + sanId);
+                var slotsEl = document.getElementById('slots-' + sanId);
+                if (!data || data.length === 0) {
+                    statusEl.innerHTML = '<span style="color:#ef4444">Không có khung giờ trống</span>';
+                    return;
+                }
+                statusEl.innerHTML = '<span style="color:var(--green)">' + data.length + ' khung giờ trống</span>';
+                var html = '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+                data.forEach(function(k) {
+                    html += '<div class="slot-btn" data-san-id="' + sanId + '" data-kg-id="' + k.id + '" data-gia="' + k.gia + '" ' +
+                            'onclick="selectSlot(this, ' + sanId + ', ' + k.id + ', ' + k.gia + ')" ' +
+                            'style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;background:var(--bg3)">' +
+                            k.gioBatDau.substring(0,5) + '–' + k.gioKetThuc.substring(0,5) +
+                            '<span style="color:var(--green);margin-left:6px">' + parseInt(k.gia).toLocaleString('vi-VN') + 'đ</span>' +
+                            '</div>';
+                });
+                html += '</div>';
+                slotsEl.innerHTML = html;
+            })
+            .catch(function() {
+                var statusEl = document.getElementById('status-' + sanId);
+                if (statusEl) statusEl.innerHTML = '<span style="color:var(--muted)">Lỗi tải</span>';
+            });
+    }
+
+    document.querySelectorAll('.san-option').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            // Don't trigger if clicking slot button
+            if (e.target.classList.contains('slot-btn') || e.target.closest('.slot-btn')) return;
+            var sanId = parseInt(el.dataset.sanId);
+            toggleSanSlots(sanId, el);
+        });
+    });
+
+    function toggleSanSlots(sanId, el) {
+        var slotsEl = document.getElementById('slots-' + sanId);
+        var isOpen = slotsEl.style.display !== 'none';
+        // Close all
+        document.querySelectorAll('[id^="slots-"]').forEach(function(s) { s.style.display = 'none'; });
+        document.querySelectorAll('.san-option').forEach(function(s) {
+            s.style.borderColor = 'var(--border)';
+        });
+        if (!isOpen) {
+            slotsEl.style.display = 'block';
+            el.style.borderColor = 'var(--green)';
+        }
+    }
+
+    function selectSlot(btn, sanId, kgId, gia) {
+        // Clear previous selection
+        document.querySelectorAll('.slot-btn').forEach(function(b) {
+            b.style.background = 'var(--bg3)';
+            b.style.borderColor = 'var(--border)';
+            b.style.color = '';
+        });
+
+        // Highlight selected
+        btn.style.background = 'rgba(16,185,129,.15)';
+        btn.style.borderColor = 'var(--green)';
+
+        // Highlight parent san-option
+        document.querySelectorAll('.san-option').forEach(function(el) {
+            el.style.borderColor = 'var(--border)';
+        });
+        document.querySelector('.san-option[data-san-id="' + sanId + '"]').style.borderColor = 'var(--green)';
+
+        selectedSanId = sanId;
+        selectedKhungGioId = kgId;
+        selectedGia = gia;
+
+        document.getElementById('hidSanMoiId').value = sanId;
+        document.getElementById('hidKhungGioMoiId').value = kgId;
+
+        // Update chenh lech
+        var chenhLech = gia - giaHienTai;
+        document.getElementById('giaMoi').textContent = parseInt(gia).toLocaleString('vi-VN') + 'đ';
+        var clEl = document.getElementById('chenhLech');
+        var noteEl = document.getElementById('noteChenhLech');
+        if (chenhLech > 0) {
+            clEl.textContent = '+' + parseInt(chenhLech).toLocaleString('vi-VN') + 'đ';
+            clEl.style.color = '#ef4444';
+            noteEl.textContent = 'Bạn có thể cần trả thêm phần chênh lệch này (tùy Owner quyết định).';
+        } else if (chenhLech < 0) {
+            clEl.textContent = parseInt(chenhLech).toLocaleString('vi-VN') + 'đ';
+            clEl.style.color = 'var(--green)';
+            noteEl.textContent = 'Sân mới rẻ hơn — Owner có thể hoàn lại phần chênh lệch.';
+        } else {
+            clEl.textContent = '0đ';
+            clEl.style.color = 'var(--muted)';
+            noteEl.textContent = 'Giá tương đương, không có chênh lệch.';
+        }
+        document.getElementById('chenhLechBox').style.display = 'block';
+
+        validateForm();
+    }
+
+    function updateCount() {
+        var val = document.getElementById('lyDo').value;
+        document.getElementById('charCount').textContent = val.length;
+        var warn = document.getElementById('charWarn');
+        warn.style.display = val.length > 0 && val.trim().length < 10 ? 'inline' : 'none';
+        validateForm();
+    }
+
+    function validateForm() {
+        var lyDo = document.getElementById('lyDo').value.trim();
+        var ok = selectedKhungGioId !== null && lyDo.length >= 10;
+        var btn = document.getElementById('btnSubmit');
+        var err = document.getElementById('errMsg');
+        btn.disabled = !ok;
+        if (!ok) {
+            var msgs = [];
+            if (selectedKhungGioId === null) msgs.push('Chọn sân mới và khung giờ');
+            if (lyDo.length < 10) msgs.push('Nhập lý do (ít nhất 10 ký tự)');
+            err.textContent = '⚠ ' + msgs.join(' — ');
+            err.style.display = 'block';
+        } else {
+            err.style.display = 'none';
+        }
+    }
+
+    document.getElementById('formDoiSan').addEventListener('submit', function(e) {
+        if (!selectedKhungGioId) {
+            e.preventDefault();
+            document.getElementById('errMsg').textContent = '⚠ Vui lòng chọn sân và khung giờ mới.';
+            document.getElementById('errMsg').style.display = 'block';
+        }
+    });
+</script>
+}

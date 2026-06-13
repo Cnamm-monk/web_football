@@ -551,5 +551,150 @@ namespace Web_Stadium.Controllers
             TempData["Success"] = "Đã gửi yêu cầu đổi khung giờ! Staff sẽ xem xét và phản hồi sớm.";
             return RedirectToAction("MyBookings");
         }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/YeuCauDoiSan/{datSanId}
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> YeuCauDoiSan(int datSanId)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var don = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
+
+            if (don == null) return NotFound();
+            if (don.TrangThai != "DaXacNhan")
+            {
+                TempData["Error"] = "Chỉ có thể yêu cầu đổi sân với đơn đã xác nhận.";
+                return RedirectToAction("MyBookings");
+            }
+
+            var daCo = await _context.YeuCauDoiSans
+                .AnyAsync(y => y.DatSanId == datSanId && y.TrangThai == "ChoXuLy");
+            if (daCo)
+            {
+                TempData["Error"] = "Đơn này đã có yêu cầu đổi sân đang chờ xử lý.";
+                return RedirectToAction("MyBookings");
+            }
+
+            var loaiSan = don.KhungGio?.SanBong?.LoaiSan;
+            var sanList = await _context.SanBongs
+                .Where(s => s.TrangThaiDuyet == "DaDuyet"
+                         && !s.IsHidden
+                         && s.Id != don.KhungGio!.SanBongId
+                         && (loaiSan == null || s.LoaiSan == loaiSan))
+                .OrderBy(s => s.TenSan)
+                .ToListAsync();
+
+            ViewBag.DatSan = don;
+            ViewBag.SanList = sanList;
+            ViewBag.NgayThiDau = don.NgayThiDau.ToString("yyyy-MM-dd");
+            return View();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/KhungGioTrongCuaSan — AJAX endpoint
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> KhungGioTrongCuaSan(int sanId, string? ngay)
+        {
+            var list = await _context.KhungGios
+                .Where(k => k.SanBongId == sanId && k.TrangThai == "Trong")
+                .OrderBy(k => k.GioBatDau)
+                .Select(k => new {
+                    id = k.Id,
+                    gioBatDau = k.GioBatDau.ToString(),
+                    gioKetThuc = k.GioKetThuc.ToString(),
+                    gia = (double)k.Gia,
+                    giaFmt = k.Gia.ToString("N0")
+                })
+                .ToListAsync();
+            return Json(list);
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // POST /Booking/GuiYeuCauDoiSan
+        // ══════════════════════════════════════════════════════════
+        [HttpPost]
+        [YeuCauDangNhap]
+        public async Task<IActionResult> GuiYeuCauDoiSan(
+            int datSanId, int sanMoiId, int khungGioMoiId, string lyDo)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var don = await _context.DatSans
+                .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.User)
+                .FirstOrDefaultAsync(d => d.Id == datSanId && d.UserId == userId);
+
+            if (don == null) return NotFound();
+            if (don.TrangThai != "DaXacNhan")
+            {
+                TempData["Error"] = "Chỉ có thể yêu cầu đổi sân với đơn đã xác nhận.";
+                return RedirectToAction("MyBookings");
+            }
+
+            if (string.IsNullOrWhiteSpace(lyDo) || lyDo.Trim().Length < 10)
+            {
+                TempData["Error"] = "Lý do đổi sân phải ít nhất 10 ký tự.";
+                return RedirectToAction("YeuCauDoiSan", new { datSanId });
+            }
+
+            var kgMoi = await _context.KhungGios
+                .Include(k => k.SanBong)
+                .FirstOrDefaultAsync(k => k.Id == khungGioMoiId && k.SanBongId == sanMoiId);
+
+            if (kgMoi == null || kgMoi.TrangThai != "Trong")
+            {
+                TempData["Error"] = "Khung giờ đã chọn không còn trống. Vui lòng chọn lại.";
+                return RedirectToAction("YeuCauDoiSan", new { datSanId });
+            }
+
+            var daCo = await _context.YeuCauDoiSans
+                .AnyAsync(y => y.DatSanId == datSanId && y.TrangThai == "ChoXuLy");
+            if (daCo)
+            {
+                TempData["Error"] = "Đơn này đã có yêu cầu đổi sân đang chờ xử lý.";
+                return RedirectToAction("MyBookings");
+            }
+
+            var chenhLech = kgMoi.Gia - (don.KhungGio?.Gia ?? 0);
+
+            var yeuCau = new YeuCauDoiSan
+            {
+                DatSanId = datSanId,
+                UserId = userId!.Value,
+                SanMoiId = sanMoiId,
+                KhungGioMoiId = khungGioMoiId,
+                NgayThiDau = don.NgayThiDau,
+                LyDo = lyDo.Trim(),
+                TrangThai = "ChoXuLy",
+                ChenhLechGia = chenhLech,
+                ThoiGianTao = DateTime.Now
+            };
+            _context.YeuCauDoiSans.Add(yeuCau);
+            await _context.SaveChangesAsync();
+
+            // Gửi email Owner sân mới
+            var sanMoi = kgMoi.SanBong;
+            if (sanMoi != null)
+            {
+                var owner = await _context.Users.FindAsync(sanMoi.OwnerId);
+                if (owner != null && !string.IsNullOrEmpty(owner.Email))
+                {
+                    var gioMoi = $"{kgMoi.GioBatDau:hh\\:mm} – {kgMoi.GioKetThuc:hh\\:mm}";
+                    _ = Task.Run(() => _emailService.GuiEmailYeuCauDoiSanChoOwner(
+                        owner.Email, owner.HoTen ?? "Owner",
+                        don.User?.HoTen ?? "Khách",
+                        don.KhungGio?.SanBong?.TenSan ?? "",
+                        sanMoi.TenSan, gioMoi,
+                        don.NgayThiDau.ToString("dd/MM/yyyy"),
+                        lyDo.Trim(), chenhLech));
+                }
+            }
+
+            TempData["Success"] = "Đã gửi yêu cầu đổi sân! Owner sân mới sẽ xem xét và phản hồi sớm.";
+            return RedirectToAction("MyBookings");
+        }
     }
 }

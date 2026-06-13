@@ -691,11 +691,16 @@
                             }
                             @if (don.TrangThai == "DaXacNhan")
                             {
-                                <div class="mt-1">
+                                <div class="mt-1" style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">
                                     <a href="/Booking/YeuCauDoiGio/@don.Id"
                                        style="font-size:.72rem;padding:3px 10px;border:1px solid #f59e0b;border-radius:6px;
                                               color:#f59e0b;text-decoration:none;display:inline-block;">
                                         🔄 Đổi giờ
+                                    </a>
+                                    <a href="/Booking/YeuCauDoiSan/@don.Id"
+                                       style="font-size:.72rem;padding:3px 10px;border:1px solid #3b82f6;border-radius:6px;
+                                              color:#3b82f6;text-decoration:none;display:inline-block;">
+                                        🏟️ Đổi sân
                                     </a>
                                 </div>
                             }
