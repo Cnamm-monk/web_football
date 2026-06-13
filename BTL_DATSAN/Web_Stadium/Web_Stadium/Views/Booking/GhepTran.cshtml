@@ -2,6 +2,7 @@
     ViewData["Title"] = "Ghép trận";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var don = ViewBag.DatSan as Web_Stadium.EFCore.DatSan;
+    var preselB = ViewBag.PreselDatSanB as Web_Stadium.EFCore.DatSan;
 }
 
 <div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
@@ -35,15 +36,42 @@
         </div>
     </div>
 
-    <!-- TÌM ĐỘI CÙ NGÀY / GIỜ -->
+    <!-- TABS TÌM ĐỘI -->
     <div class="section-card p-3 mb-4">
-        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">🔍 ĐỘI ĐANG ĐẶT CÙNG NGÀY & GIỜ</div>
-        <button type="button" id="btnTimDoiThu" onclick="timDoiThu()"
-                class="btn btn-sm btn-outline-success rounded-pill mb-3">
-            Tìm đội phù hợp
-        </button>
-        <div id="doiThuList"></div>
-        <div id="doiThuLoading" style="display:none;color:var(--muted);font-size:13px">Đang tìm...</div>
+        <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+            <button type="button" id="tabBtnDatSan" onclick="switchTab('datsan')"
+                    style="padding:6px 14px;font-size:13px;font-weight:700;border-radius:8px 8px 0 0;
+                           border:none;cursor:pointer;background:var(--green);color:#fff;">
+                🔍 Cùng ngày/giờ
+            </button>
+            <button type="button" id="tabBtnMM" onclick="switchTab('mm')"
+                    style="padding:6px 14px;font-size:13px;font-weight:700;border-radius:8px 8px 0 0;
+                           border:none;cursor:pointer;background:var(--bg3);color:var(--muted);">
+                📋 Tìm từ Matchmaking
+            </button>
+        </div>
+
+        <!-- Tab: Đặt sân cùng ngày/giờ -->
+        <div id="tabDatSan">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">ĐỘI ĐANG ĐẶT CÙNG NGÀY & GIỜ</div>
+            <button type="button" id="btnTimDoiThu" onclick="timDoiThu()"
+                    class="btn btn-sm btn-outline-success rounded-pill mb-3">
+                Tìm đội phù hợp
+            </button>
+            <div id="doiThuList"></div>
+            <div id="doiThuLoading" style="display:none;color:var(--muted);font-size:13px">Đang tìm...</div>
+        </div>
+
+        <!-- Tab: Từ Matchmaking -->
+        <div id="tabMM" style="display:none">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:12px">BÀI ĐĂNG TÌM ĐỘI CÙNG NGÀY & GIỜ</div>
+            <button type="button" onclick="timTuMatchmaking()"
+                    class="btn btn-sm btn-outline-primary rounded-pill mb-3">
+                Tìm bài Matchmaking
+            </button>
+            <div id="mmList"></div>
+            <div id="mmLoading" style="display:none;color:var(--muted);font-size:13px">Đang tìm...</div>
+        </div>
     </div>
 
     <!-- FORM GỬI LỜI MỜI -->
@@ -159,5 +187,63 @@
     }
 
     document.getElementById('loiNhan').addEventListener('input', validateForm);
+
+    function switchTab(tab) {
+        var isDatSan = tab === 'datsan';
+        document.getElementById('tabDatSan').style.display = isDatSan ? 'block' : 'none';
+        document.getElementById('tabMM').style.display = isDatSan ? 'none' : 'block';
+        document.getElementById('tabBtnDatSan').style.background = isDatSan ? 'var(--green)' : 'var(--bg3)';
+        document.getElementById('tabBtnDatSan').style.color = isDatSan ? '#fff' : 'var(--muted)';
+        document.getElementById('tabBtnMM').style.background = isDatSan ? 'var(--bg3)' : 'var(--green)';
+        document.getElementById('tabBtnMM').style.color = isDatSan ? 'var(--muted)' : '#fff';
+    }
+
+    function timTuMatchmaking() {
+        var loading = document.getElementById('mmLoading');
+        var list = document.getElementById('mmList');
+        loading.style.display = 'block';
+        list.innerHTML = '';
+
+        fetch('/Booking/TimTuMatchmaking?datSanAId=@don?.Id')
+            .then(r => r.json())
+            .then(function(data) {
+                loading.style.display = 'none';
+                if (!data || data.length === 0) {
+                    list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0">Không tìm thấy bài Matchmaking nào cùng ngày và giờ.</div>';
+                    return;
+                }
+                var html = '<div style="display:flex;flex-direction:column;gap:8px">';
+                data.forEach(function(d) {
+                    html += '<div class="doi-item" style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:.2s" ' +
+                            'onclick="chonDoi(' + d.datSanId + ', \'' + escapeHtml(d.tenUser) + '\', \'' + escapeHtml(d.tenSan) + '\', \'' + escapeHtml(d.diaChi) + '\', \'' + escapeHtml(d.gio) + '\')" ' +
+                            'data-id="' + d.datSanId + '">' +
+                            '<div style="font-size:14px;font-weight:600">📋 ' + escapeHtml(d.tieuDe) + '</div>' +
+                            '<div style="font-size:12px;color:var(--muted);margin-top:2px">👤 ' + escapeHtml(d.tenUser) + ' · 🏟 ' + escapeHtml(d.tenSan) + '</div>' +
+                            '<div style="font-size:12px;color:var(--green);margin-top:1px">⏰ ' + escapeHtml(d.gio) + '</div>' +
+                            '</div>';
+                });
+                html += '</div>';
+                list.innerHTML = html;
+            })
+            .catch(function() {
+                loading.style.display = 'none';
+                list.innerHTML = '<div style="color:#ef4444;font-size:13px">Lỗi kết nối. Vui lòng thử lại.</div>';
+            });
+    }
+
+    @if (preselB != null)
+    {
+        <text>
+    window.addEventListener('DOMContentLoaded', function() {
+        chonDoi(
+            @preselB.Id,
+            '@Html.Raw((preselB.User?.HoTen ?? "Đội B").Replace("'", "\\'"))',
+            '@Html.Raw((preselB.KhungGio?.SanBong?.TenSan ?? "").Replace("'", "\\'"))',
+            '@Html.Raw((preselB.KhungGio?.SanBong?.DiaChi ?? "").Replace("'", "\\'"))',
+            '@(preselB.KhungGio?.GioBatDau.ToString("HH:mm") + " – " + preselB.KhungGio?.GioKetThuc.ToString("HH:mm"))'
+        );
+    });
+        </text>
+    }
 </script>
 }

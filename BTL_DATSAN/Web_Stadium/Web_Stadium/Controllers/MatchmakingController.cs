@@ -47,7 +47,21 @@ namespace Web_Stadium.Controllers
             ViewBag.LoaiSan = loaiSan;
             ViewBag.Quan = quan;
             ViewBag.TongTin = list.Count;
-            ViewBag.CurrentUserId = TokenHelper.LayUserId(Request, _config);
+            var currentUserId = TokenHelper.LayUserId(Request, _config);
+            ViewBag.CurrentUserId = currentUserId;
+
+            if (currentUserId.HasValue)
+            {
+                var userDons = await _context.DatSans
+                    .Include(d => d.KhungGio)
+                    .Where(d => d.UserId == currentUserId && d.TrangThai == "DaXacNhan")
+                    .ToListAsync();
+                ViewBag.UserDonDict = userDons
+                    .Where(d => d.KhungGio != null)
+                    .GroupBy(d => d.NgayThiDau.ToString("yyyy-MM-dd") + "_" + d.KhungGio!.GioBatDau.ToString(@"HH\:mm"))
+                    .ToDictionary(g => g.Key, g => g.First().Id);
+            }
+
             return View(list);
         }
 

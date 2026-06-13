@@ -14,6 +14,7 @@
     var tongNguoi = Model.Sum(m => m.SoNguoiCanThem);
     var tongQuan = Model.Where(m => m.DatSan?.KhungGio?.SanBong?.Quan != null)
                              .Select(m => m.DatSan!.KhungGio!.SanBong!.Quan).Distinct().Count();
+    var userDonDict = ViewBag.UserDonDict as Dictionary<string, int>;
 }
 
 @section Styles {
@@ -419,6 +420,19 @@
                                 else if (mm.User?.Email != null)
                                 {
                                     <a href="mailto:@mm.User.Email" class="btn-lien-he">✉️ Email</a>
+                                }
+                                @if (daDangNhap && userDonDict != null && mm.DatSan?.KhungGio != null)
+                                {
+                                    var mmKey = mm.DatSan.NgayThiDau.ToString("yyyy-MM-dd") + "_" + mm.DatSan.KhungGio.GioBatDau.ToString("HH:mm");
+                                    if (userDonDict.TryGetValue(mmKey, out var myDsId))
+                                    {
+                                        <a href="/Booking/GhepTran/@myDsId?datSanBId=@mm.DatSanId"
+                                           style="display:inline-flex;align-items:center;gap:5px;padding:8px 14px;font-size:13px;font-weight:700;
+                                                  border-radius:999px;border:1.5px solid rgba(14,168,106,0.5);
+                                                  background:rgba(14,168,106,0.10);color:var(--green);text-decoration:none;">
+                                            ⚽ Ghép trận ngay
+                                        </a>
+                                    }
                                 }
                             }
                         </div>

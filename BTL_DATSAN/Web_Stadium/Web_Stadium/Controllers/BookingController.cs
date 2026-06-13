@@ -701,7 +701,7 @@ namespace Web_Stadium.Controllers
         // GET /Booking/GhepTran/{datSanId} — form gửi lời mời
         // ══════════════════════════════════════════════════════════
         [YeuCauDangNhap]
-        public async Task<IActionResult> GhepTran(int datSanId)
+        public async Task<IActionResult> GhepTran(int datSanId, int? datSanBId)
         {
             var userId = TokenHelper.LayUserId(Request, _config);
             var don = await _context.DatSans
@@ -725,7 +725,51 @@ namespace Web_Stadium.Controllers
             }
 
             ViewBag.DatSan = don;
+
+            if (datSanBId.HasValue)
+            {
+                var presel = await _context.DatSans
+                    .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                    .Include(d => d.User)
+                    .FirstOrDefaultAsync(d => d.Id == datSanBId.Value && d.TrangThai == "DaXacNhan");
+                ViewBag.PreselDatSanB = presel;
+            }
+
             return View();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/TimTuMatchmaking — AJAX tìm bài Matchmaking cùng ngày/giờ
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> TimTuMatchmaking(int datSanAId)
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            var donA = await _context.DatSans
+                .Include(d => d.KhungGio)
+                .FirstOrDefaultAsync(d => d.Id == datSanAId && d.UserId == userId);
+
+            if (donA == null || donA.KhungGio == null) return Json(new object[0]);
+
+            var list = await _context.Matchmakings
+                .Include(m => m.DatSan)
+                    .ThenInclude(d => d.KhungGio)
+                        .ThenInclude(k => k.SanBong)
+                .Include(m => m.User)
+                .Where(m => m.TrangThai == "DangTim"
+                         && m.UserId != userId
+                         && m.DatSan.NgayThiDau.Date == donA.NgayThiDau.Date
+                         && m.DatSan.KhungGio.GioBatDau == donA.KhungGio.GioBatDau)
+                .ToListAsync();
+
+            return Json(list.Select(m => new {
+                datSanId = m.DatSanId,
+                tenUser = m.User?.HoTen ?? "Ẩn danh",
+                tieuDe = m.TieuDe,
+                tenSan = m.DatSan?.KhungGio?.SanBong?.TenSan ?? "",
+                diaChi = m.DatSan?.KhungGio?.SanBong?.DiaChi ?? "",
+                gio = $"{m.DatSan?.KhungGio?.GioBatDau:HH\\:mm} – {m.DatSan?.KhungGio?.GioKetThuc:HH\\:mm}"
+            }));
         }
 
         // ══════════════════════════════════════════════════════════
@@ -1084,6 +1128,18 @@ namespace Web_Stadium.Controllers
                     donA.User?.Email ?? "", donA.User?.HoTen ?? "Đội A",
                     donB?.User?.Email ?? "", donB?.User?.HoTen ?? "Đội B",
                     tenSan, ngay, gio, maXacNhan));
+            }
+
+            // Tự động đóng bài Matchmaking liên quan
+            var dsIds = new List<int> { ghep.DatSanAId };
+            if (ghep.DatSanBId.HasValue) dsIds.Add(ghep.DatSanBId.Value);
+            var mmToClose = await _context.Matchmakings
+                .Where(m => dsIds.Contains(m.DatSanId) && m.TrangThai == "DangTim")
+                .ToListAsync();
+            if (mmToClose.Any())
+            {
+                foreach (var m in mmToClose) m.TrangThai = "DaDong";
+                await _context.SaveChangesAsync();
             }
 
             TempData["Success"] = "Ghép trận hoàn tất! Cả hai đội sẽ nhận được email xác nhận.";
