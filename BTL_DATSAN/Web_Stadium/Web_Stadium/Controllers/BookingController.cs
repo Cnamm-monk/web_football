@@ -1145,5 +1145,111 @@ namespace Web_Stadium.Controllers
             TempData["Success"] = "Ghép trận hoàn tất! Cả hai đội sẽ nhận được email xác nhận.";
             return RedirectToAction("MyBookings");
         }
+
+        // ══════════════════════════════════════════════════════════
+        // GET /Booking/LayThongBao — AJAX notification feed
+        // ══════════════════════════════════════════════════════════
+        [YeuCauDangNhap]
+        public async Task<IActionResult> LayThongBao()
+        {
+            var userId = TokenHelper.LayUserId(Request, _config);
+            if (userId == null) return Json(Array.Empty<object>());
+
+            var now = DateTime.Now;
+            var nguong48h = now.AddHours(-48);
+
+            static string TinhThoiGian(DateTime t)
+            {
+                var d = DateTime.Now - t;
+                if (d.TotalMinutes < 1)  return "Vừa xong";
+                if (d.TotalMinutes < 60) return $"{(int)d.TotalMinutes} phút trước";
+                if (d.TotalHours < 24)   return $"{(int)d.TotalHours} giờ trước";
+                return $"{(int)d.TotalDays} ngày trước";
+            }
+
+            var unread = new List<object>();
+            var read   = new List<object>();
+
+            // ── 1. Lời mời ghép trận (UserB = mình, chờ xác nhận) ──
+            var gheps = await _context.GhepTrans
+                .Include(g => g.UserA)
+                .Include(g => g.DatSanA)
+                    .ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Where(g => g.UserBId == userId && g.TrangThai == "ChoXacNhan")
+                .OrderByDescending(g => g.ThoiGianTao)
+                .Take(5)
+                .ToListAsync();
+
+            foreach (var g in gheps)
+                unread.Add(new {
+                    loai = "GhepTran",
+                    tieuDe = "Lời mời ghép trận mới!",
+                    moTa = $"{g.UserA?.HoTen ?? "Ai đó"} muốn ghép trận tại {g.DatSanA?.KhungGio?.SanBong?.TenSan ?? "sân bóng"}",
+                    thoiGian = TinhThoiGian(g.ThoiGianTao),
+                    url = "/Booking/LoiMoiGhepTran",
+                    daDoc = false
+                });
+
+            // ── 2. Yêu cầu đổi giờ đã xử lý (trong 48h) ──
+            var doiGios = await _context.YeuCauDoiGios
+                .Include(y => y.DatSan)
+                .Include(y => y.KhungGioMoi)
+                .Where(y => y.UserId == userId
+                         && (y.TrangThai == "DaPheDuyet" || y.TrangThai == "TuChoi")
+                         && y.ThoiGianXuLy >= nguong48h)
+                .OrderByDescending(y => y.ThoiGianXuLy)
+                .Take(5)
+                .ToListAsync();
+
+            foreach (var y in doiGios)
+            {
+                var ok  = y.TrangThai == "DaPheDuyet";
+                var gio = y.KhungGioMoi != null
+                    ? $"{y.KhungGioMoi.GioBatDau:HH\\:mm}–{y.KhungGioMoi.GioKetThuc:HH\\:mm}"
+                    : "";
+                var daDoc = y.ThoiGianXuLy < now.AddHours(-2);
+                var item = new {
+                    loai = "DoiGio",
+                    tieuDe = ok ? "Yêu cầu đổi giờ được phê duyệt!" : "Yêu cầu đổi giờ bị từ chối",
+                    moTa = ok
+                        ? $"Đơn {y.DatSan?.MaXacNhan} đã đổi sang {gio}"
+                        : $"Đơn {y.DatSan?.MaXacNhan}: yêu cầu đổi giờ không được chấp thuận",
+                    thoiGian = TinhThoiGian(y.ThoiGianXuLy ?? y.ThoiGianTao),
+                    url = "/Booking/MyBookings",
+                    daDoc
+                };
+                if (daDoc) read.Add(item); else unread.Add(item);
+            }
+
+            // ── 3. Yêu cầu đổi sân đã xử lý (trong 48h) ──
+            var doiSans = await _context.YeuCauDoiSans
+                .Include(y => y.DatSan)
+                .Include(y => y.SanMoi)
+                .Where(y => y.UserId == userId
+                         && (y.TrangThai == "DaPheDuyet" || y.TrangThai == "TuChoi")
+                         && y.ThoiGianXuLy >= nguong48h)
+                .OrderByDescending(y => y.ThoiGianXuLy)
+                .Take(5)
+                .ToListAsync();
+
+            foreach (var y in doiSans)
+            {
+                var ok    = y.TrangThai == "DaPheDuyet";
+                var daDoc = y.ThoiGianXuLy < now.AddHours(-2);
+                var item = new {
+                    loai = "DoiSan",
+                    tieuDe = ok ? "Yêu cầu đổi sân được phê duyệt!" : "Yêu cầu đổi sân bị từ chối",
+                    moTa = ok
+                        ? $"Đơn {y.DatSan?.MaXacNhan} đã chuyển sang {y.SanMoi?.TenSan}"
+                        : $"Đơn {y.DatSan?.MaXacNhan}: yêu cầu đổi sang {y.SanMoi?.TenSan} không được chấp thuận",
+                    thoiGian = TinhThoiGian(y.ThoiGianXuLy ?? y.ThoiGianTao),
+                    url = "/Booking/MyBookings",
+                    daDoc
+                };
+                if (daDoc) read.Add(item); else unread.Add(item);
+            }
+
+            return Json(unread.Concat(read));
+        }
     }
 }
