@@ -12,17 +12,20 @@ namespace Web_Stadium.Controllers
         private readonly IConfiguration _config;
         private readonly EmailService _emailService;
         private readonly StandingService _standingService;
+        private readonly CloudinaryService _cloudinaryService;
 
         public TournamentPublicController(
             SanBongContext context,
             IConfiguration config,
             EmailService emailService,
-            StandingService standingService)
+            StandingService standingService,
+            CloudinaryService cloudinaryService)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
             _standingService = standingService;
+            _cloudinaryService = cloudinaryService;
         }
 
         private int? GetUserId() => TokenHelper.LayUserId(Request, _config);
@@ -343,13 +346,7 @@ namespace Web_Stadium.Controllers
                     TempData["Error"] = "Chỉ chấp nhận ảnh JPG/PNG/WebP!";
                     return RedirectToAction("NopDanhSach", new { doiId });
                 }
-                var folder = Path.Combine("wwwroot", "uploads", "players");
-                Directory.CreateDirectory(folder);
-                var fileName = $"player_{doiId}_{Guid.NewGuid():N}{ext}";
-                var filePath = Path.Combine(folder, fileName);
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                    await anhFile.CopyToAsync(stream);
-                anhDaiDien = $"/uploads/players/{fileName}";
+                anhDaiDien = await _cloudinaryService.UploadAnhAsync(anhFile, "players");
             }
 
             _context.ThanhVienDois.Add(new ThanhVienDoi
@@ -389,6 +386,13 @@ namespace Web_Stadium.Controllers
                 .FirstOrDefaultAsync(t => t.Id == thanhVienId && t.DoiId == doiId);
             if (tv != null)
             {
+                // Xóa ảnh trên Cloudinary trước khi xóa record
+                if (!string.IsNullOrEmpty(tv.AnhDaiDien))
+                {
+                    var publicId = _cloudinaryService.LayPublicId(tv.AnhDaiDien);
+                    if (publicId != null)
+                        _ = Task.Run(() => _cloudinaryService.XoaAnhAsync(publicId));
+                }
                 _context.ThanhVienDois.Remove(tv);
                 await _context.SaveChangesAsync();
                 TempData["Success"] = $"Đã xóa cầu thủ {tv.HoTen}!";

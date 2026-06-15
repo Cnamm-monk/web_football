@@ -15,14 +15,17 @@ namespace Web_Stadium.Controllers
         private readonly IConfiguration _config;
         private readonly EmailService _emailService;
         private readonly IHubContext<SanBongHub> _hub;
+        private readonly CloudinaryService _cloudinaryService;
 
         public OwnerController(SanBongContext context, IConfiguration config,
-            EmailService emailService, IHubContext<SanBongHub> hub)
+            EmailService emailService, IHubContext<SanBongHub> hub,
+            CloudinaryService cloudinaryService)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
             _hub = hub;
+            _cloudinaryService = cloudinaryService;
         }
 
         // Helper lấy OwnerId từ JWT
@@ -911,18 +914,13 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
                 return RedirectToAction("QuanLyAnh", new { sanId });
             }
 
-            // Luu vao wwwroot/images/san/{sanId}/
-            var folder = Path.Combine(
-                Directory.GetCurrentDirectory(),
-                "wwwroot", "images", "san", sanId.ToString());
-            Directory.CreateDirectory(folder);
-
-            var fileName = $"{Guid.NewGuid()}{ext}";
-            var filePath = Path.Combine(folder, fileName);
-            var duongDan = $"/images/san/{sanId}/{fileName}";
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-                await file.CopyToAsync(stream);
+            // Upload lên Cloudinary
+            var url = await _cloudinaryService.UploadAnhAsync(file, $"san/{sanId}");
+            if (url == null)
+            {
+                TempData["Error"] = "Upload ảnh thất bại. Vui lòng thử lại.";
+                return RedirectToAction("QuanLyAnh", new { sanId });
+            }
 
             // So thu tu
             var thuTu = await _context.AnhSanBongs
@@ -932,7 +930,7 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
             _context.AnhSanBongs.Add(new AnhSanBong
             {
                 SanBongId = sanId,
-                DuongDan = duongDan,
+                DuongDan = url,
                 LoaiAnh = "Upload",
                 MoTa = moTa,
                 ThuTu = thuTu + 1,
@@ -952,14 +950,12 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
                 .FirstOrDefaultAsync(a => a.Id == anhId && a.SanBong.OwnerId == GetOwnerId());
             if (anh == null) return NotFound();
 
-            // Neu la file upload thi xoa file luon
-            if (anh.LoaiAnh == "Upload" && anh.DuongDan.StartsWith("/images/"))
+            // Xóa ảnh trên Cloudinary nếu là file upload
+            if (anh.LoaiAnh == "Upload" && !string.IsNullOrEmpty(anh.DuongDan))
             {
-                var filePath = Path.Combine(
-                    Directory.GetCurrentDirectory(), "wwwroot",
-                    anh.DuongDan.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-                if (System.IO.File.Exists(filePath))
-                    System.IO.File.Delete(filePath);
+                var publicId = _cloudinaryService.LayPublicId(anh.DuongDan);
+                if (publicId != null)
+                    _ = Task.Run(() => _cloudinaryService.XoaAnhAsync(publicId));
             }
 
             anh.IsActive = false;
