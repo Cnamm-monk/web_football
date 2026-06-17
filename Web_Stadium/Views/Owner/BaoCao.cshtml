@@ -4,8 +4,12 @@
     var data = (ViewBag.Data as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
     var tyLeLapDay = (ViewBag.TyLeLapDay as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
     var hieuSuat = (ViewBag.HieuSuatStaff as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+    var voucherHieuQua = (ViewBag.VoucherHieuQua as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
     double tongThuThuan = ViewBag.TongThuThuan ?? 0.0;
     int tongLuot = ViewBag.TongLuot ?? 0;
+    double tongTienGiam = ViewBag.TongTienGiam ?? 0.0;
+    double tongGoc = ViewBag.TongGoc ?? 0.0;
+    int soLuotVoucher = ViewBag.SoLuotDungVoucher ?? 0;
     string loai = ViewBag.Loai ?? "thang";
     int nam = ViewBag.Nam ?? DateTime.Now.Year;
     int thang = ViewBag.Thang ?? DateTime.Now.Month;
@@ -100,7 +104,34 @@
             <div class="kpi-sub">Đã xử lý đơn</div>
         </div>
 
+        <div class="report-kpi" style="border-color:rgba(239,68,68,.3);background:linear-gradient(135deg,rgba(239,68,68,.08),#fff);">
+            <div class="kpi-title">OWNER CHỊU GIẢM</div>
+            <div class="kpi-value" style="color:#ef4444;">@((tongTienGiam / 1_000_000).ToString("F1"))M</div>
+            <div class="kpi-sub">@soLuotVoucher lượt dùng voucher sân</div>
+        </div>
+
     </div>
+
+    <!-- VOUCHER STATS -->
+    @if (voucherHieuQua.Any())
+    {
+        <div class="chart-card mb-4">
+            <div class="chart-title">Hiệu quả Voucher sân</div>
+            <div class="chart-sub">Top voucher được dùng nhiều nhất trong kỳ</div>
+            @foreach (var v in voucherHieuQua)
+            {
+                var maxDung = voucherHieuQua.Max(x => (int)x.DaDung);
+                var pct = maxDung > 0 ? (int)((double)(int)v.DaDung / maxDung * 100) : 0;
+                <div class="report-bar">
+                    <div class="bar-label" style="font-size:12px;">@v.TenVoucher</div>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width:@pct%;background:var(--green);"></div>
+                    </div>
+                    <div class="bar-value" style="color:var(--green);">@v.DaDung lượt</div>
+                </div>
+            }
+        </div>
+    }
 
     <!-- CHART -->
     <div class="chart-card mb-4">
@@ -366,6 +397,7 @@
                 var lbls = System.Text.Json.JsonSerializer.Serialize(data.Select(d => (string)d.nhan));
                 var thuThuan = System.Text.Json.JsonSerializer.Serialize(data.Select(d => Math.Round((double)d.thuThuan / 1_000_000, 2)));
                 var tongDT = System.Text.Json.JsonSerializer.Serialize(data.Select(d => Math.Round((double)d.tongDT / 1_000_000, 2)));
+                var tongGiamArr = System.Text.Json.JsonSerializer.Serialize(data.Select(d => Math.Round((double)d.tongGiam / 1_000_000, 2)));
         }
 
         new Chart(document.getElementById('chartMain'),{
@@ -381,10 +413,19 @@
                         borderSkipped:false
                     },
                     {
-                        label:'Doanh thu sân',
+                        label:'Doanh thu thực (sau giảm)',
                         data:@Html.Raw(tongDT),
                         backgroundColor:'rgba(108,174,224,.30)',
                         borderColor:'#6caee0',
+                        borderWidth:1,
+                        borderRadius:12,
+                        borderSkipped:false
+                    },
+                    {
+                        label:'Owner chịu giảm voucher',
+                        data:@Html.Raw(tongGiamArr),
+                        backgroundColor:'rgba(239,68,68,.55)',
+                        borderColor:'#ef4444',
                         borderWidth:1,
                         borderRadius:12,
                         borderSkipped:false

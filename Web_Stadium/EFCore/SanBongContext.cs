@@ -195,6 +195,9 @@ public partial class SanBongContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.TienCoc).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TongTien).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TienGoc).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.TienGiam).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.LoaiVoucherApDung).HasMaxLength(20);
             entity.Property(e => e.TrangThai)
                 .HasMaxLength(20)
                 .HasDefaultValue("ChoDuyet");
@@ -216,6 +219,10 @@ public partial class SanBongContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_DatSans_User");
+
+            entity.HasOne(d => d.Voucher).WithMany(p => p.DatSans)
+                .HasForeignKey(d => d.VoucherId)
+                .HasConstraintName("FK_DatSans_Voucher");
         });
 
         modelBuilder.Entity<DatSanDichVu>(entity =>
@@ -565,19 +572,37 @@ public partial class SanBongContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Vouchers__3214EC07092807B4");
             entity.HasIndex(e => e.MaVoucher, "UQ__Vouchers__0AAC5B1029A0D8F8").IsUnique();
+            entity.HasIndex(e => e.LoaiVoucher, "IX_Vouchers_LoaiVoucher");
+            entity.HasIndex(e => e.SanBongId, "IX_Vouchers_SanBongId");
             entity.Property(e => e.GiaTriGiam).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.GiamToiDa).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.DieuKienToiThieu).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.LoaiGiam)
                 .HasMaxLength(20)
                 .HasDefaultValue("PhanTram");
+            entity.Property(e => e.LoaiVoucher)
+                .HasMaxLength(20)
+                .HasDefaultValue("HeThong");
             entity.Property(e => e.MaVoucher).HasMaxLength(50);
             entity.Property(e => e.MoTa).HasMaxLength(500);
+            entity.Property(e => e.NgayBatDau).HasColumnType("datetime");
+            entity.Property(e => e.NgayHetHan).HasColumnType("datetime");
             entity.Property(e => e.NgayTao)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.SoNgayHieuLuc).HasDefaultValue(30);
+            entity.Property(e => e.SoLuong).HasDefaultValue(0);
+            entity.Property(e => e.DaDung).HasDefaultValue(0);
             entity.Property(e => e.TenVoucher).HasMaxLength(200);
+
+            entity.HasOne(d => d.SanBong).WithMany()
+                .HasForeignKey(d => d.SanBongId)
+                .HasConstraintName("FK_Vouchers_SanBong");
+
+            entity.HasOne(d => d.Owner).WithMany()
+                .HasForeignKey(d => d.OwnerId)
+                .HasConstraintName("FK_Vouchers_Owner");
         });
 
         OnModelCreatingPartial(modelBuilder);

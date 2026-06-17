@@ -775,6 +775,17 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
             ViewBag.TongDoanhThuSan = (double)data.Sum(d => (double)((dynamic)d).dtSan);
             ViewBag.TongLuot = (int)data.Sum(d => (int)((dynamic)d).soLuot);
             ViewBag.DiemCaoNhat = data.OrderByDescending(d => (double)((dynamic)d).phi).FirstOrDefault();
+            ViewBag.TongGiamHeThong = (double)data.Sum(d => (double)((dynamic)d).giamHeThong);
+            ViewBag.TongGiamOwner = (double)data.Sum(d => (double)((dynamic)d).giamOwner);
+            ViewBag.SoLuotVoucherHT = await _context.DatSans
+                .Where(d => d.LoaiVoucherApDung == "HeThong"
+                         && d.ThoiGianTao >= batDau && d.ThoiGianTao < ketThuc).CountAsync();
+            ViewBag.TopVoucherHT = await _context.Vouchers
+                .Where(v => v.LoaiVoucher == "HeThong")
+                .OrderByDescending(v => v.DaDung).Take(5)
+                .Select(v => new { v.TenVoucher, v.DaDung,
+                    TienGiam = _context.DatSans.Where(d => d.VoucherId == v.Id).Sum(d => d.TienGiam) })
+                .ToListAsync();
 
             // Aliases cho BaoCao View
             ViewBag.DoanhThuNam = data.Select(d => new
@@ -847,7 +858,9 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
             phi = (double)rows.Sum(d => TinhPhiHoaHong(d)),
             soLuot = rows.Count,
             soKA = rows.Count(d => d.TrangThai == "DaHuy"),
-            soKB = rows.Count(d => d.TrangThai == "HoanThanh" || d.TrangThai == "DangSuDung")
+            soKB = rows.Count(d => d.TrangThai == "HoanThanh" || d.TrangThai == "DangSuDung"),
+            giamHeThong = (double)rows.Where(d => d.LoaiVoucherApDung == "HeThong").Sum(d => d.TienGiam),
+            giamOwner = (double)rows.Where(d => d.LoaiVoucherApDung == "Owner").Sum(d => d.TienGiam)
         };
 
         // ══════════════════════════════════════════════════════════
@@ -1001,6 +1014,107 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
             ViewBag.Keyword = keyword;
 
             return View();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // QUẢN LÝ VOUCHER HỆ THỐNG
+        // ══════════════════════════════════════════════════════════
+
+        // GET /Admin/Voucher
+        public async Task<IActionResult> Voucher(string? filter = null)
+        {
+            var query = _context.Vouchers
+                .Where(v => v.LoaiVoucher == "HeThong");
+
+            if (filter == "active")
+                query = query.Where(v => v.IsActive && v.NgayHetHan > DateTime.Now);
+            else if (filter == "expired")
+                query = query.Where(v => !v.IsActive || v.NgayHetHan <= DateTime.Now);
+
+            var vouchers = await query.OrderByDescending(v => v.NgayTao).ToListAsync();
+
+            // KPI
+            var allHT = await _context.Vouchers.Where(v => v.LoaiVoucher == "HeThong").ToListAsync();
+            ViewBag.TongPhatHanh = allHT.Sum(v => v.DaDung);
+            ViewBag.TongConLai = allHT.Sum(v => v.SoLuong == 0 ? 0 : Math.Max(0, v.SoLuong - v.DaDung));
+            ViewBag.TongTienGiam = await _context.DatSans
+                .Where(d => d.LoaiVoucherApDung == "HeThong")
+                .SumAsync(d => d.TienGiam);
+            ViewBag.Filter = filter;
+
+            return View(vouchers);
+        }
+
+        // GET /Admin/TaoVoucher
+        public IActionResult TaoVoucher() => View();
+
+        // POST /Admin/TaoVoucher
+        [HttpPost]
+        public async Task<IActionResult> TaoVoucher(
+            string tenVoucher, string? moTa,
+            string loaiGiam, decimal giaTriGiam, decimal? giamToiDa,
+            decimal dieuKienToiThieu, int soLuong,
+            DateTime ngayBatDau, DateTime ngayHetHan)
+        {
+            if (string.IsNullOrWhiteSpace(tenVoucher))
+            { TempData["Error"] = "Tên voucher không được để trống."; return View(); }
+
+            if (ngayHetHan <= ngayBatDau)
+            { TempData["Error"] = "Ngày hết hạn phải sau ngày bắt đầu."; return View(); }
+
+            if (giaTriGiam <= 0)
+            { TempData["Error"] = "Giá trị giảm phải lớn hơn 0."; return View(); }
+
+            var ma = $"HT-{DateTime.Now:yyyyMMddHHmmss}-{new Random().Next(100, 999)}";
+            var v = new Voucher
+            {
+                MaVoucher = ma,
+                TenVoucher = tenVoucher.Trim(),
+                MoTa = moTa?.Trim(),
+                LoaiGiam = loaiGiam,
+                GiaTriGiam = giaTriGiam,
+                GiamToiDa = loaiGiam == "PhanTram" ? giamToiDa : null,
+                DieuKienToiThieu = dieuKienToiThieu,
+                SoLuong = soLuong,
+                LoaiVoucher = "HeThong",
+                NgayBatDau = ngayBatDau,
+                NgayHetHan = ngayHetHan,
+                IsActive = true,
+                NgayTao = DateTime.Now,
+                DiemCanDoi = 0,
+                SoNgayHieuLuc = 0
+            };
+            _context.Vouchers.Add(v);
+            await _context.SaveChangesAsync();
+            await GhiLog("TaoVoucher", "Voucher", v.Id, $"Tạo voucher hệ thống: {tenVoucher}");
+            TempData["Success"] = $"Đã tạo voucher \"{tenVoucher}\" — Mã: {ma}";
+            return RedirectToAction("Voucher");
+        }
+
+        // POST /Admin/KichHoatVoucher/{id}
+        [HttpPost]
+        public async Task<IActionResult> KichHoatVoucher(int id)
+        {
+            var v = await _context.Vouchers.FindAsync(id);
+            if (v == null || v.LoaiVoucher != "HeThong") return NotFound();
+            v.IsActive = true;
+            await _context.SaveChangesAsync();
+            await GhiLog("KichHoatVoucher", "Voucher", id, $"Kích hoạt: {v.TenVoucher}");
+            TempData["Success"] = $"Đã kích hoạt voucher \"{v.TenVoucher}\".";
+            return RedirectToAction("Voucher");
+        }
+
+        // POST /Admin/VoHieuVoucher/{id}
+        [HttpPost]
+        public async Task<IActionResult> VoHieuVoucher(int id)
+        {
+            var v = await _context.Vouchers.FindAsync(id);
+            if (v == null || v.LoaiVoucher != "HeThong") return NotFound();
+            v.IsActive = false;
+            await _context.SaveChangesAsync();
+            await GhiLog("VoHieuVoucher", "Voucher", id, $"Vô hiệu: {v.TenVoucher}");
+            TempData["Success"] = $"Đã vô hiệu voucher \"{v.TenVoucher}\".";
+            return RedirectToAction("Voucher");
         }
     }
 }

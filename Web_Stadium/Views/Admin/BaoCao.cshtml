@@ -14,6 +14,12 @@
     double tongPhi = (double)(ViewBag.TongPhiHoaHong ?? 0.0);
     double tongDTSan = (double)(ViewBag.TongDoanhThuSan ?? 0.0);
     int tongLuot = (int)(ViewBag.TongLuot ?? 0);
+    double tongGiamHT = (double)(ViewBag.TongGiamHeThong ?? 0.0);
+    double tongGiamOwner = (double)(ViewBag.TongGiamOwner ?? 0.0);
+    int soLuotVoucherHT = (int)(ViewBag.SoLuotVoucherHT ?? 0);
+    var topVoucherHT = (ViewBag.TopVoucherHT as IEnumerable<dynamic>) ?? Enumerable.Empty<dynamic>();
+    var giamHTArr = "[" + string.Join(",", data.Select(d => { try { return ((double)d.giamHeThong / 1_000_000).ToString("F4", System.Globalization.CultureInfo.InvariantCulture); } catch { return "0"; } })) + "]";
+    var giamOwnArr = "[" + string.Join(",", data.Select(d => { try { return ((double)d.giamOwner / 1_000_000).ToString("F4", System.Globalization.CultureInfo.InvariantCulture); } catch { return "0"; } })) + "]";
 
     string J(double v) => v.ToString("F4", System.Globalization.CultureInfo.InvariantCulture);
     string JS(string s) => s.Replace("\"", "'");
@@ -502,7 +508,70 @@
                 <div class="kval">@(tongDTSan > 0 ? ((tongPhi / tongDTSan * 100)).ToString("F1") : "0") <span>%</span></div>
                 <div class="ksub">Trên tổng doanh thu sân</div>
             </div>
+            <div class="kc" style="--acc:var(--red);">
+                <div class="kico">🎫</div>
+                <div class="klbl">Chi phí Voucher HT</div>
+                <div class="kval">@((tongGiamHT / 1_000_000).ToString("F2")) <span>M đ</span></div>
+                <div class="ksub">@soLuotVoucherHT lượt — PitchHub chịu</div>
+            </div>
+            <div class="kc" style="--acc:var(--amber);">
+                <div class="kico">🏟️</div>
+                <div class="klbl">Owner chịu giảm</div>
+                <div class="kval">@((tongGiamOwner / 1_000_000).ToString("F2")) <span>M đ</span></div>
+                <div class="ksub">Từ voucher sân</div>
+            </div>
         </div>
+
+        <!-- Voucher HT Section -->
+        @if (topVoucherHT.Any())
+        {
+            <div class="sdiv">Hiệu quả voucher hệ thống</div>
+            <div class="cc" style="margin-bottom:24px;">
+                <div class="ch">
+                    <div class="ct">🎫 TOP VOUCHER HỆ THỐNG — PITCHHUB CHỊU CHI PHÍ</div>
+                    <a href="/Admin/Voucher" style="font-size:.75rem;color:var(--green);">Quản lý →</a>
+                </div>
+                <table class="rtbl">
+                    <thead>
+                        <tr>
+                            <th>Tên Voucher</th>
+                            <th>Lượt dùng</th>
+                            <th>Tổng chi phí</th>
+                            <th>Đánh giá</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var v in topVoucherHT)
+                        {
+                            double tg = 0;
+                            int dd = 0;
+                            string tn = "";
+                            try { tg = (double)v.TienGiam; dd = (int)v.DaDung; tn = (string)v.TenVoucher; } catch {}
+                            var roi = dd > 0 ? (tg / dd) : 0;
+                            <tr>
+                                <td class="rs">@tn</td>
+                                <td>@dd lượt</td>
+                                <td style="color:#ef4444;font-weight:700;">@((tg/1_000_000).ToString("F2"))M đ</td>
+                                <td>
+                                    @if (dd >= 10)
+                                    {
+                                        <span class="pl g">HOT</span>
+                                    }
+                                    else if (dd == 0)
+                                    {
+                                        <span class="pl r">Chưa dùng</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="pl b">Ổn định</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
 
         <!-- Chart 1: Doanh thu theo thời gian -->
         <div class="sdiv">Doanh thu theo thời gian</div>

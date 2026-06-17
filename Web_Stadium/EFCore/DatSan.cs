@@ -17,6 +17,18 @@ public partial class DatSan
 
     public decimal TongTien { get; set; }
 
+    // Giá gốc trước khi áp voucher
+    public decimal TienGoc { get; set; }
+
+    // Tổng tiền đã giảm từ voucher
+    public decimal TienGiam { get; set; }
+
+    // FK → Voucher được áp dụng (nullable)
+    public int? VoucherId { get; set; }
+
+    // "HeThong" / "Owner" / null
+    public string? LoaiVoucherApDung { get; set; }
+
     public string MaXacNhan { get; set; } = null!;
 
     public string TrangThai { get; set; } = null!;
@@ -50,4 +62,6 @@ public partial class DatSan
     public virtual User User { get; set; } = null!;
 
     public virtual ICollection<UserVoucher> UserVouchers { get; set; } = new List<UserVoucher>();
+
+    public virtual Voucher? Voucher { get; set; }
 }
