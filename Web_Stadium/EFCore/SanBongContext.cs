@@ -196,8 +196,8 @@ public partial class SanBongContext : DbContext
             entity.Property(e => e.TienCoc).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TongTien).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TienGoc).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
-            entity.Property(e => e.TienGiam).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
-            entity.Property(e => e.LoaiVoucherApDung).HasMaxLength(20);
+            entity.Property(e => e.TienGiamSan).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.TienGiamHeThong).HasColumnType("decimal(18, 2)").HasDefaultValue(0m);
             entity.Property(e => e.TrangThai)
                 .HasMaxLength(20)
                 .HasDefaultValue("ChoDuyet");
@@ -220,9 +220,13 @@ public partial class SanBongContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_DatSans_User");
 
-            entity.HasOne(d => d.Voucher).WithMany(p => p.DatSans)
-                .HasForeignKey(d => d.VoucherId)
-                .HasConstraintName("FK_DatSans_Voucher");
+            entity.HasOne(d => d.VoucherSan).WithMany(p => p.DatSanAsSan)
+                .HasForeignKey(d => d.VoucherSanId)
+                .HasConstraintName("FK_DatSans_VoucherSan");
+
+            entity.HasOne(d => d.VoucherHeThong).WithMany(p => p.DatSanAsHeThong)
+                .HasForeignKey(d => d.VoucherHeThongId)
+                .HasConstraintName("FK_DatSans_VoucherHeThong");
         });
 
         modelBuilder.Entity<DatSanDichVu>(entity =>

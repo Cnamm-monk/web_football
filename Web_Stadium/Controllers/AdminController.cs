@@ -778,13 +778,13 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
             ViewBag.TongGiamHeThong = (double)data.Sum(d => (double)((dynamic)d).giamHeThong);
             ViewBag.TongGiamOwner = (double)data.Sum(d => (double)((dynamic)d).giamOwner);
             ViewBag.SoLuotVoucherHT = await _context.DatSans
-                .Where(d => d.LoaiVoucherApDung == "HeThong"
+                .Where(d => d.VoucherHeThongId != null
                          && d.ThoiGianTao >= batDau && d.ThoiGianTao < ketThuc).CountAsync();
             ViewBag.TopVoucherHT = await _context.Vouchers
                 .Where(v => v.LoaiVoucher == "HeThong")
                 .OrderByDescending(v => v.DaDung).Take(5)
                 .Select(v => new { v.TenVoucher, v.DaDung,
-                    TienGiam = _context.DatSans.Where(d => d.VoucherId == v.Id).Sum(d => d.TienGiam) })
+                    TienGiam = _context.DatSans.Where(d => d.VoucherHeThongId == v.Id).Sum(d => d.TienGiamHeThong) })
                 .ToListAsync();
 
             // Aliases cho BaoCao View
@@ -859,8 +859,8 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
             soLuot = rows.Count,
             soKA = rows.Count(d => d.TrangThai == "DaHuy"),
             soKB = rows.Count(d => d.TrangThai == "HoanThanh" || d.TrangThai == "DangSuDung"),
-            giamHeThong = (double)rows.Where(d => d.LoaiVoucherApDung == "HeThong").Sum(d => d.TienGiam),
-            giamOwner = (double)rows.Where(d => d.LoaiVoucherApDung == "Owner").Sum(d => d.TienGiam)
+            giamHeThong = (double)rows.Sum(d => d.TienGiamHeThong),
+            giamOwner = (double)rows.Sum(d => d.TienGiamSan)
         };
 
         // ══════════════════════════════════════════════════════════
@@ -1038,8 +1038,8 @@ if (san.Owner != null && !string.IsNullOrEmpty(san.Owner.Email))
             ViewBag.TongPhatHanh = allHT.Sum(v => v.DaDung);
             ViewBag.TongConLai = allHT.Sum(v => v.SoLuong == 0 ? 0 : Math.Max(0, v.SoLuong - v.DaDung));
             ViewBag.TongTienGiam = await _context.DatSans
-                .Where(d => d.LoaiVoucherApDung == "HeThong")
-                .SumAsync(d => d.TienGiam);
+                .Where(d => d.VoucherHeThongId != null)
+                .SumAsync(d => d.TienGiamHeThong);
             ViewBag.Filter = filter;
 
             return View(vouchers);

@@ -760,13 +760,24 @@
 
                         <!-- Voucher section -->
                         <div id="voucherSection" style="display:none;margin-bottom:10px;">
-                            <label style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;display:block;">Voucher giảm giá</label>
-                            <select id="voucherSelect" onchange="apDungVoucher()" style="width:100%;padding:8px 12px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:14px;">
-                                <option value="">-- Không dùng voucher --</option>
-                            </select>
-                            <div id="voucherInfo" style="display:none;margin-top:8px;padding:10px;background:rgba(14,168,106,.08);border-radius:10px;border:1px solid rgba(14,168,106,.2);font-size:13px;">
+                            <!-- Voucher sân -->
+                            <div id="voucherSanWrap" style="display:none;margin-bottom:8px;">
+                                <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;display:block;">🏟 Voucher sân</label>
+                                <select id="voucherSanSelect" onchange="apDungVoucher()" style="width:100%;padding:8px 12px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;">
+                                    <option value="">-- Không dùng --</option>
+                                </select>
+                            </div>
+                            <!-- Voucher hệ thống -->
+                            <div id="voucherHTWrap" style="display:none;margin-bottom:8px;">
+                                <label style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;display:block;">🎫 Voucher hệ thống</label>
+                                <select id="voucherHTSelect" onchange="apDungVoucher()" style="width:100%;padding:8px 12px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;">
+                                    <option value="">-- Không dùng --</option>
+                                </select>
+                            </div>
+                            <!-- Tổng giảm preview -->
+                            <div id="voucherInfo" style="display:none;margin-top:6px;padding:10px;background:rgba(14,168,106,.08);border-radius:10px;border:1px solid rgba(14,168,106,.2);font-size:13px;">
                                 <div class="d-flex justify-content-between">
-                                    <span style="color:var(--muted);">Giảm:</span>
+                                    <span style="color:var(--muted);">Tổng giảm:</span>
                                     <span id="vGiam" style="color:#ef4444;font-weight:700;">0đ</span>
                                 </div>
                                 <div class="d-flex justify-content-between mt-1">
@@ -793,7 +804,8 @@
                         }
                         <input type="hidden" id="tyLeCocInput" value="@_tyLe.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" />
                         <input type="hidden" id="ngayInput" name="ngayThiDauStr" value="" />
-                        <input type="hidden" id="voucherIdInput" name="voucherId" value="" />
+                        <input type="hidden" id="voucherSanIdInput" name="voucherSanId" value="" />
+                        <input type="hidden" id="voucherHTIdInput" name="voucherHeThongId" value="" />
                         <div id="dichVuInputs"></div>
                         <button type="submit" class="btn-primary-glow" id="btnDatSan">
                             XÁC NHẬN ĐẶT SÂN
@@ -880,16 +892,13 @@
         var _sanBongId = @Model.Id;
         var _tyLeCoc = parseFloat(document.getElementById('tyLeCocInput').value) || 0.3;
         var _currentGiaGoc = 0;  // giá khung giờ + dịch vụ
-        var _tienGiam = 0;
 
         function fmt(n) { return Math.round(n).toLocaleString('vi-VN') + 'đ'; }
 
-        // Gọi khi khung giờ được chọn — hook vào sự kiện update giá từ venues-details.js
-        var _origUpdatePrice = window.updatePricePanel || function(){};
-        window.onKhungGioSelected = function(gia) {
-            _currentGiaGoc = gia;
-            taiVouchers(gia);
-        };
+        function buildLabel(v) {
+            var conNgayTxt = v.conNgay >= 0 ? ' (còn ' + v.conNgay + ' ngày)' : '';
+            return 'Giảm ' + fmt(v.soTienGiam) + ' — ' + v.tenVoucher + conNgayTxt;
+        }
 
         async function taiVouchers(tongTien) {
             if (!tongTien || tongTien <= 0) {
@@ -899,80 +908,85 @@
             try {
                 var res = await fetch('/Booking/LayVoucher?sanBongId=' + _sanBongId + '&tongTien=' + tongTien);
                 var data = await res.json();
-                var sel = document.getElementById('voucherSelect');
-                sel.innerHTML = '<option value="">-- Không dùng voucher --</option>';
 
-                if (data.voucherSan && data.voucherSan.length > 0) {
-                    var grp = document.createElement('optgroup');
-                    grp.label = '🏟️ Voucher của sân';
+                var selSan = document.getElementById('voucherSanSelect');
+                var selHT = document.getElementById('voucherHTSelect');
+                selSan.innerHTML = '<option value="">-- Không dùng --</option>';
+                selHT.innerHTML = '<option value="">-- Không dùng --</option>';
+
+                var hasSan = data.voucherSan && data.voucherSan.length > 0;
+                var hasHT = data.voucherHeThong && data.voucherHeThong.length > 0;
+
+                if (hasSan) {
                     data.voucherSan.forEach(function(v) {
                         var opt = document.createElement('option');
                         opt.value = v.id;
-                        opt.dataset.loaiGiam = v.loaiGiam;
-                        opt.dataset.giaTriGiam = v.giaTriGiam;
-                        opt.dataset.giamToiDa = v.giamToiDa || 0;
-                        var desc = v.loaiGiam === 'PhanTram' ? v.giaTriGiam + '%' : fmt(v.giaTriGiam);
-                        opt.textContent = v.tenVoucher + ' — Giảm ' + desc;
-                        grp.appendChild(opt);
+                        opt.dataset.soTienGiam = v.soTienGiam;
+                        opt.textContent = buildLabel(v);
+                        selSan.appendChild(opt);
                     });
-                    sel.appendChild(grp);
                 }
 
-                if (data.voucherHeThong && data.voucherHeThong.length > 0) {
-                    var grp2 = document.createElement('optgroup');
-                    grp2.label = '🎫 Voucher hệ thống';
+                if (hasHT) {
                     data.voucherHeThong.forEach(function(v) {
                         var opt = document.createElement('option');
                         opt.value = v.id;
-                        opt.dataset.loaiGiam = v.loaiGiam;
-                        opt.dataset.giaTriGiam = v.giaTriGiam;
-                        opt.dataset.giamToiDa = v.giamToiDa || 0;
-                        var desc = v.loaiGiam === 'PhanTram' ? v.giaTriGiam + '%' : fmt(v.giaTriGiam);
-                        opt.textContent = v.tenVoucher + ' — Giảm ' + desc;
-                        grp2.appendChild(opt);
+                        opt.dataset.soTienGiam = v.soTienGiam;
+                        opt.textContent = buildLabel(v);
+                        selHT.appendChild(opt);
                     });
-                    sel.appendChild(grp2);
                 }
 
-                var total = (data.voucherSan ? data.voucherSan.length : 0) + (data.voucherHeThong ? data.voucherHeThong.length : 0);
-                document.getElementById('voucherSection').style.display = total > 0 ? '' : 'none';
+                document.getElementById('voucherSanWrap').style.display = hasSan ? '' : 'none';
+                document.getElementById('voucherHTWrap').style.display = hasHT ? '' : 'none';
+                document.getElementById('voucherSection').style.display = (hasSan || hasHT) ? '' : 'none';
                 apDungVoucher();
             } catch(e) { console.error(e); }
         }
 
         function apDungVoucher() {
-            var sel = document.getElementById('voucherSelect');
-            var opt = sel.options[sel.selectedIndex];
-            var vid = sel.value;
-            document.getElementById('voucherIdInput').value = vid;
+            var selSan = document.getElementById('voucherSanSelect');
+            var selHT = document.getElementById('voucherHTSelect');
 
-            if (!vid) {
-                _tienGiam = 0;
-                document.getElementById('voucherInfo').style.display = 'none';
-            } else {
-                var loai = opt.dataset.loaiGiam;
-                var gtg = parseFloat(opt.dataset.giaTriGiam) || 0;
-                var gtd = parseFloat(opt.dataset.giamToiDa) || 0;
-                _tienGiam = loai === 'PhanTram' ? _currentGiaGoc * gtg / 100 : Math.min(gtg, _currentGiaGoc);
-                if (gtd > 0) _tienGiam = Math.min(_tienGiam, gtd);
-                document.getElementById('vGiam').textContent = fmt(_tienGiam);
-                document.getElementById('vTongSauGiam').textContent = fmt(Math.max(0, _currentGiaGoc - _tienGiam));
-                document.getElementById('voucherInfo').style.display = '';
-            }
+            document.getElementById('voucherSanIdInput').value = selSan.value;
+            document.getElementById('voucherHTIdInput').value = selHT.value;
 
-            var tongSauGiam = Math.max(0, _currentGiaGoc - _tienGiam);
+            // Lấy soTienGiam từ dataset (đã tính server-side)
+            var giamSan = selSan.value
+                ? (parseFloat(selSan.options[selSan.selectedIndex].dataset.soTienGiam) || 0)
+                : 0;
+
+            // Voucher HT tính trên giá sau khi đã giảm sân
+            var sauGiamSan = Math.max(0, _currentGiaGoc - giamSan);
+            var giamHT = selHT.value
+                ? (parseFloat(selHT.options[selHT.selectedIndex].dataset.soTienGiam) || 0)
+                : 0;
+            // Re-cap giamHT so nó không vượt quá sauGiamSan
+            giamHT = Math.min(giamHT, sauGiamSan);
+
+            var tongGiam = giamSan + giamHT;
+            var tongSauGiam = Math.max(0, _currentGiaGoc - tongGiam);
             var coc = tongSauGiam * _tyLeCoc;
             var conLai = tongSauGiam - coc;
+
+            if (tongGiam > 0) {
+                document.getElementById('vGiam').textContent = fmt(tongGiam);
+                document.getElementById('vTongSauGiam').textContent = fmt(tongSauGiam);
+                document.getElementById('voucherInfo').style.display = '';
+            } else {
+                document.getElementById('voucherInfo').style.display = 'none';
+            }
 
             document.getElementById('priceTotal').textContent = fmt(coc);
             if (conLai > 0) {
                 document.getElementById('conLaiRow').style.display = '';
                 document.getElementById('priceConLai').textContent = fmt(conLai);
+            } else {
+                document.getElementById('conLaiRow').style.display = 'none';
             }
         }
 
-        // Patch: gọi khi venues-details.js cập nhật giá sân
-        // Dùng MutationObserver để bắt khi #priceGia thay đổi
+        // Bắt khi venues-details.js cập nhật giá sân
         var priceGiaEl = document.getElementById('priceGia');
         if (priceGiaEl) {
             new MutationObserver(function() {

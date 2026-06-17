@@ -333,10 +333,6 @@ namespace Web_Stadium.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<string>("LoaiVoucherApDung")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<string>("MaXacNhan")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -359,7 +355,12 @@ namespace Web_Stadium.Migrations
                     b.Property<decimal>("TienCoc")
                         .HasColumnType("decimal(18, 2)");
 
-                    b.Property<decimal>("TienGiam")
+                    b.Property<decimal>("TienGiamSan")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18, 2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("TienGiamHeThong")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(18, 2)")
                         .HasDefaultValue(0m);
@@ -382,7 +383,10 @@ namespace Web_Stadium.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("VoucherId")
+                    b.Property<int?>("VoucherSanId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("VoucherHeThongId")
                         .HasColumnType("int");
 
                     b.HasKey("Id")
@@ -392,7 +396,9 @@ namespace Web_Stadium.Migrations
 
                     b.HasIndex("StaffCheckOutId");
 
-                    b.HasIndex("VoucherId");
+                    b.HasIndex("VoucherSanId");
+
+                    b.HasIndex("VoucherHeThongId");
 
                     b.HasIndex(new[] { "NgayThiDau" }, "IX_DatSans_NgayThiDau");
 
@@ -1272,10 +1278,15 @@ namespace Web_Stadium.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_DatSans_User");
 
-                    b.HasOne("Web_Stadium.EFCore.Voucher", "Voucher")
-                        .WithMany("DatSans")
-                        .HasForeignKey("VoucherId")
-                        .HasConstraintName("FK_DatSans_Voucher");
+                    b.HasOne("Web_Stadium.EFCore.Voucher", "VoucherSan")
+                        .WithMany("DatSanAsSan")
+                        .HasForeignKey("VoucherSanId")
+                        .HasConstraintName("FK_DatSans_VoucherSan");
+
+                    b.HasOne("Web_Stadium.EFCore.Voucher", "VoucherHeThong")
+                        .WithMany("DatSanAsHeThong")
+                        .HasForeignKey("VoucherHeThongId")
+                        .HasConstraintName("FK_DatSans_VoucherHeThong");
 
                     b.Navigation("KhungGio");
 
@@ -1285,7 +1296,9 @@ namespace Web_Stadium.Migrations
 
                     b.Navigation("User");
 
-                    b.Navigation("Voucher");
+                    b.Navigation("VoucherSan");
+
+                    b.Navigation("VoucherHeThong");
                 });
 
             modelBuilder.Entity("Web_Stadium.EFCore.DatSanDichVu", b =>
@@ -1595,7 +1608,9 @@ namespace Web_Stadium.Migrations
 
             modelBuilder.Entity("Web_Stadium.EFCore.Voucher", b =>
                 {
-                    b.Navigation("DatSans");
+                    b.Navigation("DatSanAsSan");
+
+                    b.Navigation("DatSanAsHeThong");
 
                     b.Navigation("UserVouchers");
                 });

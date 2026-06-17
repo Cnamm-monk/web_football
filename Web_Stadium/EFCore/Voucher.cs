@@ -56,5 +56,7 @@ public partial class Voucher
 
     public virtual ICollection<UserVoucher> UserVouchers { get; set; } = new List<UserVoucher>();
 
-    public virtual ICollection<DatSan> DatSans { get; set; } = new List<DatSan>();
+    public virtual ICollection<DatSan> DatSanAsSan { get; set; } = new List<DatSan>();
+
+    public virtual ICollection<DatSan> DatSanAsHeThong { get; set; } = new List<DatSan>();
 }

@@ -25,20 +25,6 @@ namespace Web_Stadium.Migrations
                 nullable: false,
                 defaultValue: 0);
 
-            migrationBuilder.AddColumn<string>(
-                name: "LoaiVoucherApDung",
-                table: "DatSans",
-                type: "nvarchar(20)",
-                maxLength: 20,
-                nullable: true);
-
-            migrationBuilder.AddColumn<decimal>(
-                name: "TienGiam",
-                table: "DatSans",
-                type: "decimal(18,2)",
-                nullable: false,
-                defaultValue: 0m);
-
             migrationBuilder.AddColumn<decimal>(
                 name: "TienGoc",
                 table: "DatSans",
@@ -46,8 +32,28 @@ namespace Web_Stadium.Migrations
                 nullable: false,
                 defaultValue: 0m);
 
+            migrationBuilder.AddColumn<decimal>(
+                name: "TienGiamSan",
+                table: "DatSans",
+                type: "decimal(18,2)",
+                nullable: false,
+                defaultValue: 0m);
+
+            migrationBuilder.AddColumn<decimal>(
+                name: "TienGiamHeThong",
+                table: "DatSans",
+                type: "decimal(18,2)",
+                nullable: false,
+                defaultValue: 0m);
+
             migrationBuilder.AddColumn<int>(
-                name: "VoucherId",
+                name: "VoucherSanId",
+                table: "DatSans",
+                type: "int",
+                nullable: true);
+
+            migrationBuilder.AddColumn<int>(
+                name: "VoucherHeThongId",
                 table: "DatSans",
                 type: "int",
                 nullable: true);
@@ -244,9 +250,14 @@ namespace Web_Stadium.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_DatSans_VoucherId",
+                name: "IX_DatSans_VoucherSanId",
                 table: "DatSans",
-                column: "VoucherId");
+                column: "VoucherSanId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DatSans_VoucherHeThongId",
+                table: "DatSans",
+                column: "VoucherHeThongId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AnhSanBongs_SanBong",
@@ -348,9 +359,16 @@ namespace Web_Stadium.Migrations
                 unique: true);
 
             migrationBuilder.AddForeignKey(
-                name: "FK_DatSans_Voucher",
+                name: "FK_DatSans_VoucherSan",
                 table: "DatSans",
-                column: "VoucherId",
+                column: "VoucherSanId",
+                principalTable: "Vouchers",
+                principalColumn: "Id");
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_DatSans_VoucherHeThong",
+                table: "DatSans",
+                column: "VoucherHeThongId",
                 principalTable: "Vouchers",
                 principalColumn: "Id");
         }
@@ -359,7 +377,11 @@ namespace Web_Stadium.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_DatSans_Voucher",
+                name: "FK_DatSans_VoucherSan",
+                table: "DatSans");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_DatSans_VoucherHeThong",
                 table: "DatSans");
 
             migrationBuilder.DropTable(
@@ -381,7 +403,11 @@ namespace Web_Stadium.Migrations
                 name: "Vouchers");
 
             migrationBuilder.DropIndex(
-                name: "IX_DatSans_VoucherId",
+                name: "IX_DatSans_VoucherSanId",
+                table: "DatSans");
+
+            migrationBuilder.DropIndex(
+                name: "IX_DatSans_VoucherHeThongId",
                 table: "DatSans");
 
             migrationBuilder.DropColumn(
@@ -393,11 +419,11 @@ namespace Web_Stadium.Migrations
                 table: "Users");
 
             migrationBuilder.DropColumn(
-                name: "LoaiVoucherApDung",
+                name: "TienGiamSan",
                 table: "DatSans");
 
             migrationBuilder.DropColumn(
-                name: "TienGiam",
+                name: "TienGiamHeThong",
                 table: "DatSans");
 
             migrationBuilder.DropColumn(
@@ -405,7 +431,11 @@ namespace Web_Stadium.Migrations
                 table: "DatSans");
 
             migrationBuilder.DropColumn(
-                name: "VoucherId",
+                name: "VoucherSanId",
+                table: "DatSans");
+
+            migrationBuilder.DropColumn(
+                name: "VoucherHeThongId",
                 table: "DatSans");
 
             migrationBuilder.DropColumn(

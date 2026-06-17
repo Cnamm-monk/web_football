@@ -771,13 +771,13 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
                 .Where(v => v.LoaiVoucher == "Owner" && v.OwnerId == ownerId)
                 .Select(v => new { v.TenVoucher, v.DaDung,
                     TienGiamTong = _context.DatSans
-                        .Where(d => d.VoucherId == v.Id).Sum(d => d.TienGiam) })
+                        .Where(d => d.VoucherSanId == v.Id).Sum(d => d.TienGiamSan) })
                 .OrderByDescending(x => x.DaDung)
                 .Take(5)
                 .ToListAsync();
             ViewBag.VoucherHieuQua = voucherStats;
             ViewBag.SoLuotDungVoucher = await _context.DatSans
-                .Where(d => sanIds2.Contains(d.KhungGio.SanBongId) && d.LoaiVoucherApDung == "Owner")
+                .Where(d => sanIds2.Contains(d.KhungGio.SanBongId) && d.VoucherSanId != null)
                 .CountAsync();
 
             // Tỷ lệ lấp đầy từng sân
@@ -814,7 +814,7 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
             // TongTien đã là giá sau giảm voucher
             var tongDT = rows.Sum(d => d.TongTien > 0 ? d.TongTien : d.TienCoc);
             var tongGoc = rows.Sum(d => d.TienGoc > 0 ? d.TienGoc : (d.TongTien > 0 ? d.TongTien : d.TienCoc));
-            var tongGiam = rows.Sum(d => d.TienGiam);
+            var tongGiam = rows.Sum(d => d.TienGiamSan + d.TienGiamHeThong);
             var hh = rows.Sum(d =>
             {
                 var tyLe = LayTyLe(tyLeMap, d.KhungGio?.SanBong?.Quan);
@@ -1030,6 +1030,9 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
             var don = await _context.DatSans
                 .Include(d => d.User)
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
+                .Include(d => d.VoucherSan)
+                .Include(d => d.VoucherHeThong)
                 .FirstOrDefaultAsync(d => d.Id == datSanId
                                        && sanIds.Contains(d.KhungGio.SanBongId)
                                        && d.TrangThai == "ChoDuyet");
@@ -1047,16 +1050,28 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
             if (don.User != null && don.KhungGio?.SanBong != null)
             {
                 var tenSan = don.KhungGio.SanBong.TenSan;
+                var loaiSan = $"{don.KhungGio.SanBong.LoaiSan} người";
                 var diaChi = don.KhungGio.SanBong.DiaChi + ", " + don.KhungGio.SanBong.Quan;
-                var khungGio = $"{don.KhungGio.GioBatDau:HH:mm} – {don.KhungGio.GioKetThuc:HH:mm}";
+                var khungGioStr = $"{don.KhungGio.GioBatDau:HH:mm} – {don.KhungGio.GioKetThuc:HH:mm}";
+                var dichVus = don.DatSanDichVus
+                    .Where(dv => dv.DichVu != null)
+                    .Select(dv => (dv.DichVu!.TenDichVu, dv.SoLuong, dv.DichVu.Gia))
+                    .ToList();
+                var giaThue = don.KhungGio.Gia;
+                var tongDichVu = dichVus.Sum(dv => dv.SoLuong * dv.Gia);
+                var conLai = don.TongTien - don.TienCoc;
 
                 await _emailService.GuiEmailXacNhanDatSan(
-                    don.User.Email,
-                    don.User.HoTen,
-                    tenSan, diaChi, khungGio,
+                    don.User.Email, don.User.HoTen,
+                    tenSan, loaiSan, diaChi, khungGioStr,
                     don.NgayThiDau.ToString("dd/MM/yyyy"),
+                    don.User.SoDienThoai ?? "",
                     don.MaXacNhan,
-                    don.TienCoc);
+                    giaThue, tongDichVu, dichVus,
+                    don.TienGoc,
+                    don.TienGiamSan, don.VoucherSan?.TenVoucher,
+                    don.TienGiamHeThong, don.VoucherHeThong?.TenVoucher,
+                    don.TongTien, don.TienCoc, conLai);
             }
 
             // Ghi AuditLog
@@ -1299,8 +1314,8 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
             ViewBag.SanList = sanList;
             ViewBag.TongLuotDung = vouchers.Sum(v => v.DaDung);
             ViewBag.TongTienGiam = await _context.DatSans
-                .Where(d => sanIds.Contains(d.KhungGio.SanBongId) && d.LoaiVoucherApDung == "Owner")
-                .SumAsync(d => d.TienGiam);
+                .Where(d => sanIds.Contains(d.KhungGio.SanBongId) && d.VoucherSanId != null)
+                .SumAsync(d => d.TienGiamSan);
 
             return View(vouchers);
         }
