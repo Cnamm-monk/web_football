@@ -115,6 +115,57 @@
                 </div>
             }
 
+            <!-- Voucher -->
+            @if (don.TienGiamSan > 0 || don.TienGiamHeThong > 0)
+            {
+                var tongGiamDon = don.TienGiamSan + don.TienGiamHeThong;
+                var conLaiDon = don.TongTien - don.TienCoc;
+                <div style="padding:14px 20px;background:rgba(14,168,106,.04);border-bottom:1px solid var(--border);">
+                    <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#0EA86A;margin-bottom:10px;">
+                        🎟️ VOUCHER ĐÃ ÁP DỤNG
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:13px;">
+                        @if (don.TienGiamSan > 0)
+                        {
+                            <div style="display:flex;justify-content:space-between;">
+                                <span style="color:var(--muted);">🏷️ Voucher sân@(don.VoucherSan != null ? $" ({don.VoucherSan.TenVoucher})" : "")</span>
+                                <span style="color:#0EA86A;font-weight:700;">-@don.TienGiamSan.ToString("N0")đ</span>
+                            </div>
+                        }
+                        @if (don.TienGiamHeThong > 0)
+                        {
+                            <div style="display:flex;justify-content:space-between;">
+                                <span style="color:var(--muted);">🎫 Voucher HT@(don.VoucherHeThong != null ? $" ({don.VoucherHeThong.TenVoucher})" : "")</span>
+                                <span style="color:#3b82f6;font-weight:700;">-@don.TienGiamHeThong.ToString("N0")đ</span>
+                            </div>
+                        }
+                        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:2px;">
+                            <span style="color:var(--muted);">Tổng giảm</span>
+                            <span style="color:#ef4444;font-weight:700;">-@tongGiamDon.ToString("N0")đ</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:2px;">
+                            <span style="color:var(--muted);">Giá gốc</span>
+                            <span style="color:var(--muted2);">@don.TienGoc.ToString("N0")đ</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;">
+                            <span style="color:var(--muted);">Sau giảm</span>
+                            <span style="font-weight:700;">@don.TongTien.ToString("N0")đ</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;">
+                            <span style="color:var(--muted);">Tiền cọc</span>
+                            <span style="color:var(--green);font-weight:700;">@don.TienCoc.ToString("N0")đ</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;">
+                            <span style="color:var(--muted);">Còn lại khi đến sân</span>
+                            <span style="font-weight:600;">@conLaiDon.ToString("N0")đ</span>
+                        </div>
+                    </div>
+                    <div style="font-size:11px;color:var(--muted2);margin-top:8px;">
+                        * Voucher sân: Owner chịu &nbsp;|&nbsp; Voucher HT: PitchHub chịu
+                    </div>
+                </div>
+            }
+
             <!-- Action -->
             <div style="padding:16px 20px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
 

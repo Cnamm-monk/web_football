@@ -1003,6 +1003,8 @@ Căn cứ khu vực {quan} thuộc vùng ""{tenVung}"", tỷ lệ áp dụng:
                 .Include(d => d.User)
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
+                .Include(d => d.VoucherSan)
+                .Include(d => d.VoucherHeThong)
                 .Where(d => sanIds.Contains(d.KhungGio.SanBongId)
                          && d.TrangThai == "ChoDuyet")
                 .OrderBy(d => d.ThoiGianTao)

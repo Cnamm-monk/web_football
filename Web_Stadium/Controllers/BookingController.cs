@@ -343,6 +343,8 @@ namespace Web_Stadium.Controllers
             var query = _context.DatSans
                 .Include(d => d.KhungGio).ThenInclude(k => k.SanBong)
                 .Include(d => d.DatSanDichVus).ThenInclude(dv => dv.DichVu)
+                .Include(d => d.VoucherSan)
+                .Include(d => d.VoucherHeThong)
                 .Where(d => d.UserId == userId);
 
             if (!string.IsNullOrEmpty(trangThai))
