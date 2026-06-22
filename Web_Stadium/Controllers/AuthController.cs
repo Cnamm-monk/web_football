@@ -128,5 +128,68 @@ namespace Web_Stadium.Controllers
             TempData["Success"] = "Đã đăng xuất thành công!";
             return RedirectToAction("Login");
         }
+
+        // GET /Auth/ForgotPassword
+        public IActionResult ForgotPassword()
+        {
+            if (Request.Cookies["jwt"] != null)
+                return RedirectToAction("Index", "Home");
+            return View();
+        }
+
+        // POST /Auth/ForgotPassword — bước 1: xác nhận email
+        [HttpPost]
+        public async Task<IActionResult> ForgotPassword(string email)
+        {
+            var user = await _userRepo.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+            {
+                ViewBag.Error = "Không tìm thấy tài khoản với email này.";
+                return View();
+            }
+            TempData["ResetEmail"] = email;
+            return RedirectToAction("ResetPassword");
+        }
+
+        // GET /Auth/ResetPassword
+        public IActionResult ResetPassword()
+        {
+            var email = TempData["ResetEmail"] as string;
+            if (string.IsNullOrEmpty(email))
+                return RedirectToAction("ForgotPassword");
+
+            TempData.Keep("ResetEmail");
+            ViewBag.Email = email;
+            return View();
+        }
+
+        // POST /Auth/ResetPassword — bước 2: đặt lại mật khẩu
+        [HttpPost]
+        public async Task<IActionResult> ResetPassword(string email, string matKhauMoi, string xacNhan)
+        {
+            if (matKhauMoi != xacNhan)
+            {
+                ViewBag.Error = "Mật khẩu xác nhận không khớp.";
+                ViewBag.Email = email;
+                return View();
+            }
+
+            if (matKhauMoi.Length < 6)
+            {
+                ViewBag.Error = "Mật khẩu phải có ít nhất 6 ký tự.";
+                ViewBag.Email = email;
+                return View();
+            }
+
+            var user = await _userRepo.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+                return RedirectToAction("ForgotPassword");
+
+            user.MatKhau = BCrypt.Net.BCrypt.HashPassword(matKhauMoi);
+            await _userRepo.UpdateAsync(user);
+
+            TempData["Success"] = "Đặt lại mật khẩu thành công! Vui lòng đăng nhập.";
+            return RedirectToAction("Login");
+        }
     }
 }

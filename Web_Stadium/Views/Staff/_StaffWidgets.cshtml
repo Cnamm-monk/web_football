@@ -1,0 +1,240 @@
+@*
+    Partial dùng chung cho toàn bộ trang Staff.
+    Bao gồm:
+      • Indicator real-time (SignalR connection status)
+      • Floating mic button (Web Speech API tiếng Việt)
+      • Toast hiển thị lệnh nhận diện
+      • Toast event SignalR (khi đơn đổi trạng thái)
+    Trang sử dụng cần khai báo trước biến JS `voiceCommands` (array of {match, action, label}).
+*@
+
+<!-- Real-time status indicator (top-right floating) -->
+<div id="rt-status-mini" style="position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:9997;
+                                background:rgba(15,23,42,0.85);color:#9ca3af;padding:5px 12px;border-radius:16px;
+                                font-size:11px;display:flex;align-items:center;gap:7px;backdrop-filter:blur(6px)">
+    <span id="rt-dot-mini" style="width:8px;height:8px;border-radius:50%;background:#888;transition:all .3s"></span>
+    <span id="rt-label-mini">Đang kết nối...</span>
+</div>
+
+<!-- Floating mic button -->
+<button id="voice-mic" onclick="toggleVoice()" title="Lệnh giọng nói (Ctrl+Space)"
+        style="position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;
+               background:linear-gradient(135deg,#16C47F 0%,#0fa968 100%);border:none;color:white;
+               font-size:24px;cursor:pointer;z-index:9998;
+               box-shadow:0 8px 24px rgba(22,196,127,0.4);transition:all .25s">
+    🎤
+</button>
+
+<!-- Voice toast -->
+<div id="voice-toast" style="display:none;position:fixed;bottom:100px;right:30px;z-index:9998;
+                             background:#0f172a;color:white;padding:14px 18px;border-radius:12px;
+                             border:1px solid #16C47F;min-width:280px;max-width:340px;
+                             box-shadow:0 10px 30px rgba(0,0,0,0.5)">
+    <div id="voice-status" style="font-size:13px;color:#16C47F;font-weight:700;margin-bottom:6px">
+        🎤 Đang nghe...
+    </div>
+    <div id="voice-text" style="font-size:14px;color:#e5e7eb;font-style:italic;min-height:20px"></div>
+    <div id="voice-help" style="font-size:11px;color:#9ca3af;margin-top:8px;line-height:1.6"></div>
+</div>
+
+<style>
+    #rt-dot-mini.online { background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.15) }
+    #rt-dot-mini.offline { background:#ef4444 }
+
+    #voice-mic.listening {
+        animation:micPulse 1.2s infinite;
+        background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);
+    }
+    @@keyframes micPulse {
+        0%   { transform:scale(1);   box-shadow:0 0 0 0 rgba(239,68,68,0.6); }
+        70%  { transform:scale(1.08);box-shadow:0 0 0 18px rgba(239,68,68,0); }
+        100% { transform:scale(1);   box-shadow:0 0 0 0 rgba(239,68,68,0); }
+    }
+    .voice-flash { animation:vFlash .8s ease }
+    @@keyframes vFlash {
+        0%   { box-shadow:0 0 0 0 rgba(22,196,127,0.8) }
+        50%  { box-shadow:0 0 0 14px rgba(22,196,127,0.15) }
+        100% { box-shadow:0 0 0 0 rgba(22,196,127,0) }
+    }
+
+    .rt-event-toast {
+        position:fixed; top:60px; right:24px; z-index:9999;
+        min-width:280px; padding:14px 18px; border-radius:10px;
+        background:#1f2937; color:white; border-left:4px solid #22c55e;
+        box-shadow:0 12px 28px rgba(0,0,0,0.4);
+        transform:translateX(120%); transition:transform .4s cubic-bezier(.3,1.3,.5,1);
+        font-size:13px;
+    }
+    .rt-event-toast.show { transform:translateX(0) }
+    .rt-event-toast.checkin  { border-left-color:#f59e0b }
+    .rt-event-toast.checkout { border-left-color:#22c55e }
+    .rt-event-toast.suco     { border-left-color:#ef4444 }
+    .rt-event-toast .rt-title { font-weight:700; margin-bottom:4px }
+    .rt-event-toast .rt-time  { color:#9ca3af; font-size:11px; margin-top:6px }
+</style>
+
+<script>
+    // ═══ SignalR Status (gọn) ═══
+    const rtDotMini   = document.getElementById('rt-dot-mini');
+    const rtLabelMini = document.getElementById('rt-label-mini');
+    function setRTStatus(online) {
+        rtDotMini.className = online ? 'online' : 'offline';
+        rtLabelMini.textContent = online ? 'Real-time hoạt động' : 'Mất kết nối';
+    }
+
+    function dingTone(freq) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator(), g = ctx.createGain();
+            osc.connect(g); g.connect(ctx.destination);
+            osc.type = 'sine'; osc.frequency.value = freq || 880;
+            g.gain.setValueAtTime(0.15, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+            osc.start(); osc.stop(ctx.currentTime + 0.4);
+        } catch (e) {}
+    }
+
+    function showRTToast(loai, payload, thoiGian) {
+        const cfg = {
+            CheckIn:  { icon:'✅', title:`Đơn ${payload.maXacNhan} vừa check-in`, cls:'checkin',  freq:880 },
+            CheckOut: { icon:'💰', title:`Đơn ${payload.maXacNhan} đã thanh toán — ${(payload.tongTien||0).toLocaleString()}đ`, cls:'checkout', freq:660 },
+            SuCo:     { icon:'⚠️', title:`Sự cố ${payload.loaiSuCo} — đơn ${payload.maXacNhan}`, cls:'suco',     freq:440 }
+        }[loai] || { icon:'🔔', title:'Sự kiện: ' + loai, cls:'', freq:600 };
+
+        const t = document.createElement('div');
+        t.className = 'rt-event-toast ' + cfg.cls;
+        t.innerHTML = `<div class="rt-title">${cfg.icon} ${cfg.title}</div>
+                       <div class="rt-time">⏱ ${thoiGian || ''}</div>`;
+        document.body.appendChild(t);
+        requestAnimationFrame(() => t.classList.add('show'));
+        dingTone(cfg.freq);
+        setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 4000);
+    }
+
+    // ═══ Kết nối SignalR — tự nạp lib nếu trang chưa có, rồi kết nối ═══
+    function initRealtime() {
+        const __sanIdsTheoDoi = window.__STAFF_SAN_IDS || [];
+        const rtConn = new signalR.HubConnectionBuilder()
+            .withUrl('/sanBongHub')
+            .withAutomaticReconnect()
+            .build();
+
+        rtConn.on('StaffSuKien', function(ev) {
+            showRTToast(ev.loai, ev.data || {}, ev.thoiGian);
+            if (typeof window.onStaffSuKien === 'function') window.onStaffSuKien(ev);
+        });
+        rtConn.onreconnecting(() => setRTStatus(false));
+        rtConn.onreconnected(() => {
+            setRTStatus(true);
+            __sanIdsTheoDoi.forEach(id => rtConn.invoke('ThamGiaSan', id).catch(()=>{}));
+        });
+        rtConn.onclose(() => setRTStatus(false));
+        rtConn.start().then(() => {
+            setRTStatus(true);
+            __sanIdsTheoDoi.forEach(id => rtConn.invoke('ThamGiaSan', id).catch(()=>{}));
+        }).catch(() => setRTStatus(false));
+    }
+
+    if (window.signalR) {
+        initRealtime();
+    } else {
+        const __s = document.createElement('script');
+        __s.src = 'https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js';
+        __s.onload = initRealtime;
+        __s.onerror = () => setRTStatus(false);
+        document.head.appendChild(__s);
+    }
+
+    // ═══ Voice Command — page-specific ═══
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const $mic = document.getElementById('voice-mic');
+    const $vToast = document.getElementById('voice-toast');
+    const $vStatus = document.getElementById('voice-status');
+    const $vText = document.getElementById('voice-text');
+    const $vHelp = document.getElementById('voice-help');
+    let recognition = null, isListening = false;
+
+    if (!SR) {
+        $mic.style.opacity = '0.4';
+        $mic.title = 'Trình duyệt không hỗ trợ Web Speech API';
+        $mic.onclick = () => alert('Dùng Chrome/Edge để dùng tính năng giọng nói.');
+    }
+
+    // Map số tiếng Việt
+    const __wnum = { 'một':1,'mot':1,'hai':2,'ba':3,'bốn':4,'bon':4,'năm':5,'nam':5,
+                     'sáu':6,'sau':6,'bảy':7,'bay':7,'tám':8,'tam':8,'chín':9,'chin':9,'mười':10 };
+    window.extractNum = function(t) {
+        const m = t.match(/\b(\d+)\b/); if (m) return parseInt(m[1]);
+        for (const w in __wnum) if (t.includes(w)) return __wnum[w];
+        return null;
+    };
+
+    function executeVoice(text) {
+        text = (text || '').toLowerCase().trim();
+        $vText.textContent = '🗣️ "' + text + '"';
+
+        // Lệnh điều hướng chung — luôn có ở mọi trang
+        const globalCmds = [
+            { re:/(ca trực|ca truc|dashboard|trang chủ staff)/, url:'/Staff', label:'Về Ca trực' },
+            { re:/(quét|quet|qr|camera|máy ảnh|may anh|check.?in)/, url:'/Staff/CheckIn', label:'Mở Check-in' },
+            { re:/(sự cố|su co|báo cáo|bao cao)/, url:'/Staff/SuCo', label:'Mở Sự cố' },
+            { re:/(làm mới|lam moi|reload|refresh|cập nhật)/, fn:() => location.reload(), label:'Làm mới' },
+            { re:/(đăng xuất|dang xuat|logout)/, url:'/Auth/Logout', label:'Đăng xuất' }
+        ];
+
+        // Lệnh riêng của trang (mỗi view khai báo window.voiceCommands)
+        const pageCmds = window.voiceCommands || [];
+
+        for (const c of pageCmds) {
+            if (c.re.test(text)) {
+                $vStatus.textContent = '✅ ' + (c.label || 'OK');
+                try { c.action(text, window.extractNum(text)); } catch (e) { console.error(e); }
+                return;
+            }
+        }
+        for (const c of globalCmds) {
+            if (c.re.test(text)) {
+                $vStatus.textContent = '✅ ' + c.label;
+                setTimeout(() => { if (c.url) location.href = c.url; if (c.fn) c.fn(); }, 600);
+                return;
+            }
+        }
+        $vStatus.textContent = '❓ Không hiểu lệnh — thử lại';
+    }
+
+    function toggleVoice() {
+        if (!SR) return;
+        if (isListening) { recognition.stop(); return; }
+        recognition = new SR();
+        recognition.lang = 'vi-VN';
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 3;
+        recognition.onstart = () => {
+            isListening = true;
+            $mic.classList.add('listening');
+            $vToast.style.display = 'block';
+            $vStatus.textContent = '🎤 Đang nghe...';
+            $vText.textContent = '';
+            $vHelp.innerHTML = (window.voiceHelpHTML || '') +
+                '<br>Chung: <em>"ca trực", "check-in", "sự cố", "làm mới", "đăng xuất"</em>';
+        };
+        recognition.onresult = (e) => {
+            const last = e.results[e.results.length - 1];
+            $vText.textContent = '🗣️ "' + last[0].transcript + '"';
+            if (last.isFinal) executeVoice(last[0].transcript);
+        };
+        recognition.onerror = (e) => { $vStatus.textContent = '❌ Lỗi: ' + e.error; };
+        recognition.onend = () => {
+            isListening = false;
+            $mic.classList.remove('listening');
+            setTimeout(() => { $vToast.style.display = 'none'; }, 3500);
+        };
+        recognition.start();
+    }
+
+    // Ctrl+Space → bật mic
+    document.addEventListener('keydown', e => {
+        if (e.code === 'Space' && e.ctrlKey && !isListening) { e.preventDefault(); toggleVoice(); }
+    });
+</script>

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Web_Stadium.EFCore;
-using Web_Stadium.EFCore;
 using Web_Stadium.Hubs;
 
 namespace Web_Stadium
@@ -65,6 +64,44 @@ namespace Web_Stadium
             builder.Services.AddScoped<Web_Stadium.Services.EmailService>();
 
             var app = builder.Build();
+
+            // Seed tài khoản demo (Admin/Owner/Staff/User) + sân mẫu nếu chưa có
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<SanBongContext>();
+                if (!db.Users.Any(u => u.VaiTro == "Admin"))
+                {
+                    string Hash(string p) => BCrypt.Net.BCrypt.HashPassword(p);
+                    var now = DateTime.Now;
+                    var admin = new Web_Stadium.EFCore.User { HoTen = "Admin", Email = "admin@demo.com", MatKhau = Hash("123456"), VaiTro = "Admin", IsActive = true, NgayTao = now };
+                    var owner = new Web_Stadium.EFCore.User { HoTen = "Owner Demo", Email = "owner@demo.com", MatKhau = Hash("123456"), VaiTro = "Owner", IsActive = true, NgayTao = now };
+                    var staff = new Web_Stadium.EFCore.User { HoTen = "Staff Demo", Email = "staff@demo.com", MatKhau = Hash("123456"), VaiTro = "Staff", IsActive = true, NgayTao = now };
+                    var user = new Web_Stadium.EFCore.User { HoTen = "Người dùng", Email = "user@demo.com", MatKhau = Hash("123456"), VaiTro = "User", IsActive = true, NgayTao = now };
+                    db.Users.AddRange(admin, owner, staff, user);
+                    db.SaveChanges();
+
+                    staff.OwnerIdCuaStaff = owner.Id;
+                    db.SaveChanges();
+
+                    var san = new Web_Stadium.EFCore.SanBong
+                    {
+                        TenSan = "Sân Bóng Demo", DiaChi = "123 Đường Demo", Quan = "Cầu Giấy", ThanhPho = "Hà Nội",
+                        LoaiSan = "5", LoaiCo = "CO_NHAN_TAO", MoTa = "Sân demo cho kiểm thử",
+                        TrangThaiDuyet = "DaDuyet", OwnerId = owner.Id, DaKyHopDong = true, TyLeCoc = 0.3m,
+                        IsHidden = false, DanhGiaTrungBinh = 4.5, Latitude = 21.0285, Longitude = 105.8542
+                    };
+                    db.SanBongs.Add(san);
+                    db.SaveChanges();
+
+                    db.StaffSanPhanCongs.Add(new Web_Stadium.EFCore.StaffSanPhanCong { StaffId = staff.Id, SanBongId = san.Id, NgayGan = now });
+                    db.KhungGios.Add(new Web_Stadium.EFCore.KhungGio
+                    {
+                        SanBongId = san.Id, GioBatDau = new TimeOnly(6, 0), GioKetThuc = new TimeOnly(8, 0),
+                        Gia = 200000, GiaGioVang = 250000, GiaCuoiTuan = 220000, LoaiNgay = "Thuong", TrangThai = "Trong"
+                    });
+                    db.SaveChanges();
+                }
+            }
 
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
