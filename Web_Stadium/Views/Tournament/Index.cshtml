@@ -1,326 +1,349 @@
-﻿@model List<Web_Stadium.EFCore.GiaiDau>
+@model List<Web_Stadium.EFCore.GiaiDau>
 @{
-    ViewData["Title"] = "Quản lý giải đấu";
+    ViewData["Title"] = "Giải đấu của tôi";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["ActiveNav"] = "Tournament";
+
+    var soDangDienRa = Model.Count(g => g.TrangThai == "Active");
+    var soDangDangKy = Model.Count(g => g.TrangThai == "RegistrationOpen");
+    var soDraft      = Model.Count(g => g.TrangThai == "Draft");
+    var soDaXong     = Model.Count(g => g.TrangThai == "Finished");
 }
+<style>
+    :root {
+        --db-bg: #f8fafc;
+        --db-surface: #ffffff;
+        --db-card: #ffffff;
+        --db-border: #e2e8f0;
+        --db-muted: #475569;
+        --db-text: #0f172a;
+        --db-green: #0f6e4a;
+        --db-green-bg: rgba(15,110,74,0.08);
+        --db-green-border: rgba(15,110,74,0.2);
+    }
+    body {
+        background: var(--db-bg);
+        color: var(--db-text);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    .pitch-card {
+        background: var(--db-card);
+        border: 1px solid var(--db-border);
+        border-radius: 20px;
+        transition: all 0.2s ease;
+        overflow: hidden;
+    }
+    .pitch-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px -8px rgba(0,0,0,0.08);
+        border-color: var(--db-green-border);
+    }
+    .pitch-card.opacity-50 { opacity: 0.6; }
+    .pitch-header {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--db-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .pitch-title {
+        font-weight: 700;
+        font-size: 1.2rem;
+        margin: 0;
+        color: var(--db-text);
+    }
+    .pitch-address {
+        font-size: 12px;
+        color: var(--db-muted);
+        margin-top: 5px;
+    }
+    .pitch-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+    .badge-custom {
+        background: #eef2ff;
+        color: #1e40af;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .badge-grass { background: #e6f7e6; color: #2e7d32; }
+    .status-approved { background: rgba(15,110,74,0.12); color: #0f6e4a; border: 1px solid rgba(15,110,74,0.2); }
+    .status-pending { background: rgba(245,158,11,0.1); color: #b45309; border: 1px solid rgba(245,158,11,0.2); }
+    .status-rejected { background: rgba(220,38,38,0.1); color: #b91c1c; border: 1px solid rgba(220,38,38,0.2); }
+    .pitch-commission { text-align: right; }
+    .pitch-commission-label { font-size: 11px; color: var(--db-muted); }
+    .pitch-commission-value { font-size: 18px; font-weight: 700; color: var(--db-green); }
+    .pitch-commission-sub { font-size: 11px; color: var(--db-muted); margin-top: 2px; }
+    .pitch-actions {
+        padding: 12px 20px;
+        border-top: 1px solid var(--db-border);
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .btn-outline-custom {
+        background: transparent;
+        border: 1px solid var(--db-border);
+        border-radius: 40px;
+        padding: 5px 14px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--db-text);
+        transition: 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn-outline-custom:hover {
+        background: var(--db-green-bg);
+        border-color: var(--db-green-border);
+        color: var(--db-green);
+    }
+    /* Header gọn nhẹ - không padding-top quá lớn */
+    .page-header {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 20px 0 20px;
+        margin-top: 0;
+    }
+    .sticky-nav {
+        background: var(--db-surface);
+        border-bottom: 1px solid var(--db-border);
+        padding: 12px 0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+    .nav-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--db-border);
+        background: transparent;
+        color: var(--db-muted);
+        text-decoration: none;
+        transition: 0.15s;
+    }
+    .nav-btn:hover {
+        background: var(--db-bg);
+        color: var(--db-text);
+        border-color: #cbd5e1;
+    }
+    .nav-btn-active {
+        background: var(--db-green-bg);
+        color: var(--db-green);
+        border-color: var(--db-green-border);
+    }
+    .empty-state {
+        text-align: center;
+        padding: 80px 0;
+        color: var(--db-muted);
+    }
+    .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.4; }
+</style>
 
-@section Styles {
-    <style>
-        .tcard {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: var(--r-lg);
-            overflow: hidden;
-            transition: box-shadow .2s, transform .2s;
-            height: 100%;
-        }
-
-            .tcard:hover {
-                box-shadow: var(--shadow-hover);
-                transform: translateY(-3px);
-            }
-
-        .tcard-header {
-            padding: 20px 22px 16px;
-            border-bottom: 1px solid var(--border);
-            background: linear-gradient(135deg, rgba(14,168,106,.04), transparent);
-        }
-
-        .tcard-body {
-            padding: 18px 22px;
-        }
-
-        .tcard-footer {
-            padding: 14px 22px;
-            border-top: 1px solid var(--border);
-            background: var(--bg3);
-            display: flex;
-            gap: 8px;
-            justify-content: flex-end;
-        }
-
-        .tstate {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            padding: 4px 12px;
-            border-radius: 999px;
-        }
-
-        .ts-draft {
-            background: rgba(15,23,42,.08);
-            color: var(--muted);
-        }
-
-        .ts-approved {
-            background: rgba(14,168,106,.12);
-            color: var(--green);
-        }
-
-        .ts-open {
-            background: rgba(14,165,233,.12);
-            color: #0EA5E9;
-        }
-
-        .ts-closed {
-            background: rgba(245,158,11,.12);
-            color: #F59E0B;
-        }
-
-        .ts-active {
-            background: rgba(14,168,106,.18);
-            color: var(--green);
-            box-shadow: 0 0 0 2px rgba(14,168,106,.2);
-        }
-
-        .ts-finished {
-            background: rgba(15,23,42,.06);
-            color: var(--muted2);
-        }
-
-        .prog-bar {
-            height: 5px;
-            border-radius: 4px;
-            background: var(--bg3);
-            overflow: hidden;
-        }
-
-        .prog-fill {
-            height: 100%;
-            border-radius: 4px;
-            background: var(--green);
-            transition: width .4s ease;
-        }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            padding: 6px 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-            .stat-row:last-child {
-                border-bottom: none;
-            }
-
-        .stat-lbl {
-            color: var(--muted);
-        }
-
-        .stat-val {
-            font-weight: 700;
-            color: var(--text);
-        }
-    </style>
-}
-
-<!-- HEADER -->
-<div style="background:var(--bg2);padding:100px 0 36px;border-bottom:1px solid var(--border)">
-    <div class="container d-flex justify-content-between align-items-end flex-wrap gap-3">
-        <div>
-            <div class="section-label">Owner — Giải đấu cộng đồng</div>
-            <h1 style="font-style:italic;line-height:.9;margin:0">
-                GIẢI ĐẤU<br><span class="text-green">CỦA TÔI</span>
-            </h1>
-            <p style="color:var(--muted);margin-top:8px;">
-                @Model.Count giải &nbsp;·&nbsp;
-                @Model.Count(g => g.TrangThai == "Active") đang diễn ra
-            </p>
+<!-- Header rút gọn, không còn khoảng trống lớn -->
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+            <div>
+                <div class="text-muted mb-1" style="font-size: 11px; letter-spacing: 1px;">Owner · Quản lý giải đấu</div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin: 0;">Danh sách <span style="color: var(--db-green);">giải đấu</span></h1>
+                <p class="text-muted mt-2 mb-0">Quản lý, cập nhật thông tin và cấu hình từng giải đấu</p>
+            </div>
+            <a href="Tournament/Create" class="btn" style="background: var(--db-green); color: white; border-radius: 40px; padding: 8px 24px;">
+                <i class="fas fa-plus-circle me-2"></i>Đăng ký giải đấu mới
+            </a>
         </div>
-        <a href="/Tournament/Create" class="btn-primary-glow">➕ Tạo giải mới</a>
     </div>
 </div>
 
-<!-- NAV -->
-<div style="background:var(--bg3);border-bottom:1px solid var(--border);padding:12px 0;position:sticky;top:0;z-index:100">
-    <div class="container d-flex gap-2 flex-wrap justify-content-center">
-        <a href="/Owner" class="btn btn-outline-success rounded-pill">📊 Tổng quan</a>
-        <a href="/Tournament" class="btn btn-outline-dark rounded-pill">🏆 Giải đấu</a>
-        <a href="/Owner/DanhSachSan" class="btn btn-outline-green rounded-pill">🏟️ Danh sách sân</a>
-        <a href="/Owner/DangKySan" class="btn btn-outline-warning rounded-pill">➕ Đăng ký sân mới</a>
-        <a href="/Owner/QuanLyStaff" class="btn btn-outline-info rounded-pill">👷 Nhân viên</a>
-        <a href="/Owner/BaoCao" class="btn btn-outline-primary rounded-pill">📈 Báo cáo</a>
-    </div>
-</div
 
-<div class="container py-5">
+@await Html.PartialAsync("_TournamentStyle")
+@await Html.PartialAsync("/Views/Owner/_OwnerNav.cshtml")
+
+<div class="container tour-content">
 
     @if (TempData["Success"] != null)
     {
-        <div class="alert alert-success alert-dismissible fade show mb-4">
-            ✅ @TempData["Success"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+        <div class="tour-alert tour-alert--success">✅ @TempData["Success"]</div>
     }
     @if (TempData["Error"] != null)
     {
-        <div class="alert alert-danger alert-dismissible fade show mb-4">
-            ❌ @TempData["Error"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+        <div class="tour-alert tour-alert--error">❌ @TempData["Error"]</div>
     }
 
     @if (!Model.Any())
     {
-        <div style="text-align:center;padding:80px 0">
-            <div style="font-size:4rem;margin-bottom:16px">🏆</div>
-            <div style="font-family:var(--ff-h);font-size:1.5rem;margin-bottom:8px">
-                Chưa có giải đấu nào
+        <div class="tour-card tour-empty">
+            <div class="tour-empty__icon">🏆</div>
+            <div class="tour-empty__title">Chưa có giải đấu nào</div>
+            <div class="tour-empty__sub">
+                Tạo giải đầu tiên để số hóa việc tổ chức sân bóng cộng đồng
             </div>
-            <p style="color:var(--muted);margin-bottom:24px">
-                Tạo giải đấu đầu tiên để số hóa việc tổ chức sân bóng cộng đồng
-            </p>
-            <a href="/Tournament/Create" class="btn-primary-glow">🏆 Tạo giải đấu ngay</a>
+            <a href="/Tournament/Create" class="tour-btn tour-btn--primary">🏆 Tạo giải đấu ngay</a>
         </div>
     }
     else
     {
-        <!-- Filter tabs -->
-        <div class="d-flex gap-2 flex-wrap mb-4">
-            <button class="btn btn-sm btn-success rounded-pill filter-tab active" data-filter="all">
+        <!-- KPI -->
+        <div>
+            <div class="tour-section-label">Tổng quan</div>
+            <div class="tour-kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+                <div class="tour-kpi">
+                    <div class="tour-kpi__label">Tổng số giải</div>
+                    <div class="tour-kpi__num">@Model.Count</div>
+                    <div class="tour-kpi__sub">tất cả trạng thái</div>
+                    <span class="tour-kpi__icon">🏆</span>
+                </div>
+                <div class="tour-kpi">
+                    <div class="tour-kpi__label">Đang diễn ra</div>
+                    <div class="tour-kpi__num" style="color:var(--db-green)">@soDangDienRa</div>
+                    <div class="tour-kpi__sub">trận đấu đang chạy</div>
+                    <span class="tour-kpi__icon">🟢</span>
+                </div>
+                <div class="tour-kpi">
+                    <div class="tour-kpi__label">Đang đăng ký</div>
+                    <div class="tour-kpi__num" style="color:#0369A1">@soDangDangKy</div>
+                    <div class="tour-kpi__sub">chờ chốt danh sách</div>
+                    <span class="tour-kpi__icon">📋</span>
+                </div>
+                <div class="tour-kpi">
+                    <div class="tour-kpi__label">Đã kết thúc</div>
+                    <div class="tour-kpi__num" style="color:#64748b">@soDaXong</div>
+                    <div class="tour-kpi__sub">có file đối soát</div>
+                    <span class="tour-kpi__icon">🏁</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter chips -->
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="tour-btn filter-tab" data-filter="all"
+                    style="background:var(--db-green);color:#fff;border-color:var(--db-green)">
                 Tất cả (@Model.Count)
             </button>
-            @foreach (var (label, key, count) in new[]{
-                ("🟢 Đang diễn ra", "Active",           Model.Count(g => g.TrangThai == "Active")),
-                ("📋 Đang đăng ký", "RegistrationOpen", Model.Count(g => g.TrangThai == "RegistrationOpen")),
-                ("⏳ Chờ duyệt",    "Draft",            Model.Count(g => g.TrangThai == "Draft")),
-                ("✅ Đã kết thúc",  "Finished",         Model.Count(g => g.TrangThai == "Finished")),
-                })
+            @foreach (var (label, key, count) in new[] {
+                ("🟢 Đang diễn ra",  "Active",           soDangDienRa),
+                ("📋 Đang đăng ký",  "RegistrationOpen", soDangDangKy),
+                ("⚪ Draft",         "Draft",            soDraft),
+                ("🏁 Đã kết thúc",   "Finished",         soDaXong),
+            })
             {
                 if (count > 0)
                 {
-                    <button class="btn btn-sm btn-outline-secondary rounded-pill filter-tab"
-                            data-filter="@key">
-                        @label (@count)
-                    </button>
+                    <button class="tour-btn filter-tab" data-filter="@key">@label (@count)</button>
                 }
             }
         </div>
 
-        <div class="row g-4" id="giaiGrid">
-            @foreach (var g in Model.OrderByDescending(x => x.ThoiGianTao))
+        <!-- Card grid -->
+        <div class="row g-4 m-0 p-0" id="giaiGrid">
+            @foreach (var g in Model)
             {
-                var (stClass, stIcon) = g.TrangThai switch
+                var (pillClass, pillIcon, pillLabel) = g.TrangThai switch
                 {
-                    "Draft" => ("ts-draft", "⚪"),
-                    "Approved" => ("ts-approved", "✅"),
-                    "RegistrationOpen" => ("ts-open", "📋"),
-                    "RegistrationClosed" => ("ts-closed", "🔒"),
-                    "Active" => ("ts-active", "🟢"),
-                    "Finished" => ("ts-finished", "🏁"),
-                    _ => ("ts-draft", "⚪")
+                    "Draft"              => ("tp-draft",    "⚪", "Draft"),
+                    "Approved"           => ("tp-approved", "✅", "Đã duyệt"),
+                    "RegistrationOpen"   => ("tp-open",     "📋", "Đang đăng ký"),
+                    "RegistrationClosed" => ("tp-closed",   "🔒", "Đã đóng"),
+                    "Active"             => ("tp-active",   "🟢", "Đang diễn ra"),
+                    "Finished"           => ("tp-finished", "🏁", "Kết thúc"),
+                    _                    => ("tp-draft",    "⚪", g.TrangThai)
                 };
                 var soDoiDK = g.DoiBongs?.Count(d => d.DaThanhToan) ?? 0;
                 var pctDangKy = g.SoDoiToiDa > 0 ? (int)((double)soDoiDK / g.SoDoiToiDa * 100) : 0;
 
                 <div class="col-12 col-md-6 col-xl-4 giai-item" data-state="@g.TrangThai">
-                    <div class="tcard">
-                        <div class="tcard-header">
+                    <div class="tour-card tour-card--hover" style="padding:0;overflow:hidden;height:100%;display:flex;flex-direction:column">
+
+                        <!-- Header -->
+                        <div style="padding:18px 20px;border-bottom:1px solid var(--db-border)">
                             <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                <h5 style="font-family:var(--ff-h);font-size:1.1rem;
-                                                   text-transform:uppercase;margin:0;line-height:1.2">
+                                <h5 style="font-size:15px;font-weight:700;margin:0;line-height:1.3;color:var(--db-text)">
                                     @g.TenGiai
                                 </h5>
-                                <span class="tstate @stClass">@stIcon @g.TrangThai</span>
+                                <span class="tour-pill @pillClass">@pillIcon @pillLabel</span>
                             </div>
-                            <div style="font-size:12px;color:var(--muted)">
-                                🏟️ @g.SanBong?.TenSan &nbsp;·&nbsp;
-                                📍 @g.SanBong?.Quan
+                            <div style="font-size:12px;color:var(--db-muted)">
+                                🏟️ @g.SanBong?.TenSan
+                                @if (!string.IsNullOrEmpty(g.SanBong?.Quan))
+                                {
+                                    <span> · 📍 @g.SanBong.Quan</span>
+                                }
                             </div>
                         </div>
 
-                        <div class="tcard-body">
-                            <!-- Tiến độ đăng ký -->
+                        <!-- Body -->
+                        <div style="padding:16px 20px;flex:1">
                             @if (g.TrangThai is "RegistrationOpen" or "RegistrationClosed" or "Active")
                             {
                                 <div class="mb-3">
-                                    <div class="d-flex justify-content-between mb-1"
-                                         style="font-size:12px;color:var(--muted)">
-                                        <span>Đội đăng ký</span>
-                                        <span style="font-weight:700;color:var(--text)">
-                                            @soDoiDK / @g.SoDoiToiDa
-                                        </span>
+                                    <div class="d-flex justify-content-between mb-1" style="font-size:11.5px">
+                                        <span style="color:var(--db-muted)">Đội đăng ký</span>
+                                        <span style="font-weight:700">@soDoiDK / @g.SoDoiToiDa</span>
                                     </div>
-                                    <div class="prog-bar">
-                                        <div class="prog-fill" style="width:@pctDangKy%"></div>
+                                    <div class="tour-prog">
+                                        <div class="tour-prog__fill" style="width:@pctDangKy%"></div>
                                     </div>
                                 </div>
                             }
-
-                            <!-- Thống kê -->
-                            <div class="stat-row">
-                                <span class="stat-lbl">Số bảng đấu</span>
-                                <span class="stat-val">@g.SoBang bảng</span>
+                            <div class="tour-info-row">
+                                <span class="tour-info-row__lbl">Số bảng</span>
+                                <span class="tour-info-row__val">@g.SoBang bảng</span>
                             </div>
-                            <div class="stat-row">
-                                <span class="stat-lbl">Lệ phí / đội</span>
-                                <span class="stat-val" style="color:var(--green)">
-                                    @g.LePhiGiai.ToString("N0")đ
+                            <div class="tour-info-row">
+                                <span class="tour-info-row__lbl">Lệ phí / đội</span>
+                                <span class="tour-info-row__val" style="color:var(--db-green)">@g.LePhiGiai.ToString("N0")đ</span>
+                            </div>
+                            <div class="tour-info-row">
+                                <span class="tour-info-row__lbl">Ký quỹ / đội</span>
+                                <span class="tour-info-row__val">@g.TienKyQuy.ToString("N0")đ</span>
+                            </div>
+                            <div class="tour-info-row">
+                                <span class="tour-info-row__lbl">Thời gian</span>
+                                <span class="tour-info-row__val" style="font-size:12px">
+                                    @g.NgayBatDau.ToString("dd/MM") – @g.NgayKetThuc.ToString("dd/MM/yy")
                                 </span>
                             </div>
-                            <div class="stat-row">
-                                <span class="stat-lbl">Ký quỹ / đội</span>
-                                <span class="stat-val">@g.TienKyQuy.ToString("N0")đ</span>
-                            </div>
-                            <div class="stat-row">
-                                <span class="stat-lbl">Thời gian</span>
-                                <span class="stat-val" style="font-size:12px">
-                                    @g.NgayBatDau.ToString("dd/MM") –
-                                    @g.NgayKetThuc.ToString("dd/MM/yyyy")
-                                </span>
-                            </div>
-                            @if (g.TrangThai == "Active")
+                            @if (g.StaffPhuTrach != null)
                             {
-                                var soTranHom = g.TranDaus?.Count(t =>
-                                t.NgayThiDau.Date == DateTime.Today) ?? 0;
-                                <div class="stat-row">
-                                    <span class="stat-lbl">Trận hôm nay</span>
-                                    <span class="stat-val" style="color:var(--green)">
-                                        @soTranHom trận
-                                    </span>
+                                <div class="tour-info-row">
+                                    <span class="tour-info-row__lbl">👷 Staff PT</span>
+                                    <span class="tour-info-row__val" style="font-size:12px">@g.StaffPhuTrach.HoTen</span>
                                 </div>
                             }
                         </div>
 
-                        <div class="tcard-footer">
-                            <a href="/Tournament/Details/@g.Id" class="btn-outline-green">
-                                👁 Chi tiết
-                            </a>
+                        <!-- Footer -->
+                        <div style="padding:12px 20px;border-top:1px solid var(--db-border);background:var(--db-bg);
+                                    display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+                            <a href="/Tournament/Details/@g.Id" class="tour-btn tour-btn--sm">👁 Chi tiết</a>
                             @if (g.TrangThai == "RegistrationClosed")
                             {
-                                <a href="/Tournament/ChiaBang/@g.Id" class="btn btn-sm btn-warning rounded-pill">
-                                    🎯 Chia bảng
-                                </a>
+                                <a href="/Tournament/ChiaBang/@g.Id" class="tour-btn tour-btn--sm tour-btn--warn">🎯 Chia bảng</a>
                             }
                             @if (g.TrangThai is "Draft" or "Approved")
                             {
                                 <form method="post" action="/Tournament/MoiDangKy/@g.Id" style="display:inline">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-success rounded-pill">
-                                        📋 Mở đăng ký
-                                    </button>
+                                    <button type="submit" class="tour-btn tour-btn--sm tour-btn--primary">📋 Mở đăng ký</button>
                                 </form>
                             }
-                            @if (g.TrangThai == "Active")
+                            @if (g.TrangThai is "Active" or "Finished")
                             {
-                                <a href="/Tournament/ExcelDoiSoat/@g.Id"
-                                   class="btn btn-sm btn-outline-secondary rounded-pill">
-                                    📊 Excel
-                                </a>
-                            }
-                            @if (g.TrangThai == "Finished")
-                            {
-                                <a href="/Tournament/ExcelDoiSoat/@g.Id"
-                                   class="btn btn-sm btn-success rounded-pill">
-                                    📥 Tải đối soát
-                                </a>
+                                <a href="/Tournament/ExcelDoiSoat/@g.Id" class="tour-btn tour-btn--sm tour-btn--ghost-green">📥 Excel</a>
                             }
                         </div>
+
                     </div>
                 </div>
             }
@@ -330,20 +353,19 @@
 
 @section Scripts {
     <script>
-        // Filter tabs
-        document.querySelectorAll('.filter-tab').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.filter-tab').forEach(b => {
-                    b.classList.remove('active', 'btn-success');
-                    b.classList.add('btn-outline-secondary');
+        document.querySelectorAll('.filter-tab').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.filter-tab').forEach(function (b) {
+                    b.style.background = '';
+                    b.style.color = '';
+                    b.style.borderColor = '';
                 });
-                this.classList.add('active', 'btn-success');
-                this.classList.remove('btn-outline-secondary');
-
+                this.style.background = 'var(--db-green)';
+                this.style.color = '#fff';
+                this.style.borderColor = 'var(--db-green)';
                 var filter = this.dataset.filter;
-                document.querySelectorAll('.giai-item').forEach(function(item) {
-                    item.style.display = (filter === 'all' || item.dataset.state === filter)
-                        ? '' : 'none';
+                document.querySelectorAll('.giai-item').forEach(function (item) {
+                    item.style.display = (filter === 'all' || item.dataset.state === filter) ? '' : 'none';
                 });
             });
         });

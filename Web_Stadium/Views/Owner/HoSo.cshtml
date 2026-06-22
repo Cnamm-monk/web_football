@@ -422,7 +422,7 @@
                 </div>
             }
             <div style="text-align:right;margin-top:8px;">
-                <a href="/Owner/DuyetDon" style="color:var(--green);font-size:.8rem;font-weight:600;text-decoration:none;">Xem đầy đủ tại trang Duyệt đơn →</a>
+                <a href="/Owner/DanhSachDonDat" style="color:var(--green);font-size:.8rem;font-weight:600;text-decoration:none;">Xem đầy đủ tại trang Duyệt đơn →</a>
             </div>
         </div>
     }
@@ -465,13 +465,18 @@
                             <div style="font-weight:600;font-size:.87rem;color:var(--text);">@dv.TenDichVu</div>
                             <div style="font-size:.76rem;color:var(--muted);">@dv.SanBong?.TenSan</div>
                         </div>
-                        <div style="text-align:right;">
-                            <div style="font-size:1.2rem;font-weight:800;color:@(isRed ? "var(--danger)" : "#f59e0b");">@dv.TonKho</div>
-                            <div style="font-size:.7rem;color:var(--muted);">đơn vị còn lại</div>
+                        <div style="text-align:right;display:flex;align-items:center;gap:10px;">
+                            <div>
+                                <div style="font-size:1.2rem;font-weight:800;color:@(isRed ? "var(--danger)" : "#f59e0b");">@dv.TonKho</div>
+                                <div style="font-size:.7rem;color:var(--muted);">đơn vị còn lại</div>
+                            </div>
+                            <a href="/Owner/KhoDichVu?sanId=@dv.SanBongId" style="font-size:.74rem;padding:5px 11px;border-radius:999px;border:1px solid var(--db-border);color:var(--db-green);text-decoration:none;background:#fff;font-weight:600;">Cập nhật →</a>
                         </div>
                     </div>
                 }
-                <a href="/Owner/KhoDichVu" style="color:var(--green);font-size:.8rem;font-weight:600;text-decoration:none;display:block;margin-top:8px;">Cập nhật kho →</a>
+                <div style="margin-top:8px;font-size:.78rem;color:var(--db-muted);">
+                    💡 Bấm "Cập nhật" ngay trên dòng dịch vụ để vào trang quản lý kho của sân tương ứng.
+                </div>
             </div>
         }
 
@@ -488,7 +493,7 @@
                     <span class="badge @(d.TrangThai == "HoanThanh" ? "bg-success" : d.TrangThai == "ChoDuyet" ? "bg-warning text-dark" : d.TrangThai == "DaHuy" ? "bg-danger" : "bg-primary")">@d.TrangThai</span>
                 </div>
             }
-            <a href="/Owner/DuyetDon" style="color:var(--green);font-size:.8rem;font-weight:600;text-decoration:none;display:block;margin-top:10px;">Xem tất cả →</a>
+            <a href="/Owner/DanhSachDonDat" style="color:var(--green);font-size:.8rem;font-weight:600;text-decoration:none;display:block;margin-top:10px;">Xem tất cả →</a>
         </div>
     }
 
@@ -557,8 +562,35 @@
             </form>
         </div>
         <div class="card">
-            <div class="ct">📄 HỢP ĐỒNG NỀN TẢNG</div>
-            <a href="/Owner/XemHopDong" style="display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:#f8fafc;text-decoration:none;color:var(--text);font-size:.87rem;font-weight:600;">📑 Xem & In hợp đồng đã ký →</a>
+            <div class="ct">📄 HỢP ĐỒNG NỀN TẢNG <span>@sanList.Count(s => s.DaKyHopDong) hợp đồng đã ký</span></div>
+            @if (!sanList.Any())
+            {
+                <div style="color:var(--db-muted);font-size:.85rem;">Chưa có sân nào — bạn cần đăng ký sân để ký hợp đồng.</div>
+            }
+            else
+            {
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    @foreach (var s in sanList)
+                    {
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:10px;border:1px solid var(--db-border);background:#f8fafc;">
+                            <div>
+                                <div style="font-weight:600;font-size:.87rem;">@s.TenSan</div>
+                                <div style="font-size:.74rem;color:var(--db-muted);">
+                                    @if (s.DaKyHopDong)
+                                    {
+                                        <span>✅ Đã ký ngày @(s.NgayKyHopDong?.ToString("dd/MM/yyyy"))</span>
+                                    }
+                                    else
+                                    {
+                                        <span>⏳ Chưa ký</span>
+                                    }
+                                </div>
+                            </div>
+                            <a href="/Owner/XemHopDong/@s.Id" target="_blank" style="font-size:.78rem;padding:6px 14px;border-radius:999px;border:1px solid var(--db-border);color:var(--db-text);text-decoration:none;background:#fff;">📑 Xem & In →</a>
+                        </div>
+                    }
+                </div>
+            }
         </div>
     }
 

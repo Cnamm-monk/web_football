@@ -370,3 +370,5 @@ npm-debug.log*
 # Thừa / sinh tự động
 crash_log.txt
 test.pdf
+.tmp_srs/
+srs_text.txt

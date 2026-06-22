@@ -123,7 +123,8 @@ namespace Web_Stadium.Controllers
             string? ngayThiDauStr,
             List<int>? dichVuIds,
             List<int>? soLuongs,
-            string? userVoucherId)
+            string? userVoucherId,
+            string? maVoucherCongKhai)
         {
             // Parse ngày an toàn — tránh SqlDateTime overflow
             if (!DateTime.TryParse(ngayThiDauStr, out var ngayThiDau) || ngayThiDau < new DateTime(1753, 1, 1))
@@ -176,6 +177,8 @@ namespace Web_Stadium.Controllers
 
             // ── Áp dụng voucher nếu có ──────────────────────────
             UserVoucher? uvDung = null;
+            Voucher? voucherCongKhai = null;
+
             if (!string.IsNullOrEmpty(userVoucherId))
             {
                 uvDung = await _context.UserVouchers
@@ -198,6 +201,40 @@ namespace Web_Stadium.Controllers
                     {
                         tienCocSauGiam = Math.Max(0, tienCocGoc - v.GiaTriGiam);
                     }
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(maVoucherCongKhai))
+            {
+                var ma = maVoucherCongKhai.Trim().ToUpper();
+                voucherCongKhai = await _context.Vouchers.FirstOrDefaultAsync(v =>
+                    v.MaVoucher == ma
+                    && v.IsActive
+                    && v.LoaiPhatHanh == "CongKhai"
+                    && (v.SanBongId == null || v.SanBongId == khungGio.SanBongId)
+                    && (v.SoLuotConLai == null || v.SoLuotConLai > 0));
+
+                if (voucherCongKhai == null)
+                {
+                    TempData["Error"] = $"Mã voucher \"{maVoucherCongKhai}\" không hợp lệ hoặc đã hết lượt.";
+                    // Giải phóng slot đang giữ
+                    if (khungGio.TrangThai == "DangGiu")
+                    {
+                        khungGio.TrangThai = "Trong";
+                        khungGio.ThoiGianHetGiuCho = null;
+                        await _context.SaveChangesAsync();
+                    }
+                    return RedirectToAction("Details", "Venues", new { id = khungGio.SanBongId });
+                }
+
+                if (voucherCongKhai.LoaiGiam == "PhanTram")
+                {
+                    var giam = tienCocGoc * (voucherCongKhai.GiaTriGiam / 100m);
+                    if (voucherCongKhai.GiamToiDa.HasValue) giam = Math.Min(giam, voucherCongKhai.GiamToiDa.Value);
+                    tienCocSauGiam = Math.Max(0, tienCocGoc - giam);
+                }
+                else
+                {
+                    tienCocSauGiam = Math.Max(0, tienCocGoc - voucherCongKhai.GiaTriGiam);
                 }
             }
 
@@ -260,6 +297,24 @@ namespace Web_Stadium.Controllers
                 await _context.SaveChangesAsync();
 
                 // Ghi log điểm (trừ điểm đã ghi khi đổi, ở đây chỉ ghi lại note dùng voucher)
+            }
+            else if (voucherCongKhai != null)
+            {
+                if (voucherCongKhai.SoLuotConLai.HasValue)
+                    voucherCongKhai.SoLuotConLai = Math.Max(0, voucherCongKhai.SoLuotConLai.Value - 1);
+
+                _context.UserVouchers.Add(new UserVoucher
+                {
+                    UserId = userId!.Value,
+                    VoucherId = voucherCongKhai.Id,
+                    MaSuDung = $"PUB-{Guid.NewGuid().ToString("N")[..10].ToUpper()}",
+                    NgayDoi = DateTime.Now,
+                    NgayHetHan = DateTime.Now.AddDays(voucherCongKhai.SoNgayHieuLuc > 0 ? voucherCongKhai.SoNgayHieuLuc : 30),
+                    IsUsed = true,
+                    NgaySuDung = DateTime.Now,
+                    DatSanId = datSan.Id
+                });
+                await _context.SaveChangesAsync();
             }
 
             // Cập nhật trạng thái khung giờ thành "Đã đặt"

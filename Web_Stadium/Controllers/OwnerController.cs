@@ -1830,5 +1830,490 @@ public async Task<IActionResult> UploadAnhFile(int sanId, List<IFormFile> files)
             ViewBag.Tab = tab;
             return View(user);
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CapNhatThongTin(string hoTen, string? soDienThoai)
+        {
+            var ownerId = GetOwnerId();
+            var user = await _context.Users.FindAsync(ownerId);
+            if (user == null) return NotFound();
+
+            if (string.IsNullOrWhiteSpace(hoTen))
+            {
+                TempData["Error"] = "Họ tên không được để trống.";
+                return RedirectToAction("HoSo", new { tab = "thongtin" });
+            }
+
+            user.HoTen = hoTen.Trim();
+            if (user.SoDienThoai != soDienThoai?.Trim())
+            {
+                user.SoDienThoai = soDienThoai?.Trim();
+                user.DaXacThucSdt = false;
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Đã cập nhật thông tin cá nhân!";
+            return RedirectToAction("HoSo", new { tab = "thongtin" });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DoiMatKhau(string matKhauCu, string matKhauMoi, string xacNhanMatKhau)
+        {
+            var ownerId = GetOwnerId();
+            var user = await _context.Users.FindAsync(ownerId);
+            if (user == null) return NotFound();
+
+            if (string.IsNullOrEmpty(matKhauCu) || !BCrypt.Net.BCrypt.Verify(matKhauCu, user.MatKhau))
+            {
+                TempData["Error"] = "Mật khẩu hiện tại không đúng.";
+                return RedirectToAction("HoSo", new { tab = "baomat" });
+            }
+            if (matKhauMoi != xacNhanMatKhau)
+            {
+                TempData["Error"] = "Mật khẩu xác nhận không khớp.";
+                return RedirectToAction("HoSo", new { tab = "baomat" });
+            }
+            if (string.IsNullOrEmpty(matKhauMoi) || matKhauMoi.Length < 6)
+            {
+                TempData["Error"] = "Mật khẩu mới phải có ít nhất 6 ký tự.";
+                return RedirectToAction("HoSo", new { tab = "baomat" });
+            }
+
+            user.MatKhau = BCrypt.Net.BCrypt.HashPassword(matKhauMoi);
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Đổi mật khẩu thành công!";
+            return RedirectToAction("HoSo", new { tab = "baomat" });
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // UC068 — Voucher sân (Owner tạo voucher riêng)
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> VoucherSan()
+        {
+            var ownerId = GetOwnerId();
+            var vouchers = await _context.Vouchers
+                .Include(v => v.SanBong)
+                .Where(v => v.OwnerId == ownerId)
+                .OrderByDescending(v => v.NgayTao)
+                .ToListAsync();
+
+            ViewBag.SanCuaToi = await SanCuaToi()
+                .Where(s => s.TrangThaiDuyet == "DaDuyet")
+                .Select(s => new { s.Id, s.TenSan })
+                .ToListAsync();
+
+            return View(vouchers);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TaoVoucherSan(
+            string tenVoucher, string maVoucher, string? moTa,
+            string loaiGiam, decimal giaTriGiam, decimal? giamToiDa,
+            int soNgayHieuLuc, string loaiPhatHanh,
+            int? sanBongId, int? soLuotConLai, int diemCanDoi)
+        {
+            var ownerId = GetOwnerId();
+
+            if (string.IsNullOrWhiteSpace(tenVoucher) || string.IsNullOrWhiteSpace(maVoucher))
+            { TempData["Error"] = "Tên và mã voucher không được để trống."; return RedirectToAction("VoucherSan"); }
+
+            maVoucher = maVoucher.Trim().ToUpper();
+
+            if (await _context.Vouchers.AnyAsync(v => v.MaVoucher == maVoucher))
+            { TempData["Error"] = $"Mã voucher \"{maVoucher}\" đã tồn tại."; return RedirectToAction("VoucherSan"); }
+
+            if (sanBongId.HasValue)
+            {
+                var hopLe = await SanCuaToi().AnyAsync(s => s.Id == sanBongId.Value);
+                if (!hopLe)
+                { TempData["Error"] = "Sân không thuộc quyền quản lý."; return RedirectToAction("VoucherSan"); }
+            }
+
+            if (loaiGiam == "PhanTram" && (giaTriGiam <= 0 || giaTriGiam > 100))
+            { TempData["Error"] = "Phần trăm giảm phải trong khoảng 1-100."; return RedirectToAction("VoucherSan"); }
+            if (loaiGiam == "SoTien" && giaTriGiam <= 0)
+            { TempData["Error"] = "Số tiền giảm phải lớn hơn 0."; return RedirectToAction("VoucherSan"); }
+
+            var v = new Voucher
+            {
+                MaVoucher = maVoucher,
+                TenVoucher = tenVoucher.Trim(),
+                MoTa = moTa?.Trim(),
+                LoaiGiam = loaiGiam == "SoTien" ? "SoTien" : "PhanTram",
+                GiaTriGiam = giaTriGiam,
+                GiamToiDa = giamToiDa,
+                SoNgayHieuLuc = soNgayHieuLuc > 0 ? soNgayHieuLuc : 30,
+                IsActive = true,
+                NgayTao = DateTime.Now,
+                OwnerId = ownerId,
+                SanBongId = sanBongId,
+                LoaiPhatHanh = loaiPhatHanh == "DoiDiem" ? "DoiDiem" : "CongKhai",
+                SoLuotConLai = soLuotConLai,
+                DiemCanDoi = loaiPhatHanh == "DoiDiem" ? diemCanDoi : 0
+            };
+            _context.Vouchers.Add(v);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"Đã tạo voucher \"{tenVoucher}\" với mã {maVoucher}.";
+            return RedirectToAction("VoucherSan");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleVoucher(int id)
+        {
+            var ownerId = GetOwnerId();
+            var v = await _context.Vouchers.FirstOrDefaultAsync(x => x.Id == id && x.OwnerId == ownerId);
+            if (v == null) return NotFound();
+            v.IsActive = !v.IsActive;
+            await _context.SaveChangesAsync();
+            TempData["Success"] = v.IsActive ? "Đã bật voucher." : "Đã tắt voucher.";
+            return RedirectToAction("VoucherSan");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // UC069 — Yêu cầu đổi giờ
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> YeuCauDoiGio(string tab = "ChoPheDuyet")
+        {
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+
+            var list = await _context.YeuCauDoiGios
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.DatSan).ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(y => y.KhungGioMoi).ThenInclude(k => k.SanBong)
+                .Where(y => sanIds.Contains(y.DatSan.KhungGio.SanBongId) && y.TrangThai == tab)
+                .OrderByDescending(y => y.NgayTao)
+                .ToListAsync();
+
+            ViewBag.Tab = tab;
+            ViewBag.SoChoDuyet = await _context.YeuCauDoiGios
+                .CountAsync(y => sanIds.Contains(y.DatSan.KhungGio.SanBongId) && y.TrangThai == "ChoPheDuyet");
+            return View(list);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> XuLyDoiGio(int id, string quyetDinh, string? ghiChu)
+        {
+            var ownerId = GetOwnerId();
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+
+            var yc = await _context.YeuCauDoiGios
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.DatSan).ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(y => y.KhungGioMoi)
+                .FirstOrDefaultAsync(y => y.Id == id && sanIds.Contains(y.DatSan.KhungGio.SanBongId));
+
+            if (yc == null) return NotFound();
+            if (yc.TrangThai != "ChoPheDuyet")
+            { TempData["Error"] = "Yêu cầu đã được xử lý."; return RedirectToAction("YeuCauDoiGio"); }
+
+            if (quyetDinh == "Duyet")
+            {
+                // Khung giờ mới phải còn trống
+                if (yc.KhungGioMoi.TrangThai != "Trong")
+                { TempData["Error"] = "Khung giờ mới đã không còn trống. Vui lòng từ chối yêu cầu này."; return RedirectToAction("YeuCauDoiGio"); }
+
+                // Khung mới phải cùng sân
+                if (yc.KhungGioMoi.SanBongId != yc.DatSan.KhungGio.SanBongId)
+                { TempData["Error"] = "Khung giờ mới không thuộc cùng sân. Hãy dùng đổi sân thay vì đổi giờ."; return RedirectToAction("YeuCauDoiGio"); }
+
+                var khungCu = yc.DatSan.KhungGio;
+                khungCu.TrangThai = "Trong";
+
+                yc.KhungGioMoi.TrangThai = "DaDat";
+                yc.DatSan.KhungGioId = yc.KhungGioMoi.Id;
+                yc.DatSan.NgayThiDau = yc.NgayThiDauMoi;
+
+                yc.TrangThai = "DaDuyet";
+                yc.NgayXuLy = DateTime.Now;
+                yc.NguoiXuLyId = ownerId;
+                yc.GhiChuXuLy = ghiChu;
+
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = ownerId, VaiTro = "Owner",
+                    HanhDong = "DuyetDoiGio", DoiTuong = "YeuCauDoiGio", DoiTuongId = yc.Id,
+                    MoTa = $"DatSan {yc.DatSanId}: khung {khungCu.Id} → {yc.KhungGioMoi.Id}",
+                    ThoiGian = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+
+                try
+                {
+                    await _emailService.GuiEmailAsync(
+                        yc.DatSan.User.Email, yc.DatSan.User.HoTen,
+                        "Yêu cầu đổi giờ đã được duyệt",
+                        $"<p>Xin chào {yc.DatSan.User.HoTen},</p>" +
+                        $"<p>Yêu cầu đổi giờ đặt sân #{yc.DatSan.MaXacNhan} đã được duyệt.</p>" +
+                        $"<p>Khung giờ mới: {yc.KhungGioMoi.GioBatDau}–{yc.KhungGioMoi.GioKetThuc} ngày {yc.NgayThiDauMoi:dd/MM/yyyy}.</p>");
+                }
+                catch { /* email lỗi không block flow */ }
+
+                TempData["Success"] = "Đã duyệt yêu cầu đổi giờ.";
+            }
+            else
+            {
+                yc.TrangThai = "TuChoi";
+                yc.NgayXuLy = DateTime.Now;
+                yc.NguoiXuLyId = ownerId;
+                yc.GhiChuXuLy = ghiChu;
+
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = ownerId, VaiTro = "Owner",
+                    HanhDong = "TuChoiDoiGio", DoiTuong = "YeuCauDoiGio", DoiTuongId = yc.Id,
+                    MoTa = ghiChu ?? "", ThoiGian = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+
+                try
+                {
+                    await _emailService.GuiEmailAsync(
+                        yc.DatSan.User.Email, yc.DatSan.User.HoTen,
+                        "Yêu cầu đổi giờ bị từ chối",
+                        $"<p>Xin chào {yc.DatSan.User.HoTen},</p>" +
+                        $"<p>Yêu cầu đổi giờ đặt sân #{yc.DatSan.MaXacNhan} đã bị từ chối.</p>" +
+                        $"<p>Lý do: {ghiChu ?? "(không có)"}</p>");
+                }
+                catch { }
+
+                TempData["Success"] = "Đã từ chối yêu cầu.";
+            }
+            return RedirectToAction("YeuCauDoiGio");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // UC070 — Yêu cầu đổi sân
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> YeuCauDoiSan(string tab = "ChoPheDuyet")
+        {
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+
+            var list = await _context.YeuCauDoiSans
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.DatSan).ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(y => y.KhungGioMoi).ThenInclude(k => k.SanBong)
+                .Where(y => sanIds.Contains(y.DatSan.KhungGio.SanBongId) && y.TrangThai == tab)
+                .OrderByDescending(y => y.NgayTao)
+                .ToListAsync();
+
+            ViewBag.Tab = tab;
+            ViewBag.SoChoDuyet = await _context.YeuCauDoiSans
+                .CountAsync(y => sanIds.Contains(y.DatSan.KhungGio.SanBongId) && y.TrangThai == "ChoPheDuyet");
+            return View(list);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> XuLyDoiSan(int id, string quyetDinh, string? ghiChu)
+        {
+            var ownerId = GetOwnerId();
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+
+            var yc = await _context.YeuCauDoiSans
+                .Include(y => y.DatSan).ThenInclude(d => d.User)
+                .Include(y => y.DatSan).ThenInclude(d => d.KhungGio)
+                .Include(y => y.KhungGioMoi).ThenInclude(k => k.SanBong)
+                .FirstOrDefaultAsync(y => y.Id == id && sanIds.Contains(y.DatSan.KhungGio.SanBongId));
+
+            if (yc == null) return NotFound();
+            if (yc.TrangThai != "ChoPheDuyet")
+            { TempData["Error"] = "Yêu cầu đã được xử lý."; return RedirectToAction("YeuCauDoiSan"); }
+
+            if (quyetDinh == "Duyet")
+            {
+                if (yc.KhungGioMoi.TrangThai != "Trong")
+                { TempData["Error"] = "Khung giờ tại sân mới đã không còn trống."; return RedirectToAction("YeuCauDoiSan"); }
+
+                // Sân mới cũng phải thuộc Owner để có quyền duyệt
+                if (!sanIds.Contains(yc.KhungGioMoi.SanBongId))
+                { TempData["Error"] = "Sân mới không thuộc quyền quản lý của bạn."; return RedirectToAction("YeuCauDoiSan"); }
+
+                var khungCu = yc.DatSan.KhungGio;
+                khungCu.TrangThai = "Trong";
+
+                yc.KhungGioMoi.TrangThai = "DaDat";
+                yc.DatSan.KhungGioId = yc.KhungGioMoi.Id;
+                yc.DatSan.NgayThiDau = yc.NgayThiDauMoi;
+
+                yc.TrangThai = "DaDuyet";
+                yc.NgayXuLy = DateTime.Now;
+                yc.NguoiXuLyId = ownerId;
+                yc.GhiChuXuLy = ghiChu;
+
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = ownerId, VaiTro = "Owner",
+                    HanhDong = "DuyetDoiSan", DoiTuong = "YeuCauDoiSan", DoiTuongId = yc.Id,
+                    MoTa = $"DatSan {yc.DatSanId}: san {khungCu.SanBongId} → {yc.KhungGioMoi.SanBongId}",
+                    ThoiGian = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+
+                try
+                {
+                    await _emailService.GuiEmailAsync(
+                        yc.DatSan.User.Email, yc.DatSan.User.HoTen,
+                        "Yêu cầu đổi sân đã được duyệt",
+                        $"<p>Xin chào {yc.DatSan.User.HoTen},</p>" +
+                        $"<p>Đơn #{yc.DatSan.MaXacNhan} đã được chuyển sang sân \"{yc.KhungGioMoi.SanBong.TenSan}\".</p>" +
+                        $"<p>Khung giờ: {yc.KhungGioMoi.GioBatDau}–{yc.KhungGioMoi.GioKetThuc} ngày {yc.NgayThiDauMoi:dd/MM/yyyy}.</p>");
+                }
+                catch { }
+
+                TempData["Success"] = "Đã duyệt yêu cầu đổi sân.";
+            }
+            else
+            {
+                yc.TrangThai = "TuChoi";
+                yc.NgayXuLy = DateTime.Now;
+                yc.NguoiXuLyId = ownerId;
+                yc.GhiChuXuLy = ghiChu;
+
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = ownerId, VaiTro = "Owner",
+                    HanhDong = "TuChoiDoiSan", DoiTuong = "YeuCauDoiSan", DoiTuongId = yc.Id,
+                    MoTa = ghiChu ?? "", ThoiGian = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+
+                try
+                {
+                    await _emailService.GuiEmailAsync(
+                        yc.DatSan.User.Email, yc.DatSan.User.HoTen,
+                        "Yêu cầu đổi sân bị từ chối",
+                        $"<p>Yêu cầu đổi sân của đơn #{yc.DatSan.MaXacNhan} đã bị từ chối.</p>" +
+                        $"<p>Lý do: {ghiChu ?? "(không có)"}</p>");
+                }
+                catch { }
+
+                TempData["Success"] = "Đã từ chối yêu cầu.";
+            }
+            return RedirectToAction("YeuCauDoiSan");
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // UC071 — Chuyển nhượng đặt sân
+        // ══════════════════════════════════════════════════════════
+        public async Task<IActionResult> ChuyenNhuong(string tab = "ChoPheDuyet")
+        {
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+
+            var list = await _context.ChuyenNhuongDatSans
+                .Include(c => c.DatSan).ThenInclude(d => d.User)
+                .Include(c => c.DatSan).ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(c => c.NguoiChuyen)
+                .Include(c => c.NguoiNhan)
+                .Where(c => sanIds.Contains(c.DatSan.KhungGio.SanBongId) && c.TrangThai == tab)
+                .OrderByDescending(c => c.NgayTao)
+                .ToListAsync();
+
+            ViewBag.Tab = tab;
+            ViewBag.SoChoDuyet = await _context.ChuyenNhuongDatSans
+                .CountAsync(c => sanIds.Contains(c.DatSan.KhungGio.SanBongId) && c.TrangThai == "ChoPheDuyet");
+            return View(list);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> XuLyChuyenNhuong(int id, string quyetDinh, string? ghiChu)
+        {
+            var ownerId = GetOwnerId();
+            var sanIds = await SanCuaToi().Select(s => s.Id).ToListAsync();
+
+            var cn = await _context.ChuyenNhuongDatSans
+                .Include(c => c.DatSan).ThenInclude(d => d.User)
+                .Include(c => c.DatSan).ThenInclude(d => d.KhungGio).ThenInclude(k => k.SanBong)
+                .Include(c => c.NguoiChuyen)
+                .FirstOrDefaultAsync(c => c.Id == id && sanIds.Contains(c.DatSan.KhungGio.SanBongId));
+
+            if (cn == null) return NotFound();
+            if (cn.TrangThai != "ChoPheDuyet")
+            { TempData["Error"] = "Yêu cầu đã được xử lý."; return RedirectToAction("ChuyenNhuong"); }
+
+            if (quyetDinh == "Duyet")
+            {
+                // Lookup người nhận theo email hoặc SĐT
+                User? nguoiNhan = null;
+                if (!string.IsNullOrWhiteSpace(cn.EmailNguoiNhan))
+                    nguoiNhan = await _context.Users.FirstOrDefaultAsync(u => u.Email == cn.EmailNguoiNhan && u.IsActive);
+                if (nguoiNhan == null && !string.IsNullOrWhiteSpace(cn.SdtNguoiNhan))
+                    nguoiNhan = await _context.Users.FirstOrDefaultAsync(u => u.SoDienThoai == cn.SdtNguoiNhan && u.IsActive);
+
+                if (nguoiNhan == null)
+                { TempData["Error"] = "Không tìm thấy tài khoản người nhận. Hãy từ chối yêu cầu này."; return RedirectToAction("ChuyenNhuong"); }
+                if (nguoiNhan.Id == cn.NguoiChuyenId)
+                { TempData["Error"] = "Người nhận trùng với người chuyển."; return RedirectToAction("ChuyenNhuong"); }
+
+                var nguoiChuyenTruoc = cn.DatSan.User;
+                cn.DatSan.UserId = nguoiNhan.Id;
+                cn.NguoiNhanId = nguoiNhan.Id;
+
+                cn.TrangThai = "DaDuyet";
+                cn.NgayXuLy = DateTime.Now;
+                cn.NguoiXuLyOwnerId = ownerId;
+                cn.GhiChuXuLy = ghiChu;
+
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = ownerId, VaiTro = "Owner",
+                    HanhDong = "DuyetChuyenNhuong", DoiTuong = "ChuyenNhuongDatSan", DoiTuongId = cn.Id,
+                    MoTa = $"DatSan {cn.DatSanId}: user {nguoiChuyenTruoc.Id} → {nguoiNhan.Id}",
+                    ThoiGian = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+
+                try
+                {
+                    await _emailService.GuiEmailAsync(
+                        nguoiChuyenTruoc.Email, nguoiChuyenTruoc.HoTen,
+                        "Chuyển nhượng đặt sân thành công",
+                        $"<p>Đơn #{cn.DatSan.MaXacNhan} đã được chuyển sang {nguoiNhan.HoTen} ({nguoiNhan.Email}).</p>");
+                    await _emailService.GuiEmailAsync(
+                        nguoiNhan.Email, nguoiNhan.HoTen,
+                        "Bạn vừa nhận một đơn đặt sân",
+                        $"<p>Xin chào {nguoiNhan.HoTen},</p>" +
+                        $"<p>Bạn vừa nhận đơn đặt sân #{cn.DatSan.MaXacNhan} từ {nguoiChuyenTruoc.HoTen}.</p>" +
+                        $"<p>Sân: {cn.DatSan.KhungGio.SanBong.TenSan}, ngày {cn.DatSan.NgayThiDau:dd/MM/yyyy}.</p>");
+                }
+                catch { }
+
+                TempData["Success"] = "Đã duyệt chuyển nhượng.";
+            }
+            else
+            {
+                cn.TrangThai = "TuChoi";
+                cn.NgayXuLy = DateTime.Now;
+                cn.NguoiXuLyOwnerId = ownerId;
+                cn.GhiChuXuLy = ghiChu;
+
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    UserId = ownerId, VaiTro = "Owner",
+                    HanhDong = "TuChoiChuyenNhuong", DoiTuong = "ChuyenNhuongDatSan", DoiTuongId = cn.Id,
+                    MoTa = ghiChu ?? "", ThoiGian = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+
+                try
+                {
+                    await _emailService.GuiEmailAsync(
+                        cn.NguoiChuyen.Email, cn.NguoiChuyen.HoTen,
+                        "Yêu cầu chuyển nhượng bị từ chối",
+                        $"<p>Yêu cầu chuyển nhượng đơn #{cn.DatSan.MaXacNhan} đã bị từ chối.</p>" +
+                        $"<p>Lý do: {ghiChu ?? "(không có)"}</p>");
+                }
+                catch { }
+
+                TempData["Success"] = "Đã từ chối yêu cầu.";
+            }
+            return RedirectToAction("ChuyenNhuong");
+        }
     }
 }
